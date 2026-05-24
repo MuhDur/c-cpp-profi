@@ -28,3 +28,9 @@ __pycache__/
 node_modules/
 .venv/
 venv/
+
+# bv (beads viewer) local config and caches
+.bv/
+
+# NTM local runtime state
+.ntm/

@@ -1,0 +1,4 @@
+interface:
+  display_name: "C/C++ Systems Engineering"
+  short_description: "Hardening, testing, and performance for C/C++"
+  default_prompt: "Use $c-cpp-systems-engineering to implement or review this C/C++ change with safety, performance, testing, and portability gates."
