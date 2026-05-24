@@ -17,6 +17,8 @@ The first usable version is complete when all of these are true:
 - Gate-report generation, ABI workflow, and native UI golden-artifact workflow are documented and discoverable from `SKILL.md`.
 - Meson workflow is forward-tested on a real mixed C/C++ project.
 - Expert canon and toolchain matrix exist and are referenced from `SKILL.md`.
+- Examples exist for C library, modern C++ library, embedded C, parser/input, and native UI/rendering workflows.
+- The conformance harness passes: `python3 skill/c-cpp-systems-engineering/scripts/validate_skill_contract.py skill/c-cpp-systems-engineering`.
 
 ## Quality Bar
 

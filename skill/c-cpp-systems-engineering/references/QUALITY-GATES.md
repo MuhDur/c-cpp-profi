@@ -19,6 +19,12 @@ Record the compiler, standard, build system, test runner, and whether `compile_c
 
 For reusable CMake/Meson sanitizer and fuzz scaffolds, read [TOOLCHAIN-TEMPLATES.md](TOOLCHAIN-TEMPLATES.md).
 
+For skill maintenance, run the conformance harness:
+
+```bash
+python3 skill/c-cpp-systems-engineering/scripts/validate_skill_contract.py skill/c-cpp-systems-engineering
+```
+
 ## Gate Report
 
 Every non-trivial C/C++ handoff needs a compact evidence packet. Generate the skeleton, then fill in commands and outcomes:

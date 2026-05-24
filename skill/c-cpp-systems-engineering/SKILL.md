@@ -93,9 +93,20 @@ bash skill/c-cpp-systems-engineering/scripts/cpp_inventory.sh .
 bash skill/c-cpp-systems-engineering/scripts/cpp_gate_plan.sh .
 bash skill/c-cpp-systems-engineering/scripts/cpp_risk_scan.sh .
 bash skill/c-cpp-systems-engineering/scripts/cpp_gate_report.sh .
+python3 skill/c-cpp-systems-engineering/scripts/validate_skill_contract.py skill/c-cpp-systems-engineering
 ```
 
 Use the inventory script at the start of non-trivial work, the gate plan before changing build/test commands, the risk scan before review or after touching memory/input/concurrency code, and the gate report script before handoff. Prefer running `cpp_risk_scan.sh` on changed files or touched directories; whole-repo scans on mature C/C++ projects are intentionally noisy triage, not a defect list.
+
+## Examples
+
+Use the examples as compact execution cards when a task matches a common C/C++ surface:
+
+- [C library](examples/c-library.md): public C API, ABI, symbols, ownership, and downstream smoke.
+- [Modern C++ library](examples/modern-cpp-library.md): templates, concepts, RAII, public headers, and exception safety.
+- [Embedded C or RT](examples/embedded-c.md): fixed resources, ISR-like contexts, MMIO, timing, and stack/heap budgets.
+- [Parser or untrusted input](examples/parser-input.md): harnesses, corpora, sanitizers, minimization, and crash regression.
+- [Native UI or rendering](examples/native-ui-rendering.md): screenshots, pixel/golden artifacts, DPI/font/color/platform matrices, and frame-time evidence.
 
 ## Assets
 
