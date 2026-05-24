@@ -15,6 +15,8 @@ bash skill/c-cpp-systems-engineering/scripts/cpp_gate_plan.sh .
 
 Record the compiler, standard, build system, test runner, and whether `compile_commands.json` exists.
 
+For reusable CMake/Meson sanitizer and fuzz scaffolds, read [TOOLCHAIN-TEMPLATES.md](TOOLCHAIN-TEMPLATES.md).
+
 ## CMake
 
 Prefer presets when present:

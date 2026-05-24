@@ -36,6 +36,8 @@ The installed skill catalog was scanned. The relevant patterns used here:
   - https://llvm.org/docs/LibFuzzer.html
 - CMake presets docs: used for the tracked `CMakePresets.json` versus untracked `CMakeUserPresets.json` distinction and preset-first gate selection.
   - https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html
+- Meson built-in options docs: used for native-file sanitizer option templates.
+  - https://mesonbuild.com/Builtin-options.html
 - Microsoft GSL: used as one possible implementation of C++ Core Guidelines support types when a project accepts the dependency.
   - https://github.com/microsoft/GSL
 - Google FuzzTest: used as one possible C++ property/fuzz test option when a project already uses or accepts GoogleTest-style infrastructure.

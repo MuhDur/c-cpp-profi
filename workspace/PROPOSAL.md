@@ -57,9 +57,9 @@ Phase 1: v1 scaffold.
 
 Phase 2: toolchain templates.
 
-- Add optional CMake preset templates for debug, sanitizer, fuzz, coverage, release-hardening, and perf builds.
-- Add Meson equivalents if useful.
-- Add sample libFuzzer and FuzzTest harness templates.
+- Add optional CMake preset templates for debug, sanitizer, and fuzz builds.
+- Add Meson equivalents.
+- Add sample libFuzzer harness templates.
 
 Phase 3: evidence harness.
 

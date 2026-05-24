@@ -12,6 +12,7 @@ The first usable version is complete when all of these are true:
 - The scripts are smoke-tested on this repo.
 - The workspace has a proposal and source ledger.
 - Beads state reflects the work item.
+- Sanitizer/fuzz templates exist as reusable assets and are referenced from the skill.
 
 ## Quality Bar
 

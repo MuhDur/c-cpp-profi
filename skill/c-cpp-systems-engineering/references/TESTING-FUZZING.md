@@ -51,6 +51,8 @@ clang++ -g -O1 -fsanitize=fuzzer,address,undefined target.cc lib_under_test.a -o
 ./fuzz_target corpus/ -max_total_time=60
 ```
 
+Reusable harness and build fragments are in `assets/fuzz/`, `assets/cmake/`, and `assets/meson/`. Read [TOOLCHAIN-TEMPLATES.md](TOOLCHAIN-TEMPLATES.md) before copying them into a target repo.
+
 ## FuzzTest
 
 For C++ projects already using GoogleTest or willing to add a property-style harness, FuzzTest can express typed property tests backed by coverage-guided fuzzing.

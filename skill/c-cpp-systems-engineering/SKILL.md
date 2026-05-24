@@ -71,6 +71,7 @@ Load only the relevant file:
 | Fuzzing and test strategy | [TESTING-FUZZING.md](references/TESTING-FUZZING.md) |
 | Performance methodology | [PERFORMANCE.md](references/PERFORMANCE.md) |
 | Build systems, ABI, portability | [BUILD-PORTABILITY.md](references/BUILD-PORTABILITY.md) |
+| Sanitizer/fuzz templates | [TOOLCHAIN-TEMPLATES.md](references/TOOLCHAIN-TEMPLATES.md) |
 | Hermes/Codex/Claude operating mode | [AGENT-OPERATING-MODE.md](references/AGENT-OPERATING-MODE.md) |
 
 ## Helper Scripts
@@ -84,6 +85,14 @@ bash skill/c-cpp-systems-engineering/scripts/cpp_risk_scan.sh .
 ```
 
 Use the inventory script at the start of non-trivial work, the gate plan before changing build/test commands, and the risk scan before review or after touching memory/input/concurrency code.
+
+## Assets
+
+Reusable templates live under `assets/`. Copy them into a target repo only after checking its build system and local style:
+
+- `assets/cmake/`: CMake presets and sanitizer helper module.
+- `assets/meson/`: Meson native files and libFuzzer build fragment.
+- `assets/fuzz/`: minimal C and C++ libFuzzer harnesses.
 
 ## Handoff Contract
 

@@ -9,6 +9,7 @@ The aim is evidence-grade C/C++ engineering: explicit ownership, no known UB aft
 - Skill: `skill/c-cpp-systems-engineering/SKILL.md`
 - References: `skill/c-cpp-systems-engineering/references/`
 - Read-only helper scripts: `skill/c-cpp-systems-engineering/scripts/`
+- Reusable sanitizer/fuzz assets: `skill/c-cpp-systems-engineering/assets/`
 - Proposal: `workspace/PROPOSAL.md`
 - Source ledger: `workspace/SOURCE-LEDGER.md`
 - Acceptance criteria: `workspace/ACCEPTANCE.md`

@@ -8,6 +8,7 @@
 - Export `compile_commands.json` when using Clang tooling.
 - Prefer target-based CMake over global flags when editing CMake.
 - Keep local developer settings out of committed presets.
+- For sanitizer/fuzz scaffolds, read [TOOLCHAIN-TEMPLATES.md](TOOLCHAIN-TEMPLATES.md) and adapt the assets instead of inventing flags from memory.
 
 ## Standards
 
