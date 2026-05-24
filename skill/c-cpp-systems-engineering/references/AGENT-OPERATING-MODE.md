@@ -12,7 +12,8 @@
 4. State the intended gate set before substantial edits.
 5. Keep the patch small and reviewable.
 6. Run gates and report exact commands.
-7. File follow-up issues for unhandled risks.
+7. Generate or fill a gate report for non-trivial changes.
+8. File follow-up issues for unhandled risks.
 
 ## Prompt Kernel For Subagents
 
@@ -42,6 +43,12 @@ Findings:
 Gates:
 - Run:
 - Missing:
+
+ABI/API:
+- Impact:
+
+Artifacts:
+- Golden/pixel/perf evidence:
 
 Residual risk:
 ```

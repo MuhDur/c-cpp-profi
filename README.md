@@ -36,4 +36,5 @@ python3 /home/durakovic/.codex/skills/.system/skill-creator/scripts/quick_valida
 bash skill/c-cpp-systems-engineering/scripts/cpp_inventory.sh .
 bash skill/c-cpp-systems-engineering/scripts/cpp_gate_plan.sh .
 bash skill/c-cpp-systems-engineering/scripts/cpp_risk_scan.sh .
+bash skill/c-cpp-systems-engineering/scripts/cpp_gate_report.sh .
 ```

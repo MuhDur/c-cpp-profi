@@ -17,6 +17,23 @@ Record the compiler, standard, build system, test runner, and whether `compile_c
 
 For reusable CMake/Meson sanitizer and fuzz scaffolds, read [TOOLCHAIN-TEMPLATES.md](TOOLCHAIN-TEMPLATES.md).
 
+## Gate Report
+
+Every non-trivial C/C++ handoff needs a compact evidence packet. Generate the skeleton, then fill in commands and outcomes:
+
+```bash
+bash skill/c-cpp-systems-engineering/scripts/cpp_gate_report.sh .
+```
+
+The report must distinguish:
+
+- `passed`: exact command ran and covered the touched behavior.
+- `failed`: exact command ran and failed, with the blocking output summarized.
+- `not run`: command was applicable but skipped, with the reason.
+- `not applicable`: gate does not apply to this change.
+
+Do not let a broad green gate hide a narrow gap. If tests passed but no sanitizer run covered the parser changed in the patch, the dynamic gate is still missing.
+
 ## CMake
 
 Prefer presets when present:
@@ -142,6 +159,10 @@ Any optimization claim needs:
 3. Single optimization lever.
 4. Rerun with same benchmark and representative data.
 
+## ABI Gate
+
+Required for public headers, shared libraries, plugins, FFI, SDKs, or package exports. Read [BUILD-PORTABILITY.md](BUILD-PORTABILITY.md), then record old/new library paths, headers, compiler, flags, symbol diff, layout/API diff, and downstream compile/run evidence.
+
 ## Pixel Or Artifact Gate
 
-For UI/rendering/native graphics/image/video changes, capture before/after golden artifacts. Use perceptual image diff or project-approved pixel thresholds. Verify at every supported scale factor, font stack, color mode, and target platform that matters.
+For UI/rendering/native graphics/image/video changes, read [NATIVE-UI-GOLDENS.md](NATIVE-UI-GOLDENS.md), then capture before/after golden artifacts. Use perceptual image diff or project-approved pixel thresholds. Verify at every supported scale factor, font stack, color mode, and target platform that matters.

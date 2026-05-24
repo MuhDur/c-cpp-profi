@@ -36,6 +36,44 @@ For public libraries:
 - Thread-safety guarantees.
 - Versioning and deprecation policy.
 
+## ABI Workflow
+
+Use this when the change touches a public header, exported symbol, shared library, plugin boundary, FFI surface, SDK package, or persisted binary format.
+
+1. Define the supported contract: source API, binary ABI, C ABI, C++ ABI, wire/file format, or downstream plugin compatibility.
+2. Build the old and new artifacts with the same compiler family, target triple, standard library, visibility flags, build type, and feature flags.
+3. Capture exported symbols:
+
+```bash
+nm -D --defined-only <lib.so>
+readelf -Ws <lib.so>
+objdump -T <lib.so>
+dumpbin /EXPORTS <lib.dll>
+```
+
+Use the platform-appropriate subset. Prefer LLVM equivalents such as `llvm-nm` or `llvm-readelf` when that is the project toolchain.
+
+4. Compare ABI with available tooling:
+
+```bash
+abidiff <old.so> <new.so>
+abi-dumper <old.so> -o old.abi
+abi-dumper <new.so> -o new.abi
+abi-compliance-checker -l <name> -old old.abi -new new.abi
+```
+
+5. Compile at least one downstream consumer against the new headers. When binary compatibility is promised, also run an old binary against the new library.
+6. Record the result in the gate report: supported contract, tools used, exact artifacts compared, incompatible changes, intentional breaks, and migration notes.
+
+Do not claim ABI compatibility from unit tests alone. Unit tests can pass while exported names, layout, exception behavior, or allocator boundaries are broken.
+
+## C++ ABI Rules
+
+- Prefer stable C ABI boundaries for plugins, SDKs, and cross-compiler consumers.
+- Do not expose STL containers, exceptions, RTTI-dependent classes, allocator ownership, or inline implementation details across a long-lived binary boundary unless the project already commits to that ABI.
+- For C++ library internals, use PIMPL, hidden visibility, version scripts, or explicit export maps when the project supports them.
+- Changing class layout, virtual functions, enum size, inline function behavior, template instantiations, exception specifications, or public data members can be ABI-visible.
+
 ## Header Hygiene
 
 - Minimize transitive includes in public headers.

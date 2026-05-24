@@ -13,6 +13,7 @@ The first usable version is complete when all of these are true:
 - The workspace has a proposal and source ledger.
 - Beads state reflects the work item.
 - Sanitizer/fuzz templates exist as reusable assets and are referenced from the skill.
+- Gate-report generation, ABI workflow, and native UI golden-artifact workflow are documented and discoverable from `SKILL.md`.
 
 ## Quality Bar
 
@@ -25,14 +26,13 @@ The skill must cause future agents to:
 - state missing evidence honestly;
 - keep ABI and portability visible;
 - use golden artifacts for pixel/rendering output.
+- produce a compact evidence report for non-trivial work.
 
 ## Later 12/10 Bar
 
 The ambitious target needs additional evidence:
 
 - Forward-test on at least three real C/C++ projects.
-- Add CMake/Meson sanitizer and fuzz preset templates.
-- Add gate-report generation.
-- Add ABI check workflow with tools such as `abi-compliance-checker`, `abi-dumper`, or platform equivalents.
+- Forward-test the sanitizer, fuzz, gate-report, ABI, and golden-artifact workflows.
 - Add examples for C library, modern C++ library, embedded C, parser, and native UI/rendering work.
 - Add a small conformance harness that checks the skill references and scripts stay synchronized.

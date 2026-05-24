@@ -34,8 +34,9 @@ Agents should not be allowed to stop at "it compiles" for risky code. They shoul
    - testing and fuzzing;
    - performance;
    - build, ABI, and portability;
+   - native UI and golden artifacts;
    - multi-agent operating mode.
-3. Read-only scripts that help agents inspect projects and choose gates without modifying code.
+3. Read-only scripts that help agents inspect projects, choose gates, and produce evidence reports without modifying code.
 4. A workspace ledger that records the installed-skill inspiration, external source basis, acceptance criteria, and future roadmap.
 
 ## Design Decisions
@@ -63,9 +64,9 @@ Phase 2: toolchain templates.
 
 Phase 3: evidence harness.
 
-- Add a script that emits a gate report from commands run by an agent.
-- Add ABI check guidance and templates.
-- Add native UI golden artifact workflow.
+- Add a script that emits a gate report skeleton from commands run by an agent.
+- Add ABI check guidance with symbol, layout, and downstream-consumer evidence.
+- Add native UI golden artifact workflow for screenshot, rendering, and terminal output.
 
 Phase 4: forward testing.
 

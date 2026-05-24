@@ -57,7 +57,7 @@ Use the strongest applicable ladder the project can support:
 | Parser/input handling | Read [TESTING-FUZZING.md](references/TESTING-FUZZING.md), then add fuzz and regression coverage |
 | Build system | Read [BUILD-PORTABILITY.md](references/BUILD-PORTABILITY.md), preserve existing presets and developer workflows |
 | Review/audit | Lead with findings, file:line evidence, severity, proof, and gate gaps |
-| Native UI/pixels | Create golden screenshots/images and compare rendered artifacts across target viewports/devices |
+| Native UI/pixels | Read [NATIVE-UI-GOLDENS.md](references/NATIVE-UI-GOLDENS.md), then capture and compare rendered artifacts across target viewports/devices |
 
 ## Reference Map
 
@@ -71,6 +71,7 @@ Load only the relevant file:
 | Fuzzing and test strategy | [TESTING-FUZZING.md](references/TESTING-FUZZING.md) |
 | Performance methodology | [PERFORMANCE.md](references/PERFORMANCE.md) |
 | Build systems, ABI, portability | [BUILD-PORTABILITY.md](references/BUILD-PORTABILITY.md) |
+| Native UI, rendering, screenshots, pixels | [NATIVE-UI-GOLDENS.md](references/NATIVE-UI-GOLDENS.md) |
 | Sanitizer/fuzz templates | [TOOLCHAIN-TEMPLATES.md](references/TOOLCHAIN-TEMPLATES.md) |
 | Hermes/Codex/Claude operating mode | [AGENT-OPERATING-MODE.md](references/AGENT-OPERATING-MODE.md) |
 
@@ -82,9 +83,10 @@ All scripts are read-only unless the script text explicitly says otherwise.
 bash skill/c-cpp-systems-engineering/scripts/cpp_inventory.sh .
 bash skill/c-cpp-systems-engineering/scripts/cpp_gate_plan.sh .
 bash skill/c-cpp-systems-engineering/scripts/cpp_risk_scan.sh .
+bash skill/c-cpp-systems-engineering/scripts/cpp_gate_report.sh .
 ```
 
-Use the inventory script at the start of non-trivial work, the gate plan before changing build/test commands, and the risk scan before review or after touching memory/input/concurrency code.
+Use the inventory script at the start of non-trivial work, the gate plan before changing build/test commands, the risk scan before review or after touching memory/input/concurrency code, and the gate report script before handoff.
 
 ## Assets
 
