@@ -11,6 +11,7 @@ The first usable version is complete when all of these are true:
 - `quick_validate.py` passes for the skill directory.
 - The scripts are smoke-tested on this repo.
 - The workspace has a proposal and source ledger.
+- The workspace has a forward-test report against real C/C++ projects.
 - Beads state reflects the work item.
 - Sanitizer/fuzz templates exist as reusable assets and are referenced from the skill.
 - Gate-report generation, ABI workflow, and native UI golden-artifact workflow are documented and discoverable from `SKILL.md`.
@@ -32,7 +33,8 @@ The skill must cause future agents to:
 
 The ambitious target needs additional evidence:
 
-- Forward-test on at least three real C/C++ projects.
 - Forward-test the sanitizer, fuzz, gate-report, ABI, and golden-artifact workflows.
+- Forward-test native UI/golden artifact workflow on a rendering or terminal UI project.
+- Forward-test Meson and static-analysis workflows when the required tools are available.
 - Add examples for C library, modern C++ library, embedded C, parser, and native UI/rendering work.
 - Add a small conformance harness that checks the skill references and scripts stay synchronized.

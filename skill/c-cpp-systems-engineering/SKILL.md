@@ -86,7 +86,7 @@ bash skill/c-cpp-systems-engineering/scripts/cpp_risk_scan.sh .
 bash skill/c-cpp-systems-engineering/scripts/cpp_gate_report.sh .
 ```
 
-Use the inventory script at the start of non-trivial work, the gate plan before changing build/test commands, the risk scan before review or after touching memory/input/concurrency code, and the gate report script before handoff.
+Use the inventory script at the start of non-trivial work, the gate plan before changing build/test commands, the risk scan before review or after touching memory/input/concurrency code, and the gate report script before handoff. Prefer running `cpp_risk_scan.sh` on changed files or touched directories; whole-repo scans on mature C/C++ projects are intentionally noisy triage, not a defect list.
 
 ## Assets
 

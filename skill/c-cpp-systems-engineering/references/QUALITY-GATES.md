@@ -34,11 +34,23 @@ The report must distinguish:
 
 Do not let a broad green gate hide a narrow gap. If tests passed but no sanitizer run covered the parser changed in the patch, the dynamic gate is still missing.
 
+## Risk Scan Scope
+
+Use `cpp_risk_scan.sh` as triage:
+
+```bash
+bash skill/c-cpp-systems-engineering/scripts/cpp_risk_scan.sh <changed-files-or-dirs>
+```
+
+Prefer changed files, touched directories, or the public API surface under review. Whole-repo scans are useful for orientation, but mature C/C++ repos often contain intentional allocator wrappers, tests, examples, platform shims, and compatibility code. Treat matches as review prompts, not confirmed bugs.
+
 ## CMake
 
 Prefer presets when present:
 
 ```bash
+cmake --version
+ctest --version
 cmake --list-presets
 cmake --list-presets=build
 cmake --list-presets=test
@@ -56,6 +68,16 @@ cmake -S . -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPI
 cmake --build build/debug
 ctest --test-dir build/debug --output-on-failure
 ```
+
+If `ctest` fails before running tests because PATH resolves to a broken wrapper, locate the CTest binary from the same CMake installation and record the substitution:
+
+```bash
+command -v cmake
+command -v ctest
+$(dirname "$(command -v cmake)")/ctest --version
+```
+
+Use the working CTest binary only as an environment fix. Do not treat wrapper failure as project test failure.
 
 ## Meson
 
@@ -114,6 +136,8 @@ cppcheck --enable=warning,style,performance,portability --std=c++23 <paths>
 
 Use CodeQL or a commercial analyzer when available for security-sensitive changes.
 
+Always inspect analyzer output, not just exit status. Some tools can print error-severity findings while exiting 0, especially when configured for report generation or broad portability analysis. Treat the gate as passed only when the output has been reviewed and the relevant findings are fixed, justified, or moved to tracked follow-up.
+
 ## Dynamic Analysis
 
 Minimum sanitizer campaign for memory/input work:
@@ -130,6 +154,14 @@ Separate campaigns:
 - TSan: data races, separate build and run.
 
 Do not combine incompatible sanitizers. Do not link sanitizer runtimes into production builds.
+
+Valgrind/Memcheck can still find issues not surfaced by ASan+UBSan, such as some uninitialized-value flows. When memory risk is high and Valgrind is available, run at least one representative executable:
+
+```bash
+valgrind --error-exitcode=99 --leak-check=full <test-or-binary>
+```
+
+Record both leak status and error summary.
 
 ## Release Hardening
 
