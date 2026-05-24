@@ -1,8 +1,8 @@
-# Proposal: C/C++ Agent Development Skill
+# Proposal: c-cpp-profi C/C++ Agent Development Skill
 
 ## Aim
 
-Build a model-neutral C/C++ engineering skill and workspace that makes Hermes, Codex, Claude, and future agents behave like careful senior C/C++ maintainers.
+Build `c-cpp-profi`, a model-neutral C/C++ engineering skill and workspace that makes Hermes, Codex, Claude, and future agents behave like careful senior C/C++ maintainers.
 
 The ambition should be evidence-grade excellence, not prompt-driven confidence. For C/C++ to compete with or exceed Rust, Java, Python, TypeScript, and Go on the user's terms, agents must exploit C/C++ strengths while compensating for its sharp edges with mechanical gates:
 
@@ -40,7 +40,7 @@ Agents should not be allowed to stop at "it compiles" for risky code. They shoul
 
 ## Design Decisions
 
-- Keep the skill in this repo first: `skill/c-cpp-systems-engineering/`.
+- Keep the skill in this repo first: identity `c-cpp-profi`, workspace path `skill/c-cpp-systems-engineering/`.
 - Do not install globally until the first version is validated.
 - Do not make C++ "safe" by assertion. Require evidence and residual-risk reporting.
 - Treat C and C++ as related but distinct: C++ defaults to RAII and typed views; C defaults to explicit owner/release protocols and size-carrying APIs.

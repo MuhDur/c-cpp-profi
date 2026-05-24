@@ -1,11 +1,12 @@
-# C/C++ Agent Skill Workspace
+# c-cpp-profi Agent Skill Workspace
 
-This repo is the development workspace for `c-cpp-systems-engineering`, a model-neutral skill for Hermes, Codex, Claude, and other agents doing C/C++ work.
+This repo is the development workspace for `c-cpp-profi`, a model-neutral skill for Hermes, Codex, Claude, and other agents doing C/C++ work. The current workspace path remains `skill/c-cpp-systems-engineering/` until an approved directory move is performed.
 
 The aim is evidence-grade C/C++ engineering: explicit ownership, no known UB after selected gates, sanitizer and fuzz coverage where risk demands it, benchmarked performance claims, ABI/build portability awareness, and golden artifacts for native UI or rendering work.
 
 ## Current Artifacts
 
+- Skill identity: `c-cpp-profi`
 - Skill: `skill/c-cpp-systems-engineering/SKILL.md`
 - References: `skill/c-cpp-systems-engineering/references/`
 - Read-only helper scripts: `skill/c-cpp-systems-engineering/scripts/`

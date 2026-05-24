@@ -4,7 +4,7 @@
 
 The first usable version is complete when all of these are true:
 
-- `skill/c-cpp-systems-engineering/SKILL.md` has valid frontmatter and no template placeholders.
+- `skill/c-cpp-systems-engineering/SKILL.md` declares skill identity `c-cpp-profi`, has valid frontmatter, and has no template placeholders.
 - `agents/openai.yaml` exists and matches the skill purpose.
 - Reference files cover quality gates, memory safety, security, testing/fuzzing, performance, build/portability, and agent operating mode.
 - Scripts are read-only and can run from a target repo without modifying files.

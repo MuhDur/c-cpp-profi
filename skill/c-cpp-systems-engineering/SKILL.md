@@ -1,9 +1,9 @@
 ---
-name: c-cpp-systems-engineering
+name: c-cpp-profi
 description: Expert C and C++ systems engineering workflow for implementation, review, debugging, hardening, performance tuning, portability, ABI/API work, native UI/pixel output, and build-system changes. Use when editing or auditing .c, .cc, .cpp, .cxx, .h, .hpp, CMake, Meson, Make, native library bindings, embedded/RT code, parsers, allocators, concurrency, SIMD, FFI, or any task where C/C++ safety, speed, determinism, and maintainability matter.
 ---
 
-# C/C++ Systems Engineering
+# c-cpp-profi
 
 ## Overview
 

@@ -2,7 +2,7 @@
 
 ## Audience
 
-This skill is for Hermes, Codex, Claude, and any other coding agent that must work in C/C++ without hiding risk behind confident prose.
+`c-cpp-profi` is for Hermes, Codex, Claude, and any other coding agent that must work in C/C++ without hiding risk behind confident prose.
 
 ## Shared Protocol
 
@@ -19,7 +19,7 @@ This skill is for Hermes, Codex, Claude, and any other coding agent that must wo
 Use this shape when dispatching a specialized agent:
 
 ```text
-Use $c-cpp-systems-engineering on <repo>.
+Use $c-cpp-profi on <repo>.
 Task: <specific task>.
 Scope: <files/directories>.
 Do not edit outside scope.
