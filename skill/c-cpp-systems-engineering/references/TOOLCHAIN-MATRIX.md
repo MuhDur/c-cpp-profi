@@ -149,10 +149,11 @@ python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py baseline.png c
 python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py baseline.ppm candidate.ppm --threshold 0
 ffmpeg -hide_banner -i baseline.png -i candidate.png -lavfi ssim=stats_file=ssim.log -f null -
 ffmpeg -hide_banner -i baseline.png -i candidate.png -lavfi psnr=stats_file=psnr.log -f null -
+ffmpeg -hide_banner -f x11grab -draw_mouse 0 -video_size 160x96 -i "$DISPLAY+0,0" -frames:v 1 capture.png
 ffmpeg -i capture.mp4 -vf 'select=eq(n\,42)' -vframes 1 frame-042.png
 ```
 
-Use exact threshold `0` for deterministic software-rendered artifacts. Use a narrow nonzero threshold only when the rendering backend, antialiasing, font rasterizer, color profile, or platform matrix justifies it. If `magick`, `compare`, or `perceptualdiff` is unavailable, record the missing tool and use `cpp_pixel_diff.py` plus FFmpeg SSIM/PSNR as the available fallback.
+Use exact threshold `0` for deterministic software-rendered artifacts. Use a narrow nonzero threshold only when the rendering backend, antialiasing, font rasterizer, color profile, or platform matrix justifies it. For GUI capture, prefer the project's real screenshot harness; otherwise record the display server, screen size/depth, window geometry, capture region, renderer backend, and cursor/compositor policy. If `magick`, `compare`, or `perceptualdiff` is unavailable, record the missing tool and use `cpp_pixel_diff.py` plus FFmpeg SSIM/PSNR as the available fallback.
 
 ### Dependency and supply-chain
 

@@ -361,4 +361,11 @@ ffmpeg -hide_banner -i <baseline-image> -i <candidate-image> -lavfi ssim=stats_f
 ffmpeg -hide_banner -i <baseline-image> -i <candidate-image> -lavfi psnr=stats_file=psnr.log -f null -
 ```
 
-The pixel helper is a gate: exit 0 means the artifact is within threshold, exit 1 means visual deltas exceeded threshold, and exit 2 means the comparison itself was invalid. Exact pixel equality is appropriate for deterministic software-rendered fixtures. Antialiasing-tolerant UI needs a justified threshold, FFmpeg SSIM/PSNR evidence, or another project-approved perceptual diff.
+Headless GUI screenshot fallback:
+
+```bash
+xvfb-run -a -s "-screen 0 <width>x<height>x24" sh ./capture-golden.sh
+ffmpeg -hide_banner -f x11grab -draw_mouse 0 -video_size <width>x<height> -i "$DISPLAY+0,0" -frames:v 1 capture.png
+```
+
+The pixel helper is a gate: exit 0 means the artifact is within threshold, exit 1 means visual deltas exceeded threshold, and exit 2 means the comparison itself was invalid. Exact pixel equality is appropriate for deterministic software-rendered fixtures. GUI screenshot evidence must record display backend, screen size/depth, window geometry, capture region, renderer backend, cursor/compositor policy, and comparison command. Antialiasing-tolerant UI needs a justified threshold, FFmpeg SSIM/PSNR evidence, or another project-approved perceptual diff.

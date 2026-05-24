@@ -42,12 +42,23 @@ ffmpeg -hide_banner -i baseline.png -i candidate.png -lavfi psnr=stats_file=psnr
 
 SSIM/PSNR are metrics, not judgment. Keep exact pixel checks for deterministic artifacts and use perceptual metrics to explain tolerated antialiasing, compression, scaling, or rasterizer drift.
 
+For headless X11 GUI capture when a project has no stronger harness:
+
+```bash
+xvfb-run -a -s "-screen 0 <width>x<height>x24" sh ./capture-golden.sh
+ffmpeg -hide_banner -f x11grab -draw_mouse 0 -video_size <width>x<height> -i "$DISPLAY+0,0" -frames:v 1 capture.png
+python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py expected.ppm capture.png --threshold 0
+```
+
+Record the display server, screen size/depth, window position, capture region, window-manager/compositor state, renderer backend, and whether mouse cursors were suppressed. A screenshot proves the configured matrix only; do not generalize it to untested DPI, font, GPU, theme, compositor, or display-server combinations.
+
 ## Acceptance Rules
 
 - Text must not clip, overlap, wrap unintentionally, or disappear at any supported scale.
 - Interactive states must have captured coverage when touched: disabled, hover, active, focus, selected, error, loading, and high-contrast where supported.
 - Animation/video evidence must include the representative frame or frame range, not just the first frame.
 - Terminal UI evidence must include terminal size, color mode, locale, and whether ANSI escape sequences are normalized.
+- GUI screenshot evidence must include display backend, screen size/depth, window geometry, capture region, renderer backend, and cursor/compositor policy.
 - Image evidence must include dimensions, color mode, threshold, changed-pixel count, max channel delta, and the exact compare command.
 - Perceptual metric evidence must include the metric name, threshold, stats file, command stderr summary, and why that threshold matches the user-visible contract.
 - A threshold is a contract. Keep it narrow and explain why it is safe.

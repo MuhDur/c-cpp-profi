@@ -209,6 +209,43 @@ Results:
 
 Interpretation: FFmpeg SSIM/PSNR can quantify image/video drift, but the threshold must be project-specific. The exact pixel helper remains the stricter gate for deterministic artifacts.
 
+## X11/Xvfb GUI Screenshot Forward Test
+
+The available headless GUI stack in this environment is X11/Xvfb plus FFmpeg `x11grab`. SDL2 is not installed, so the forward test used a small C/Xlib fixture that opens a real top-level X11 window, renders a deterministic RGB pattern, and writes the same expected artifact as binary PPM.
+
+Tool availability:
+
+- `/usr/bin/xvfb-run` exists.
+- FFmpeg `x11grab` demuxer exists and reports XCB capture options.
+- `pkg-config --modversion x11` reports `1.8.12`.
+- `sdl2-config` and `pkg-config --modversion sdl2` are unavailable.
+
+Commands:
+
+```bash
+cc -std=c17 -O2 -Wall -Wextra -Wpedantic /tmp/cpp-profi-gui-capture-vGRtCa/x11_capture_fixture.c -lX11 -o /tmp/cpp-profi-gui-capture-vGRtCa/x11_capture_fixture
+xvfb-run -a -s "-screen 0 160x96x24" sh /tmp/cpp-profi-gui-capture-vGRtCa/run_capture.sh
+ffprobe -v error -show_entries stream=width,height,pix_fmt -of default=nw=1 /tmp/cpp-profi-gui-capture-vGRtCa/capture.png
+python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py /tmp/cpp-profi-gui-capture-vGRtCa/expected.ppm /tmp/cpp-profi-gui-capture-vGRtCa/capture.png --threshold 0
+```
+
+The capture script launched the fixture inside Xvfb, captured the 160x96 root region with:
+
+```bash
+ffmpeg -hide_banner -f x11grab -draw_mouse 0 -video_size 160x96 -i "$DISPLAY+0,0" -frames:v 1 /tmp/cpp-profi-gui-capture-vGRtCa/capture.png
+```
+
+Results:
+
+- FFmpeg captured input from `:99+0,0` as `rawvideo`, `bgr0`, `160x96`.
+- Output artifact: PNG, `160 x 96`, 8-bit RGB, non-interlaced.
+- `ffprobe`: `width=160`, `height=96`, `pix_fmt=rgb24`.
+- `capture.png` SHA-256: `c696391085b39181e0fec1d9871cf3d77ffbc5064715783d4db702e70454f26f`.
+- `expected.ppm` SHA-256: `74cf319b2f2962e609b6e53c4f0d761434c76e7ca189030bf4eb25d01d0d0210`.
+- Pixel diff threshold `0`: passed, `15360` compared pixels, `0` different pixels, `0` different channels, max channel delta `0`, PSNR `infinite`.
+
+Interpretation: the skill now has forward-tested evidence for real headless GUI screenshot capture, not only software-rendered image files. This proves the X11/Xvfb/FFmpeg path for a deterministic matrix; each real project must still define its own DPI, font, compositor, GPU/backend, theme, input-state, and platform matrix.
+
 ## Resulting Skill Changes
 
 - `cpp_inventory.sh` now reports critical `--version` health.
@@ -220,8 +257,8 @@ Interpretation: FFmpeg SSIM/PSNR can quantify image/video drift, but the thresho
 - The native UI golden-artifact workflow has now been forward-tested on a real C++ terminal rendering project.
 - The graphical pixel golden-artifact workflow has now been forward-tested on a deterministic C PNG renderer, including both pass and fail behavior.
 - FFmpeg SSIM/PSNR metric evidence has now been forward-tested on the same image artifacts.
+- Headless GUI screenshot capture has now been forward-tested through a real C/Xlib window under Xvfb with FFmpeg `x11grab`.
 
 ## Remaining Gaps
 
 - Forward-test real type/layout ABI comparison once `abidiff` or equivalent tooling is available.
-- Forward-test a GUI/platform screenshot capture workflow beyond deterministic software-rendered image fixtures.

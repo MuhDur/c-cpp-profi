@@ -48,6 +48,8 @@ The installed skill catalog was scanned. The relevant patterns used here:
   - https://python-pillow.org/
 - FFmpeg SSIM/PSNR filters: used as the available perceptual-style metric fallback for image/video golden artifacts.
   - https://ffmpeg.org/ffmpeg-filters.html
+- X11/Xvfb and FFmpeg `x11grab`: used as the available headless GUI screenshot-capture stack for a real C/Xlib window.
+  - Local evidence: `pkg-config --modversion x11`, `/usr/bin/xvfb-run`, and `ffmpeg -hide_banner -h demuxer=x11grab`.
 
 ## Current Interpretation
 
