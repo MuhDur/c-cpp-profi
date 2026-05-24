@@ -14,6 +14,7 @@ The skill was forward-tested against four upstream C/C++ repositories cloned und
 | fmt | Modern C++ formatting library with CMake and tests | `93e26fa` | `/tmp/cpp-profi-ft-fmt-20260524` |
 | tree-sitter | Parser/runtime C project with CMake shared library | `a5c0d24` | `/tmp/cpp-profi-ft-tree-sitter-20260524` |
 | inih | Small C/C++ INI parser with Meson build, shared libraries, and tests | `577ae2d` | `/tmp/cpp-profi-ft-inih-meson-20260524` |
+| FTXUI | C++ terminal UI rendering library for native golden-artifact workflow | `98c650d` | `/tmp/cpp-profi-ft-ftxui-golden-tgJWPN` |
 
 Temporary fixture directories were left in place. They were not deleted because this repo forbids deletion without exact in-session approval.
 
@@ -99,6 +100,32 @@ Result: Valgrind exited 99 after reporting one "Conditional jump or move depends
 
 10. inih demonstrates why static-analysis output cannot be reduced to "exit 0": `clang-tidy` emitted analyzer warnings on `ini.c` even though Meson debug tests and ASan+UBSan tests passed.
 
+## Native UI Golden Forward Test
+
+FTXUI was used to forward-test the skill's native UI/golden-artifact workflow on a deterministic terminal rendering surface.
+
+Build commands:
+
+```bash
+cmake -S /tmp/cpp-profi-ft-ftxui-golden-tgJWPN -B /tmp/cpp-profi-ftxui-build-ybEvRA -G Ninja -DCMAKE_BUILD_TYPE=Release -DFTXUI_BUILD_EXAMPLES=ON -DFTXUI_BUILD_TESTS=OFF -DFTXUI_ENABLE_INSTALL=OFF
+cmake --build /tmp/cpp-profi-ftxui-build-ybEvRA --target ftxui_example_border
+```
+
+Golden artifacts:
+
+- Surface: FTXUI `examples/dom/border.cpp`, non-interactive terminal DOM render.
+- Matrix: pseudo-terminal via `script(1)`, `80x24`, `TERM=xterm-256color`, `LC_ALL=C.UTF-8`, no animation, no input, no time-dependent scene state.
+- Baseline: `/tmp/cpp-profi-ft-ftxui-golden-tgJWPN/goldens/border-run1.typescript`.
+- Candidate: `/tmp/cpp-profi-ft-ftxui-golden-tgJWPN/goldens/border-run2.typescript`.
+- Normalized artifacts: `/tmp/cpp-profi-ft-ftxui-golden-tgJWPN/goldens/border-run1.render.txt` and `/tmp/cpp-profi-ft-ftxui-golden-tgJWPN/goldens/border-run2.render.txt`.
+- Diff command: `diff -u border-run1.render.txt border-run2.render.txt`.
+- Threshold: exact text equality after removing only `script(1)` header/footer timestamps, carriage returns, NUL bytes, and ANSI control transport.
+- Result: `cmp` exit `0`; both render artifacts have SHA-256 `f3fc00cc26f3627d55e4cc437ee03705e9f6c29c7f5428919517e8dca4ee011b`.
+- Manual inspection notes: three bordered columns render with all labels visible, no clipped border glyphs, no overlap, and stable right-padding under the fixed 80-column terminal.
+- Accepted artifact path: temporary artifacts remain under `/tmp/cpp-profi-ft-ftxui-golden-tgJWPN/goldens/`; they were not copied into this repo or deleted.
+
+This is terminal UI evidence, not graphical pixel or perceptual-diff evidence. For GUI, image, video, CAD, or GPU surfaces, the skill still requires a project-approved screenshot/pixel/perceptual capture matrix.
+
 ## Resulting Skill Changes
 
 - `cpp_inventory.sh` now reports critical `--version` health.
@@ -106,8 +133,8 @@ Result: Valgrind exited 99 after reporting one "Conditional jump or move depends
 - `QUALITY-GATES.md` now documents CMake/CTest version checks, broken wrapper handling, risk-scan scoping, analyzer-output review, and Valgrind/Memcheck as a complementary dynamic gate.
 - This report gives a concrete evidence base for CMake and Meson forward-test fixtures.
 - Meson has now been forward-tested on a real C/C++ project.
+- The native UI golden-artifact workflow has now been forward-tested on a real C++ terminal rendering project.
 
 ## Remaining Gaps
 
 - Forward-test real ABI comparison once `abidiff` or equivalent tooling is available.
-- Forward-test native UI/golden artifact workflow on a rendering or terminal UI project.
