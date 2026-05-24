@@ -172,8 +172,9 @@ These line-backed patterns were extracted with `codebase-pattern-extraction` dur
 2. Profile and identify hotspot.
 3. Score candidate: impact times confidence divided by effort.
 4. Change one lever only.
-5. Prove behavior unchanged using tests, golden outputs, API/ABI checks, and floating-point notes.
+5. Prove behavior unchanged using tests, golden outputs, API/ABI checks, ownership/lifetime review, backend fallback checks, UB notes, and floating-point tolerance.
 6. Rerun same benchmark and profile.
+7. Reject faster results when the benchmark inputs, CPU policy, flags, allocator mode, oracle, ABI/API, or supported targets changed without an explicit contract change.
 
 ### Refactor
 

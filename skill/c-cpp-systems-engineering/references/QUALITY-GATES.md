@@ -192,12 +192,16 @@ Required for parsers, decoders, compressors, protocol handlers, file formats, an
 
 ## Performance Gate
 
-Any optimization claim needs:
+Read [PERFORMANCE.md](PERFORMANCE.md) before changing hot-path code. Any optimization claim needs:
 
 1. Baseline command, environment, input, and commit.
 2. Profile identifying a real hotspot.
 3. Single optimization lever.
-4. Rerun with same benchmark and representative data.
+4. Behavior oracle captured before edit.
+5. Rerun with same benchmark and representative data.
+6. Evidence packet with timing, CPU/cache/allocation/syscall evidence where relevant, benchmark limitations, ABI/API impact, and residual risk.
+
+Reject the gate if the result depends on changed inputs, changed flags, changed allocator mode, different CPU policy, unsupported target-specific code, or a changed correctness oracle.
 
 ## ABI Gate
 
