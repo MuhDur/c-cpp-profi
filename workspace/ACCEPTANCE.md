@@ -15,6 +15,8 @@ The first usable version is complete when all of these are true:
 - Beads state reflects the work item.
 - Sanitizer/fuzz templates exist as reusable assets and are referenced from the skill.
 - Gate-report generation, ABI workflow, and native UI golden-artifact workflow are documented and discoverable from `SKILL.md`.
+- Meson workflow is forward-tested on a real mixed C/C++ project.
+- Expert canon and toolchain matrix exist and are referenced from `SKILL.md`.
 
 ## Quality Bar
 
@@ -35,6 +37,17 @@ The ambitious target needs additional evidence:
 
 - Forward-test the sanitizer, fuzz, gate-report, ABI, and golden-artifact workflows.
 - Forward-test native UI/golden artifact workflow on a rendering or terminal UI project.
-- Forward-test Meson and static-analysis workflows when the required tools are available.
+- Forward-test real ABI comparison when `abidiff` or equivalent tooling is available.
 - Add examples for C library, modern C++ library, embedded C, parser, and native UI/rendering work.
 - Add a small conformance harness that checks the skill references and scripts stay synchronized.
+
+## Expanded Open-Source Bar
+
+The user-expanded target is not complete until the skill can credibly act as an enforcing C/C++ expert system for Hermes, Codex, Claude, and similar agents:
+
+- Tool coverage: compiler, linker, build-system, package, static-analysis, sanitizer, dynamic-analysis, fuzzing, coverage, ABI/API, profiler, debugger, hardening, documentation, native UI/artifact, and portability tool families are documented with commands and evidence semantics.
+- Internals coverage: C object lifetime, UB, aliasing, integer/string hazards, allocator contracts, POSIX/Linux manpages, ELF/linker/loader behavior, pthreads, atomics, signals, mmap, and C++ RAII/templates/exceptions/value categories/polymorphism/ABI are represented in the canon.
+- Project evidence: at least three elite C/C++ projects are cloned to `/tmp`, studied, and mined for reusable engineering patterns. Current study set: simdjson, mimalloc, SQLite, and curl.
+- Cross-skill extraction: at least five sibling skills are applied through the repeat-skill workflow and logged in `.skill-loop-progress.md`.
+- Enforcement: the skill must force agents to produce exact gate evidence and residual-risk handoff, not optional suggestions.
+- Missing tools: unavailable tools become tracked gaps or installation notes, never silent omissions.

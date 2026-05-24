@@ -21,6 +21,9 @@ The goal is not "write clever C++." The goal is code a senior C/C++ maintainer w
 
 ## Operating Rules
 
+- Use this skill as an enforcement workflow, not a suggestion list. For non-trivial work, produce an evidence packet that names each applicable gate as passed, failed, not run, or not applicable.
+- Read [C-CPP-EXPERT-CANON.md](references/C-CPP-EXPERT-CANON.md) before broad implementation, audit, hardening, performance, ABI, parser, allocator, or concurrency work.
+- Read [TOOLCHAIN-MATRIX.md](references/TOOLCHAIN-MATRIX.md) before installing, selecting, or skipping C/C++ quality tools.
 - Treat undefined behavior as a release blocker unless it is isolated behind a documented, tested, platform-specific contract.
 - Prefer ownership clarity over local convenience: RAII in C++, explicit owner/release contracts in C, and typed views for non-owning memory.
 - Use the project standard first. If unspecified, prefer current stable standards and toolchains: C23 where supported for C, C++23 for C++, with compatibility exceptions documented.
@@ -65,6 +68,8 @@ Load only the relevant file:
 
 | Need | Reference |
 |---|---|
+| Enforcing expert workflow and elite-project patterns | [C-CPP-EXPERT-CANON.md](references/C-CPP-EXPERT-CANON.md) |
+| Tool families, commands, manpages, missing-tool handling | [TOOLCHAIN-MATRIX.md](references/TOOLCHAIN-MATRIX.md) |
 | Gate selection and commands | [QUALITY-GATES.md](references/QUALITY-GATES.md) |
 | Ownership, lifetimes, bounds, UB | [MEMORY-SAFETY.md](references/MEMORY-SAFETY.md) |
 | Security review and hardening | [SECURITY-REVIEW.md](references/SECURITY-REVIEW.md) |

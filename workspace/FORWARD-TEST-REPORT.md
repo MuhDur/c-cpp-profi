@@ -6,13 +6,14 @@ Issue: `cpp-38j`
 Date: 2026-05-24
 Skill identity: `c-cpp-profi`
 
-The skill was forward-tested against three upstream C/C++ repositories cloned under `/tmp`:
+The skill was forward-tested against four upstream C/C++ repositories cloned under `/tmp`:
 
 | Fixture | Purpose | Commit | Path |
 |---|---|---|---|
 | zlib | C library with CMake, public ABI, compression tests | `f9dd600` | `/tmp/cpp-profi-ft-zlib-20260524` |
 | fmt | Modern C++ formatting library with CMake and tests | `93e26fa` | `/tmp/cpp-profi-ft-fmt-20260524` |
 | tree-sitter | Parser/runtime C project with CMake shared library | `a5c0d24` | `/tmp/cpp-profi-ft-tree-sitter-20260524` |
+| inih | Small C/C++ INI parser with Meson build, shared libraries, and tests | `577ae2d` | `/tmp/cpp-profi-ft-inih-meson-20260524` |
 
 Temporary fixture directories were left in place. They were not deleted because this repo forbids deletion without exact in-session approval.
 
@@ -25,6 +26,7 @@ The zlib Valgrind smoke run was accidentally executed with this repo as the work
 | zlib | passed | passed | passed, 47 targets | passed, 18/18 | passed | passed, 18/18 | `clang-tidy` on `adler32.c` passed quietly; `cppcheck` on `adler32.c` produced informational branch/config notes | `nm -D --defined-only libz.so`, 111 lines |
 | fmt | passed | passed | passed, 77 targets | passed, 21/21 | passed | passed, 21/21 | `clang-tidy` on `src/os.cc` exited 0 after warnings were generated; `cppcheck` produced configuration-coverage notes | static archive only in default build, `nm -g --defined-only libfmtd.a`, 1093 lines |
 | tree-sitter | passed | passed | passed, 15 targets | no CTest tests found | passed | no CTest tests found | `clang-tidy` on `lib/src/parser.c` emitted insecure API warnings; `cppcheck` emitted error-severity `unknownEvaluationOrder` findings while exiting 0 | `nm -D --defined-only libtree-sitter.so`, 149 lines |
+| inih | passed | Meson setup passed | Meson compile passed, 54 steps | Meson test passed, 16/16 | Meson ASan+UBSan setup/build passed | Meson ASan+UBSan tests passed, 16/16 | risk scan flagged cast/assert prompts; `clang-tidy` on `ini.c` emitted analyzer warnings for possible garbage-value reads; `clang-tidy` on `INIReader.cpp` exited clean; `cppcheck` exited 0 with configuration notes | `nm -D --defined-only libinih.so.0`, 5 exported symbols; `libINIReader.so.0` exports many C++/STL symbols |
 
 Commands used followed the skill's generic CMake path:
 
@@ -47,6 +49,18 @@ Static analysis commands:
 ```bash
 clang-tidy -p <build-dir> <file> --quiet
 cppcheck --enable=warning,performance,portability --std=<std> <file>
+```
+
+Meson forward-test commands:
+
+```bash
+meson setup build/debug --buildtype=debug
+meson compile -C build/debug
+meson test -C build/debug --print-errorlogs
+meson introspect build/debug --targets
+meson setup build/asan-ubsan --buildtype=debug -Db_sanitize=address,undefined
+meson compile -C build/asan-ubsan
+meson test -C build/asan-ubsan --print-errorlogs
 ```
 
 Valgrind command:
@@ -81,15 +95,19 @@ Result: Valgrind exited 99 after reporting one "Conditional jump or move depends
 
 8. `shellcheck`, `clang`, `clang-tidy`, `cppcheck`, `meson`, and `valgrind` are available now. `shellcheck` passed for all helper scripts.
 
+9. Meson sanitizer support worked cleanly on a real mixed C/C++ project through `-Db_sanitize=address,undefined`. The correct skill path is `meson setup`, `meson compile`, `meson test`, `meson introspect`, then a separate sanitizer build directory.
+
+10. inih demonstrates why static-analysis output cannot be reduced to "exit 0": `clang-tidy` emitted analyzer warnings on `ini.c` even though Meson debug tests and ASan+UBSan tests passed.
+
 ## Resulting Skill Changes
 
 - `cpp_inventory.sh` now reports critical `--version` health.
 - `cpp_risk_scan.sh` now supports scoped targets and has tighter default exclusions/patterns.
 - `QUALITY-GATES.md` now documents CMake/CTest version checks, broken wrapper handling, risk-scan scoping, analyzer-output review, and Valgrind/Memcheck as a complementary dynamic gate.
-- This report gives a concrete evidence base for the first three forward-test fixtures.
+- This report gives a concrete evidence base for CMake and Meson forward-test fixtures.
+- Meson has now been forward-tested on a real C/C++ project.
 
 ## Remaining Gaps
 
-- Forward-test Meson on a real Meson-based C/C++ project.
 - Forward-test real ABI comparison once `abidiff` or equivalent tooling is available.
 - Forward-test native UI/golden artifact workflow on a rendering or terminal UI project.

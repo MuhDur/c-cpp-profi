@@ -4,6 +4,8 @@
 
 Use this file to choose verification gates for C/C++ work. The project contract wins over these defaults. Do not migrate build systems or add new tools just to satisfy this file unless the user asks.
 
+For the broader expert workflow and tool catalog, read [C-CPP-EXPERT-CANON.md](C-CPP-EXPERT-CANON.md) and [TOOLCHAIN-MATRIX.md](TOOLCHAIN-MATRIX.md). This page is the quick gate selector; those files define the enforcement policy.
+
 ## Baseline Inventory
 
 Start with:
@@ -33,6 +35,8 @@ The report must distinguish:
 - `not applicable`: gate does not apply to this change.
 
 Do not let a broad green gate hide a narrow gap. If tests passed but no sanitizer run covered the parser changed in the patch, the dynamic gate is still missing.
+
+Do not let one green tool overrule another tool's concrete finding. Forward testing on real projects found cases where compile, unit tests, and sanitizer tests passed while `clang-tidy`, `cppcheck`, or Valgrind still produced actionable findings. The gate result is only green after the output has been read and classified.
 
 ## Risk Scan Scope
 
@@ -85,6 +89,10 @@ Use the working CTest binary only as an environment fix. Do not treat wrapper fa
 meson setup build/debug --buildtype=debug
 meson compile -C build/debug
 meson test -C build/debug --print-errorlogs
+meson introspect build/debug --targets
+meson setup build/asan-ubsan --buildtype=debug -Db_sanitize=address,undefined
+meson compile -C build/asan-ubsan
+meson test -C build/asan-ubsan --print-errorlogs
 ```
 
 ## Make Or Custom Builds
