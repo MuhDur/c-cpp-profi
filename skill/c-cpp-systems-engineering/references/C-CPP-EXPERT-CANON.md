@@ -49,16 +49,58 @@ The following projects were cloned under `/tmp` on 2026-05-24 for pattern extrac
 
 | Pattern | Evidence | Rule for agents |
 |---|---|---|
-| Reproducible bug reports | simdjson issue template requires complete repro data and small reduced examples | Do not fix C/C++ crashes from a vague stack trace. Reproduce and minimize first. |
-| Performance claims need benchmarks | simdjson PR template asks for benchmark numbers for claimed speedups | No optimization claim without baseline and remeasure. |
-| Sanitizers are expected, not optional | simdjson PR template gives sanitizer CMake commands; mimalloc exposes ASan/TSan/UBSan options | Use sanitizer builds on memory/input/concurrency changes. Record unsupported combinations. |
-| Security/performance tradeoffs are explicit | mimalloc secure mode documents guard pages, randomization, encrypted free lists, and overhead | Hardening changes must name the cost and threat model. |
-| Allocators need special dynamic-tool integration | mimalloc has Valgrind and ASan-specific configuration paths | Allocator or custom memory code needs Valgrind/ASan-aware validation, not generic unit tests only. |
-| Crash and corruption tests become permanent corpus | SQLite stores fuzz/crash regression files and db fuzzers | Every crash input becomes a test or corpus seed. |
-| Assertions encode internal invariants | SQLite source uses dense asserts and test macros around parser/BTrees/memory paths | Internal invariants must be written down or asserted where runtime cost is acceptable. |
-| Protocol libraries need generated test servers and fixtures | curl has dedicated test servers, XML-like test data, Valgrind suppressions, and documentation consistency tests | Network/protocol work needs real fixtures and golden request/response evidence. |
-| Documentation is testable | curl tests manpages, symbols, and docs consistency | Public API docs/examples are gates, not marketing. |
-| Portability is a first-class build dimension | curl configure probes, simdjson multi-platform CI, mimalloc platform override code | Native code must be checked against target compilers/platforms, not the agent's host only. |
+| Reproducible bug reports | simdjson `.github/ISSUE_TEMPLATE/bug_report.md` requires complete test data, reduced examples, compiler/version/optimization settings, and rejects stack-trace-only reports | Do not fix C/C++ crashes from a vague stack trace. Reproduce and minimize first. |
+| Performance claims need benchmarks | simdjson `.github/pull_request_template.md` asks for benchmark numbers using high-quality benchmark code; benchmark sources compare against other parsers and include reuse/fair-allocation variants | No optimization claim without baseline, input data, environment, and remeasure. |
+| Sanitizers are expected, not optional | simdjson `.github/pull_request_template.md` gives CMake sanitizer commands; mimalloc `CMakeLists.txt` exposes ASan, TSan, and UBSan options | Use sanitizer builds on memory/input/concurrency changes. Record unsupported combinations. |
+| Fuzzers are normal build targets | simdjson `fuzz/CMakeLists.txt` builds a named fuzzer set and `all_fuzzers`; SQLite `test/dbfuzz2.c` is a libFuzzer harness with seed guidance | Parser/decoder/protocol code must have narrow harnesses that build regularly enough not to bitrot. |
+| Differential fuzzing finds implementation skew | simdjson fuzzers compare minify/parser/UTF-8 behavior across implementations | When multiple implementations or optimized/reference paths exist, fuzz them together and compare outputs. |
+| Debug and release ABI/config mixes can be unsafe | simdjson bug template warns not to mix debug and release simdjson code | ABI/config compatibility is part of correctness; record build mode and public-library config. |
+| Security/performance tradeoffs are explicit | mimalloc `readme.md` documents secure mode mitigations and warns they are mitigations, not guarantees | Hardening changes must name threat model, residual risk, and cost. |
+| Allocators need special dynamic-tool integration | mimalloc `CMakeLists.txt` has `MI_TRACK_VALGRIND`, `MI_TRACK_ASAN`, incompatibility checks, and sanitizer-specific libraries | Allocator/custom memory code needs Valgrind/ASan-aware validation, not generic unit tests only. |
+| Runtime invariants can have build levels | mimalloc debug/internal/full options control assertion and expensive invariant checks | Agents should enable stronger invariant builds for risky changes before claiming done. |
+| Guard pages can be sampled and reproducible | mimalloc guarded mode documents sample rate, seed, size filters, and precise guard placement tradeoffs | Memory-hardening gates should include reproduction knobs and alignment caveats. |
+| Crash and corruption tests become permanent corpus | SQLite `test/dbfuzz2.c`, `test/dbfuzz.c`, and many `test/*corrupt*.test` files encode malformed database/corruption regressions | Every crash input becomes a test or corpus seed. |
+| Fuzz harnesses need resource limits | SQLite `test/dbfuzz2.c` sets maximum in-memory DB size and a progress callback to stop runaway SQL | C/C++ fuzz targets must bound input size, time/progress, memory, recursion, and external effects. |
+| Feature-flag matrices are tested, not assumed | SQLite `tool/omittest.tcl` enumerates many `SQLITE_OMIT_*` and `SQLITE_ENABLE_*` builds | Compile-time options/macros need matrix testing when they change control flow or public behavior. |
+| Assertions encode internal invariants | SQLite source uses dense `assert`, `ALWAYS`, `NEVER`, `testcase`, mutex-held checks, and malloc-failure paths | Internal invariants must be written down or asserted where runtime cost is acceptable. |
+| Fault injection is first-class | SQLite tests include malloc/OOM, page-fault, crash, journaling, and corruption scenarios | Critical C systems need failure-path tests, not only happy-path unit tests. |
+| Protocol libraries need generated test servers and fixtures | curl `tests/` has protocol servers, fixture data, and `runtests.pl` infrastructure | Network/protocol work needs real fixtures and golden request/response evidence. |
+| Documentation is testable | curl `tests/data/test1173` checks manpage syntax; `tests/data/test1177` checks feature names and `CURL_VERSION_*` sync across docs/header/source | Public API docs/examples are gates, not marketing. |
+| Dynamic-tool output needs parsers/suppressions | curl `tests/valgrind.pm` and `tests/valgrind.supp` integrate Valgrind into the test system | Serious native projects treat dynamic-tool output as structured test evidence. |
+| Portability is a first-class build dimension | curl `configure.ac` probes platform libraries/features/test servers; simdjson has multi-platform CI; mimalloc has platform override paths | Native code must be checked against target compilers/platforms, not the agent's host only. |
+
+### Patterns Not To Generalize Blindly
+
+| Pattern | Why not |
+|---|---|
+| Dense macro DSLs | SQLite-style macros work because maintainers understand the engine deeply; new projects can make code less readable and harder for analyzers. |
+| Custom allocators everywhere | mimalloc-level allocator work is specialized; most projects should prefer clear ownership and standard allocators unless profiling/security requires otherwise. |
+| SIMD specialization first | simdjson-style dispatch is justified by parser hot paths and benchmark culture; normal code should profile before adding ISA-specific branches. |
+| Huge compile-option matrices | SQLite's option matrix is valuable because SQLite is embedded everywhere; small projects should test meaningful supported configs, not invent unused permutations. |
+| Giant bespoke test harnesses | curl's harness is justified by protocol surface area; smaller projects should adopt focused fixtures before building infrastructure. |
+| Suppressions as cleanup | Valgrind/static-analysis suppressions are acceptable only with comments and ownership; they must not hide unknown findings. |
+
+### Elite Project Invariants
+
+These line-backed patterns were extracted with `codebase-pattern-extraction` during pass 2.
+
+| Invariant | Evidence | Enforcing rule |
+|---|---|---|
+| Admit changes only with objective evidence | simdjson `CONTRIBUTING.md:55-73`; curl `docs/CONTRIBUTE.md:64-82`; curl `docs/CODE_REVIEW.md:13-23` | Every agent change must state change class, proof target, and smallest necessary diff. Style taste or broad cleanup is not evidence. |
+| Minimized reproducers become permanent assets | simdjson `.github/ISSUE_TEMPLATE/bug_report.md:37-42`; SQLite `test/fuzzcheck.c:60-72`; curl `tests/data/test663:1-78` | Crash, parser, security, and corruption fixes require a reduced input or scripted reproducer in the regression/fuzz suite. |
+| Sanitizers and dynamic tools are first-class build modes | simdjson `.github/workflows/ubuntu24-sani.yml:17-55`; SQLite `main.mk:2264-2281`; mimalloc `CMakeLists.txt:225-260`; curl `docs/tests/CI.md:62-70` | Run native ASan/UBSan/MSan/TSan/Valgrind gates where applicable and record unsupported combinations. |
+| Fuzzing has lifecycle, not just targets | simdjson `fuzz/Fuzzing.md:27-99`; SQLite `main.mk:924-950`; SQLite `test/dbfuzz2.c:13-37`; curl `docs/INFRASTRUCTURE.md:49-55` | Parser/protocol/file-format work needs target selection, corpus replay, minimization, sanitizer replay, and crash-to-regression handling. |
+| Optimized backends need scalar/reference oracle | simdjson `fuzz/CMakeLists.txt:57-69`; simdjson `cmake/implementation-flags.cmake:4-20`; simdjson `src/implementation.cpp:211-342` | SIMD or platform-specialized code must keep a portable fallback and differential tests against reference behavior. |
+| Unsafe API states should fail at compile time when possible | simdjson `tests/compilation_failure_tests/CMakeLists.txt:1-37`; simdjson `tests/compilation_failure_tests/dangling_parser_parse_stdstring.cpp:7-15` | Lifetime and ownership misuse that the type system can reject should get compile-fail tests. |
+| Portability is a tested matrix with honest skips | simdjson `.github/workflows/ubuntu24.yml:10-26`; simdjson `.github/workflows/rvv-128-clang-20.yml:16-39`; curl `configure.ac:337-460`; curl `CMakeLists.txt:133-170` | Distinguish host, target, compiler, feature probes, compile-only checks, and executed tests. |
+| Installed-consumer tests catch packaging lies | simdjson `tests/installation_tests/README.md:1-5`; simdjson `.github/workflows/ubuntu22-cxx20.yml:52-65`; curl `scripts/installcheck.sh:38-52` | Public headers, CMake/pkg-config, install layout, and exported libraries need downstream smoke tests after installation. |
+| ABI/API is artifact-tracked | curl `docs/CODE_REVIEW.md:39-47`; curl `configure.ac:2722-2773`; curl `tests/data/test1119:1-25`; mimalloc `include/mimalloc.h:17-118` | Public API changes require symbol/version/header/doc checks, compatibility notes, and explicit ownership/allocation boundaries. |
+| Docs are part of the test surface | curl `Makefile.am:88-138`; curl `docs/libcurl/Makefile.am:39-58`; curl `tests/data/test1139:1-25`; curl `tests/data/test1488:1-25` | Public options, API docs, generated manpages, examples, and version metadata should be checked by automation. |
+| Protocol tests need executable transcripts | curl `docs/tests/FILEFORMAT.md:7-77`; curl `tests/data/test663:1-78`; curl `configure.ac:337-477` | Protocol changes need fixtures with server behavior, client command, expected wire transcript, feature gating, and real test-server detection. |
+| Internal invariants should be written down and attacked | SQLite `doc/pager-invariants.txt:1-76`; SQLite `doc/testrunner.md:160-182`; SQLite `test/btreefault.test:12-102`; curl `docs/CODE_REVIEW.md:63-72` | Allocator, pager, parser, and protocol internals need invariant docs, debug assertions, fault injection, and corruption/crash tests. |
+| Allocator hardening has threat, cost, and tooling contracts | mimalloc `readme.md:407-460`; mimalloc `readme.md:572-640`; mimalloc `src/alloc.c:650-723` | Allocator/security modes must state threat model, overhead, ABI/alignment impact, environment knobs, and Valgrind/ASan compatibility. |
+| Performance claims require representative methodology | simdjson `CONTRIBUTING.md:67-69`; simdjson `.github/workflows/ubuntu24-checkperf.yml:29`; mimalloc `readme.md:668-694` | Before/after numbers must name workload, environment, variance controls, and limits of synthetic benchmarks. |
+| C hot-path review has recurring failure modes | curl `docs/CODE_REVIEW.md:74-90`; curl `docs/CODE_REVIEW.md:139-160` | Proactively review hot-path allocation, static state, integer overflow, unaligned access, zero-termination assumptions, and raw growing-buffer handling. |
 
 ## C Internals That Must Be Covered
 
