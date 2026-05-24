@@ -6,7 +6,7 @@ Issue: `cpp-38j`
 Date: 2026-05-24
 Skill identity: `c-cpp-profi`
 
-The skill was forward-tested against four upstream C/C++ repositories cloned under `/tmp`:
+The skill was forward-tested against upstream C/C++ repositories and deterministic local fixtures under `/tmp`:
 
 | Fixture | Purpose | Commit | Path |
 |---|---|---|---|
@@ -15,6 +15,7 @@ The skill was forward-tested against four upstream C/C++ repositories cloned und
 | tree-sitter | Parser/runtime C project with CMake shared library | `a5c0d24` | `/tmp/cpp-profi-ft-tree-sitter-20260524` |
 | inih | Small C/C++ INI parser with Meson build, shared libraries, and tests | `577ae2d` | `/tmp/cpp-profi-ft-inih-meson-20260524` |
 | FTXUI | C++ terminal UI rendering library for native golden-artifact workflow | `98c650d` | `/tmp/cpp-profi-ft-ftxui-golden-tgJWPN` |
+| stb | C single-header image writing library for graphical PNG golden workflow | `31c1ad3` | `/tmp/cpp-profi-pixel-golden-FWaLHq/stb` |
 
 Temporary fixture directories were left in place. They were not deleted because this repo forbids deletion without exact in-session approval.
 
@@ -152,6 +153,39 @@ Golden artifacts:
 
 This is terminal UI evidence, not graphical pixel or perceptual-diff evidence. For GUI, image, video, CAD, or GPU surfaces, the skill still requires a project-approved screenshot/pixel/perceptual capture matrix.
 
+## Graphical Pixel Golden Forward Test
+
+The skill now includes `cpp_pixel_diff.py`, an enforcing pixel-diff helper for image artifacts. It compares dimensions, mode, channel count, changed pixels, changed channels, max channel delta, mean absolute channel delta, RMSE, and PSNR. It exits `0` for images within threshold, `1` for visual deltas beyond threshold, and `2` for invalid comparisons.
+
+Forward-test fixture:
+
+- Source: `/tmp/cpp-profi-pixel-golden-FWaLHq/render_fixture.c`.
+- Image library: stb `stb_image_write.h`, cloned at commit `31c1ad3`.
+- Build command: `cc -std=c17 -O2 -Wall -Wextra -Wpedantic -I/tmp/cpp-profi-pixel-golden-FWaLHq/stb /tmp/cpp-profi-pixel-golden-FWaLHq/render_fixture.c -lm -o /tmp/cpp-profi-pixel-golden-FWaLHq/render_fixture`.
+- Matrix: deterministic software render, 160x96 RGBA PNG, fixed geometry, fixed colors, no fonts, no time, no randomness, no GPU.
+
+Render commands:
+
+```bash
+/tmp/cpp-profi-pixel-golden-FWaLHq/render_fixture /tmp/cpp-profi-pixel-golden-FWaLHq/baseline.png 0
+/tmp/cpp-profi-pixel-golden-FWaLHq/render_fixture /tmp/cpp-profi-pixel-golden-FWaLHq/candidate-identical.png 0
+/tmp/cpp-profi-pixel-golden-FWaLHq/render_fixture /tmp/cpp-profi-pixel-golden-FWaLHq/candidate-mutated.png 1
+```
+
+Diff results:
+
+- Identical PNG gate: `cpp_pixel_diff.py baseline.png candidate-identical.png --threshold 0` exited `0`; compared 15,360 pixels; different pixels `0`; max channel delta `0`; PSNR `infinite`.
+- Mutated PNG gate: `cpp_pixel_diff.py baseline.png candidate-mutated.png --threshold 0` exited `1`; compared 15,360 pixels; different pixels `1`; different channels `3`; max channel delta `224`; RMSE `1.025521`; PSNR `47.911915 dB`.
+- SHA-256: baseline and identical candidate both `f4da69e65e526fcef439919aef83e180b5e891cf58c3b2be0d3ec1006e1dc94e`; mutated candidate `df5671a6cc6540d9c0d9b00b5830df5fc89b27f87f5e5a62044903e46019d876`.
+- Reports: `/tmp/cpp-profi-pixel-golden-FWaLHq/pixel-identical-report.md` and `/tmp/cpp-profi-pixel-golden-FWaLHq/pixel-mutated-report.md`.
+
+The dependency-free PPM fallback was also exercised:
+
+- `fallback-base.ppm` vs `fallback-same.ppm` exited `0`.
+- `fallback-base.ppm` vs `fallback-mut.ppm` exited `1`.
+
+This proves an exact image-pixel workflow. It is not broad GUI matrix proof and does not replace project-approved perceptual tools for antialiasing-heavy UI.
+
 ## Resulting Skill Changes
 
 - `cpp_inventory.sh` now reports critical `--version` health.
@@ -161,7 +195,9 @@ This is terminal UI evidence, not graphical pixel or perceptual-diff evidence. F
 - Meson has now been forward-tested on a real C/C++ project.
 - The ABI fallback snapshot workflow has now been forward-tested on real C and C++ shared-library artifacts.
 - The native UI golden-artifact workflow has now been forward-tested on a real C++ terminal rendering project.
+- The graphical pixel golden-artifact workflow has now been forward-tested on a deterministic C PNG renderer, including both pass and fail behavior.
 
 ## Remaining Gaps
 
 - Forward-test real type/layout ABI comparison once `abidiff` or equivalent tooling is available.
+- Forward-test a perceptual screenshot/image diff tool once `magick`, `compare`, `perceptualdiff`, or a project-approved equivalent is available.

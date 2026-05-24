@@ -25,12 +25,21 @@ If any value is nondeterministic, freeze it or record that the golden is weaker 
 4. Inspect failures manually. Anti-aliased edge noise is different from clipped text, overdraw, broken z-order, missing glyphs, off-by-one layout, color regression, or frame jitter.
 5. Store accepted artifacts only in the project-approved test/golden location. Do not leave ad hoc captures in random temporary paths.
 
+When no project-approved graphical diff tool exists, use the bundled fallback for image artifacts:
+
+```bash
+python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py baseline.png candidate.png --threshold 0
+```
+
+The helper supports exact or per-channel thresholded pixel comparison. It reads PNG and common image formats through Pillow when available, and reads binary PGM/PPM without external dependencies. A nonzero threshold is a visual contract; record why it is safe.
+
 ## Acceptance Rules
 
 - Text must not clip, overlap, wrap unintentionally, or disappear at any supported scale.
 - Interactive states must have captured coverage when touched: disabled, hover, active, focus, selected, error, loading, and high-contrast where supported.
 - Animation/video evidence must include the representative frame or frame range, not just the first frame.
 - Terminal UI evidence must include terminal size, color mode, locale, and whether ANSI escape sequences are normalized.
+- Image evidence must include dimensions, color mode, threshold, changed-pixel count, max channel delta, and the exact compare command.
 - A threshold is a contract. Keep it narrow and explain why it is safe.
 
 ## Report Template

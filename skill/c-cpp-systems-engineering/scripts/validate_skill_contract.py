@@ -35,6 +35,7 @@ REQUIRED_SCRIPTS = [
     "cpp_gate_plan.sh",
     "cpp_gate_report.sh",
     "cpp_inventory.sh",
+    "cpp_pixel_diff.py",
     "cpp_risk_scan.sh",
     "validate_skill_contract.py",
 ]
@@ -143,6 +144,15 @@ def run_bash_syntax(skill_dir: Path, errors: list[str]) -> None:
         fail(errors, "bash -n failed:\n" + result.stdout)
 
 
+def run_python_syntax(skill_dir: Path, errors: list[str]) -> None:
+    scripts = [skill_dir / "scripts" / name for name in REQUIRED_SCRIPTS if name.endswith(".py")]
+    for script in scripts:
+        try:
+            compile(read(script), str(script), "exec")
+        except SyntaxError as exc:
+            fail(errors, f"{script.relative_to(skill_dir)}: Python syntax error: {exc}")
+
+
 def main(argv: list[str]) -> int:
     skill_dir = Path(argv[1] if len(argv) > 1 else ".").resolve()
     errors: list[str] = []
@@ -192,6 +202,7 @@ def main(argv: list[str]) -> int:
 
     check_markdown_links(skill_dir, errors)
     run_bash_syntax(skill_dir, errors)
+    run_python_syntax(skill_dir, errors)
 
     if errors:
         print("c-cpp-profi contract: FAIL")

@@ -352,3 +352,11 @@ Reject the gate when the refactor hides a bug fix, changes ABI or ownership with
 ## Pixel Or Artifact Gate
 
 For UI/rendering/native graphics/image/video changes, read [NATIVE-UI-GOLDENS.md](NATIVE-UI-GOLDENS.md), then capture before/after golden artifacts. Use perceptual image diff or project-approved pixel thresholds. Verify at every supported scale factor, font stack, color mode, and target platform that matters.
+
+Fallback image comparison:
+
+```bash
+python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py <baseline-image> <candidate-image> --threshold 0
+```
+
+The pixel helper is a gate: exit 0 means the artifact is within threshold, exit 1 means visual deltas exceeded threshold, and exit 2 means the comparison itself was invalid. Exact pixel equality is appropriate for deterministic software-rendered fixtures. Antialiasing-tolerant UI needs a justified threshold or a project-approved perceptual diff.

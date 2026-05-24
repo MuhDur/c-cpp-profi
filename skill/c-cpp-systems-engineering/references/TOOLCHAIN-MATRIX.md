@@ -48,7 +48,7 @@ The project contract still wins. Do not migrate a project to a new tool just bec
 | SBOM/SCA/secrets | Syft, Grype, Trivy, OSV-Scanner, cve-bin-tool, Gitleaks | SBOM, CVE list, package coordinates, secret findings | releases, vendored deps, supply-chain work | C/C++ vendored deps are hard to identify |
 | Safety/formal/embedded | Frama-C, CBMC, TrustInSoft, Astrée, PC-lint, MISRA/CERT checkers, sparse, smatch, Coccinelle, KASAN/KCSAN/UBSAN kernel, QEMU/HIL | proof conditions, rule violations, kernel/static findings, target execution logs | safety-critical, embedded, kernel/driver code | licensed tools or target hardware unavailable |
 | GPU/HPC | NVIDIA Compute Sanitizer, ROCm tools, MPI profilers/sanitizers, OpenMP tooling | kernel memory/race findings, GPU traces, distributed timing | CUDA/HIP/MPI/OpenMP code | host-only tools miss device/distributed failures |
-| Native UI/artifacts | screenshot tools, perceptual diff, terminal snapshots, image/video diff | golden artifacts and thresholded diffs | rendering/UI/font/image/video/CAD | manual "looks right" claim |
+| Native UI/artifacts | screenshot tools, perceptual diff, terminal snapshots, image/video diff, `cpp_pixel_diff.py` | golden artifacts and thresholded diffs | rendering/UI/font/image/video/CAD | manual "looks right" claim |
 
 ## Local Environment Snapshot
 
@@ -62,7 +62,10 @@ Observed on 2026-05-24:
 | `valgrind` | available, 3.25.1 |
 | `shellcheck` | available, 0.10.0 |
 | `ctest` | `/home/durakovic/.local/bin/ctest` is broken; `/usr/bin/ctest` works |
-| `abidiff`, `abi-dumper`, `abi-compliance-checker` | unavailable in this environment |
+| `ffmpeg`, `ffprobe` | available |
+| Python Pillow | available |
+| `magick`, `compare`, `perceptualdiff` | unavailable in this environment |
+| `abidiff`, `abi-dumper`, `abi-compliance-checker`, `pahole` | unavailable in this environment |
 
 ## Canonical Command Shapes
 
@@ -138,6 +141,16 @@ objdump -T libafter.so
 ```
 
 If rich ABI tooling is unavailable, run the snapshot helper anyway and record the missing tool explicitly. Its symbol and ELF metadata evidence can catch removed exports, accidental visibility changes, SONAME/dependency drift, and obvious C linkage mistakes. It cannot prove C++ class layout, vtable compatibility, parameter type compatibility, inline/template API stability, exception ABI, allocator ownership, or semantic compatibility.
+
+### Native UI And Image Artifacts
+
+```bash
+python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py baseline.png candidate.png --threshold 0
+python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py baseline.ppm candidate.ppm --threshold 0
+ffmpeg -i capture.mp4 -vf 'select=eq(n\,42)' -vframes 1 frame-042.png
+```
+
+Use exact threshold `0` for deterministic software-rendered artifacts. Use a narrow nonzero threshold only when the rendering backend, antialiasing, font rasterizer, color profile, or platform matrix justifies it. If `magick`, `compare`, `perceptualdiff`, or a project-approved perceptual tool is unavailable, record the missing tool and use `cpp_pixel_diff.py` as the exact/threshold fallback.
 
 ### Dependency and supply-chain
 

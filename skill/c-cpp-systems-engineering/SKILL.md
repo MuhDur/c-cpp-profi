@@ -94,10 +94,11 @@ bash skill/c-cpp-systems-engineering/scripts/cpp_gate_plan.sh .
 bash skill/c-cpp-systems-engineering/scripts/cpp_risk_scan.sh .
 bash skill/c-cpp-systems-engineering/scripts/cpp_gate_report.sh .
 bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh <candidate-library> [baseline-library]
+python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py <baseline-image> <candidate-image> --threshold 0
 python3 skill/c-cpp-systems-engineering/scripts/validate_skill_contract.py skill/c-cpp-systems-engineering
 ```
 
-Use the inventory script at the start of non-trivial work, the gate plan before changing build/test commands, the risk scan before review or after touching memory/input/concurrency code, the ABI snapshot helper when public libraries or plugin boundaries are touched, and the gate report script before handoff. Prefer running `cpp_risk_scan.sh` on changed files or touched directories; whole-repo scans on mature C/C++ projects are intentionally noisy triage, not a defect list.
+Use the inventory script at the start of non-trivial work, the gate plan before changing build/test commands, the risk scan before review or after touching memory/input/concurrency code, the ABI snapshot helper when public libraries or plugin boundaries are touched, the pixel diff helper when rendered image artifacts are touched, and the gate report script before handoff. Prefer running `cpp_risk_scan.sh` on changed files or touched directories; whole-repo scans on mature C/C++ projects are intentionally noisy triage, not a defect list.
 
 ## Examples
 

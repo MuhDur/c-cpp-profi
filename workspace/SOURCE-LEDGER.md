@@ -42,6 +42,10 @@ The installed skill catalog was scanned. The relevant patterns used here:
   - https://github.com/microsoft/GSL
 - Google FuzzTest: used as one possible C++ property/fuzz test option when a project already uses or accepts GoogleTest-style infrastructure.
   - https://github.com/google/fuzztest
+- stb `stb_image_write.h`: used as the real C image-writing fixture for forward-testing deterministic graphical PNG golden artifacts.
+  - https://github.com/nothings/stb
+- Pillow: used as the local PNG loader for `cpp_pixel_diff.py`; the helper also supports PGM/PPM without Pillow.
+  - https://python-pillow.org/
 
 ## Current Interpretation
 
