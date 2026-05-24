@@ -33,6 +33,15 @@ python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py baseline.png c
 
 The helper supports exact or per-channel thresholded pixel comparison. It reads PNG and common image formats through Pillow when available, and reads binary PGM/PPM without external dependencies. A nonzero threshold is a visual contract; record why it is safe.
 
+For image/video perceptual-style evidence when FFmpeg is available:
+
+```bash
+ffmpeg -hide_banner -i baseline.png -i candidate.png -lavfi ssim=stats_file=ssim.log -f null -
+ffmpeg -hide_banner -i baseline.png -i candidate.png -lavfi psnr=stats_file=psnr.log -f null -
+```
+
+SSIM/PSNR are metrics, not judgment. Keep exact pixel checks for deterministic artifacts and use perceptual metrics to explain tolerated antialiasing, compression, scaling, or rasterizer drift.
+
 ## Acceptance Rules
 
 - Text must not clip, overlap, wrap unintentionally, or disappear at any supported scale.
@@ -40,6 +49,7 @@ The helper supports exact or per-channel thresholded pixel comparison. It reads 
 - Animation/video evidence must include the representative frame or frame range, not just the first frame.
 - Terminal UI evidence must include terminal size, color mode, locale, and whether ANSI escape sequences are normalized.
 - Image evidence must include dimensions, color mode, threshold, changed-pixel count, max channel delta, and the exact compare command.
+- Perceptual metric evidence must include the metric name, threshold, stats file, command stderr summary, and why that threshold matches the user-visible contract.
 - A threshold is a contract. Keep it narrow and explain why it is safe.
 
 ## Report Template

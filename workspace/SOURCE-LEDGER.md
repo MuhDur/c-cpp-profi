@@ -46,6 +46,8 @@ The installed skill catalog was scanned. The relevant patterns used here:
   - https://github.com/nothings/stb
 - Pillow: used as the local PNG loader for `cpp_pixel_diff.py`; the helper also supports PGM/PPM without Pillow.
   - https://python-pillow.org/
+- FFmpeg SSIM/PSNR filters: used as the available perceptual-style metric fallback for image/video golden artifacts.
+  - https://ffmpeg.org/ffmpeg-filters.html
 
 ## Current Interpretation
 

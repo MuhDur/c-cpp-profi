@@ -186,6 +186,29 @@ The dependency-free PPM fallback was also exercised:
 
 This proves an exact image-pixel workflow. It is not broad GUI matrix proof and does not replace project-approved perceptual tools for antialiasing-heavy UI.
 
+## FFmpeg SSIM/PSNR Forward Test
+
+The available perceptual-style metric tool in this environment is FFmpeg. ImageMagick `magick`/`compare` and `perceptualdiff` remain unavailable, but FFmpeg SSIM/PSNR filters can provide metric evidence for image/video artifacts.
+
+Commands:
+
+```bash
+ffmpeg -hide_banner -i /tmp/cpp-profi-pixel-golden-FWaLHq/baseline.png -i /tmp/cpp-profi-pixel-golden-FWaLHq/candidate-identical.png -lavfi ssim=stats_file=/tmp/cpp-profi-pixel-golden-FWaLHq/ffmpeg-identical-ssim.log -f null -
+ffmpeg -hide_banner -i /tmp/cpp-profi-pixel-golden-FWaLHq/baseline.png -i /tmp/cpp-profi-pixel-golden-FWaLHq/candidate-mutated.png -lavfi ssim=stats_file=/tmp/cpp-profi-pixel-golden-FWaLHq/ffmpeg-mutated-ssim.log -f null -
+ffmpeg -hide_banner -i /tmp/cpp-profi-pixel-golden-FWaLHq/baseline.png -i /tmp/cpp-profi-pixel-golden-FWaLHq/candidate-identical.png -lavfi psnr=stats_file=/tmp/cpp-profi-pixel-golden-FWaLHq/ffmpeg-identical-psnr.log -f null -
+ffmpeg -hide_banner -i /tmp/cpp-profi-pixel-golden-FWaLHq/baseline.png -i /tmp/cpp-profi-pixel-golden-FWaLHq/candidate-mutated.png -lavfi psnr=stats_file=/tmp/cpp-profi-pixel-golden-FWaLHq/ffmpeg-mutated-psnr.log -f null -
+```
+
+Results:
+
+- Identical SSIM: `All:1.000000 (inf)`.
+- Mutated SSIM: `All:0.997049 (25.299836)`.
+- Identical PSNR: `average:inf`.
+- Mutated PSNR: `average:47.911915`.
+- Stats files and command stderr were preserved under `/tmp/cpp-profi-pixel-golden-FWaLHq/ffmpeg-*.log` and `/tmp/cpp-profi-pixel-golden-FWaLHq/ffmpeg-*.stderr`.
+
+Interpretation: FFmpeg SSIM/PSNR can quantify image/video drift, but the threshold must be project-specific. The exact pixel helper remains the stricter gate for deterministic artifacts.
+
 ## Resulting Skill Changes
 
 - `cpp_inventory.sh` now reports critical `--version` health.
@@ -196,8 +219,9 @@ This proves an exact image-pixel workflow. It is not broad GUI matrix proof and 
 - The ABI fallback snapshot workflow has now been forward-tested on real C and C++ shared-library artifacts.
 - The native UI golden-artifact workflow has now been forward-tested on a real C++ terminal rendering project.
 - The graphical pixel golden-artifact workflow has now been forward-tested on a deterministic C PNG renderer, including both pass and fail behavior.
+- FFmpeg SSIM/PSNR metric evidence has now been forward-tested on the same image artifacts.
 
 ## Remaining Gaps
 
 - Forward-test real type/layout ABI comparison once `abidiff` or equivalent tooling is available.
-- Forward-test a perceptual screenshot/image diff tool once `magick`, `compare`, `perceptualdiff`, or a project-approved equivalent is available.
+- Forward-test a GUI/platform screenshot capture workflow beyond deterministic software-rendered image fixtures.

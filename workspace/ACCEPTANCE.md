@@ -38,7 +38,7 @@ The skill must cause future agents to:
 The ambitious target needs additional evidence:
 
 - Forward-test the sanitizer, fuzz, gate-report, ABI, and golden-artifact workflows.
-- Native UI/golden artifact workflow has terminal UI evidence through FTXUI and image pixel-diff evidence through a deterministic C renderer; broader GUI/perceptual platform coverage remains a future expansion.
+- Native UI/golden artifact workflow has terminal UI evidence through FTXUI, image pixel-diff evidence through a deterministic C renderer, and FFmpeg SSIM/PSNR metric evidence; broader GUI/platform capture remains a future expansion.
 - ABI fallback snapshot workflow is forward-tested with binutils; real type/layout ABI comparison remains blocked until `abidiff` or equivalent tooling is available.
 - Add examples for C library, modern C++ library, embedded C, parser, and native UI/rendering work.
 - Add a small conformance harness that checks the skill references and scripts stay synchronized.

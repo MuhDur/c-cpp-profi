@@ -147,10 +147,12 @@ If rich ABI tooling is unavailable, run the snapshot helper anyway and record th
 ```bash
 python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py baseline.png candidate.png --threshold 0
 python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py baseline.ppm candidate.ppm --threshold 0
+ffmpeg -hide_banner -i baseline.png -i candidate.png -lavfi ssim=stats_file=ssim.log -f null -
+ffmpeg -hide_banner -i baseline.png -i candidate.png -lavfi psnr=stats_file=psnr.log -f null -
 ffmpeg -i capture.mp4 -vf 'select=eq(n\,42)' -vframes 1 frame-042.png
 ```
 
-Use exact threshold `0` for deterministic software-rendered artifacts. Use a narrow nonzero threshold only when the rendering backend, antialiasing, font rasterizer, color profile, or platform matrix justifies it. If `magick`, `compare`, `perceptualdiff`, or a project-approved perceptual tool is unavailable, record the missing tool and use `cpp_pixel_diff.py` as the exact/threshold fallback.
+Use exact threshold `0` for deterministic software-rendered artifacts. Use a narrow nonzero threshold only when the rendering backend, antialiasing, font rasterizer, color profile, or platform matrix justifies it. If `magick`, `compare`, or `perceptualdiff` is unavailable, record the missing tool and use `cpp_pixel_diff.py` plus FFmpeg SSIM/PSNR as the available fallback.
 
 ### Dependency and supply-chain
 
