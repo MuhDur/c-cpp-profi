@@ -60,6 +60,7 @@ Use the strongest applicable ladder the project can support:
 | Performance | Read [PERFORMANCE.md](references/PERFORMANCE.md), then profile before changing code |
 | Parser/input handling | Read [TESTING-FUZZING.md](references/TESTING-FUZZING.md), then add fuzz and regression coverage |
 | Build system | Read [BUILD-PORTABILITY.md](references/BUILD-PORTABILITY.md), preserve existing presets and developer workflows |
+| Refactor/simplify | Read [REFACTOR-ISOMORPHISM.md](references/REFACTOR-ISOMORPHISM.md), then prove behavior, ABI, layout, and artifacts before editing |
 | Review/audit | Use the multi-pass audit loop in [QUALITY-GATES.md](references/QUALITY-GATES.md), then lead with findings, file:line evidence, severity, proof, and gate gaps |
 | Native UI/pixels | Read [NATIVE-UI-GOLDENS.md](references/NATIVE-UI-GOLDENS.md), then capture and compare rendered artifacts across target viewports/devices |
 
@@ -78,6 +79,7 @@ Load only the relevant file:
 | Fuzzing and test strategy | [TESTING-FUZZING.md](references/TESTING-FUZZING.md) |
 | Performance methodology | [PERFORMANCE.md](references/PERFORMANCE.md) |
 | Build systems, ABI, portability | [BUILD-PORTABILITY.md](references/BUILD-PORTABILITY.md) |
+| Behavior-preserving C/C++ refactors | [REFACTOR-ISOMORPHISM.md](references/REFACTOR-ISOMORPHISM.md) |
 | Native UI, rendering, screenshots, pixels | [NATIVE-UI-GOLDENS.md](references/NATIVE-UI-GOLDENS.md) |
 | Sanitizer/fuzz templates | [TOOLCHAIN-TEMPLATES.md](references/TOOLCHAIN-TEMPLATES.md) |
 | Hermes/Codex/Claude operating mode | [AGENT-OPERATING-MODE.md](references/AGENT-OPERATING-MODE.md) |

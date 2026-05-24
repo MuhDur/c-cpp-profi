@@ -312,6 +312,21 @@ Reject the gate if the result depends on changed inputs, changed flags, changed 
 
 Required for public headers, shared libraries, plugins, FFI, SDKs, or package exports. Read [BUILD-PORTABILITY.md](BUILD-PORTABILITY.md), then record old/new library paths, headers, compiler, flags, symbol diff, layout/API diff, and downstream compile/run evidence.
 
+## Refactor Isomorphism Gate
+
+For simplify, deduplicate, extract helper, convert ownership, collapse wrappers, template/concept cleanup, macro/build-system cleanup, or any "no behavior change" patch, read [REFACTOR-ISOMORPHISM.md](REFACTOR-ISOMORPHISM.md).
+
+Any refactor claim needs:
+
+1. Baseline before editing: tests, goldens/artifacts, LOC or duplication snapshot, public API/ABI snapshot where applicable.
+2. Callsite census for every function/type/header/build target touched.
+3. One opportunity score and one lever per commit.
+4. Isomorphism card covering outputs, ordering, errors, side effects, ownership, ABI/API/layout, exception safety, concurrency, performance, portability, and artifacts.
+5. Before/after gates run on the same inputs.
+6. Rejection log for tempting merges that were not actually equivalent.
+
+Reject the gate when the refactor hides a bug fix, changes ABI or ownership without saying so, merges clone type IV/V without proof, removes tests or files without explicit permission, or cannot name all callsites.
+
 ## Pixel Or Artifact Gate
 
 For UI/rendering/native graphics/image/video changes, read [NATIVE-UI-GOLDENS.md](NATIVE-UI-GOLDENS.md), then capture before/after golden artifacts. Use perceptual image diff or project-approved pixel thresholds. Verify at every supported scale factor, font stack, color mode, and target platform that matters.

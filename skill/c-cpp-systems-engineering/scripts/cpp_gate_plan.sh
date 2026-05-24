@@ -76,4 +76,5 @@ Additional gates to consider:
   lock-order graph and atomic memory-order proof for threaded changes
   fuzz harness or corpus replay for input parsers
   benchmark/profile for performance claims
+  refactor isomorphism card, callsite census, ABI/API check, and golden replay for simplification claims
 PLAN

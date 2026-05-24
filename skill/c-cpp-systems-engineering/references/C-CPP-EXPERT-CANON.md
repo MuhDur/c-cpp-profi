@@ -203,11 +203,13 @@ Required bug classes:
 
 ### Refactor
 
-1. Prove behavior equivalence before edit.
-2. Preserve ABI/API unless the task explicitly changes it.
-3. Preserve error semantics, ordering, side effects, logging, timing assumptions, and allocation ownership.
-4. Prefer net-negative complexity, not abstraction for its own sake.
-5. Run old and new behavior evidence on the same inputs.
+1. Read [REFACTOR-ISOMORPHISM.md](REFACTOR-ISOMORPHISM.md).
+2. Prove behavior equivalence before edit.
+3. Preserve ABI/API unless the task explicitly changes it.
+4. Preserve error semantics, ordering, side effects, logging, timing assumptions, allocation ownership, exception safety, and destructor/copy/move behavior.
+5. Prefer net-negative complexity, not abstraction for its own sake.
+6. Run old and new behavior evidence on the same inputs.
+7. Reject the refactor if the callsite census, ABI/layout proof, or golden/regression evidence is missing.
 
 ### Concurrency
 

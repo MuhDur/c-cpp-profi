@@ -50,6 +50,7 @@ cat <<REPORT
 - User-visible rendering/artifacts touched: yes/no
 - Parser/input/security boundary touched: yes/no
 - Threads/locks/atomics/signals touched: yes/no
+- Refactor/simplification claim: yes/no
 - Performance claim: yes/no
 
 ## Commands
@@ -68,6 +69,7 @@ cat <<REPORT
 | performance | not applicable |  |  |
 | portability | not applicable |  |  |
 | ABI/API | not applicable |  |  |
+| refactor isomorphism | not applicable |  |  |
 | golden artifacts | not applicable |  |  |
 
 Use statuses: passed, failed, not run, not applicable.
@@ -81,6 +83,21 @@ Use statuses: passed, failed, not run, not applicable.
 - Symbol/layout/API result:
 - Downstream compile/run result:
 - Intentional breaks:
+
+## Refactor Isomorphism Evidence
+
+- Baseline command/artifacts:
+- Callsite census:
+- Opportunity score:
+- One lever:
+- Behavior axes checked:
+- ABI/API/layout result:
+- Ownership/RAII/exception-safety result:
+- Template/concept/ODR/build-system result:
+- Concurrency/reentrancy result:
+- Performance hot-path result:
+- Before/after LOC and warning counts:
+- Rejection log:
 
 ## Golden Artifact Evidence
 
