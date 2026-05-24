@@ -38,6 +38,96 @@ Do not let a broad green gate hide a narrow gap. If tests passed but no sanitize
 
 Do not let one green tool overrule another tool's concrete finding. Forward testing on real projects found cases where compile, unit tests, and sanitizer tests passed while `clang-tidy`, `cppcheck`, or Valgrind still produced actionable findings. The gate result is only green after the output has been read and classified.
 
+## Multi-Pass Bug Hunt Gate
+
+Use this gate for code review, release hardening, security-sensitive changes, memory/input/concurrency changes, and any request to find bugs deeply.
+
+The cycle is:
+
+1. Surface scan: run `ubs` on changed files or the narrow target, plus the project compiler/static analyzer gate.
+2. Triage: classify every finding as fixed, false positive with justification, not applicable with reason, or deferred with a bead/follow-up issue.
+3. Fix: change one defect class or one root cause at a time.
+4. Fresh-eyes reread: re-read every touched file end to end and trace the changed path through callers, callees, headers, build flags, tests, and public API.
+5. Dynamic gate: run sanitizer, Valgrind, fuzz, or debugger evidence that matches the risk class.
+6. Integration gate: run focused tests plus the affected build/test target.
+7. Rescan: rerun the same scanner/tool that found the issue and any gate that could catch regressions from the fix.
+8. Stop only when convergence criteria below are satisfied.
+
+Minimum passes by task:
+
+| Task | Required passes |
+|---|---|
+| Quick pre-commit for docs/scripts only | staged `ubs` or equivalent plus diff review |
+| C/C++ feature | compile/tests, fresh-eyes reread, static/risk scan on touched files |
+| Crash, memory, parser, or security fix | reproducer, sanitizer/static pass, fresh-eyes reread, regression/fuzz seed, rescan |
+| Release or broad audit | surface scan, manual fresh-eyes pass, integration tests, final clean rescan |
+| Agent-code review | at least two passes: scanner/tool pass and fresh-eyes manual pass across related files |
+
+Use project gates first, then add risk-specific gates:
+
+| Risk | First gates | Deep gates |
+|---|---|---|
+| General code | build, tests, `ubs <changed-files>`, `cpp_risk_scan.sh` | fresh-eyes manual trace, focused `clang-tidy`, `cppcheck` |
+| Memory/lifetime | ASan+UBSan, Valgrind/Memcheck when useful | ownership graph, cleanup-path review, MSan if dependencies permit |
+| Parser/input/protocol | reproducer, regression test, ASan+UBSan fuzzer replay | corpus minimization, boundary corpus, differential/reference checks |
+| Integer/bounds | compiler warnings, UBSan, `clang-tidy` | allocation-size multiplication proof, signedness/narrowing trace |
+| Concurrency | TSan or Helgrind/DRD when practical | lock-order map, atomic-order proof, callback/signal/loader reentrancy review |
+| ABI/API | header compile smoke, symbol diff, layout/API diff | downstream consumer test, docs/examples/manpage consistency |
+| Build portability | CMake/Meson/configure matrix, feature probes | compile-only target checks, macro/ifdef review, install/package smoke |
+
+Finding classes to cover explicitly:
+
+- Memory/lifetime: leak, double free, use-after-free, use-after-scope, dangling view, invalid iterator, allocator mismatch.
+- UB: signed overflow, shift bounds, alignment, aliasing, pointer provenance, invalid object lifetime, uninitialized read.
+- Integer/string: truncation, sign conversion, allocation-size overflow, missing terminator, locale/encoding mismatch, format string.
+- Input/parser: unchecked length, partial read/write, recursive depth, resource limit, malformed corpus gap, error recovery.
+- Concurrency: data race, lock order, condition-variable predicate, atomic ordering, signal safety, loader/allocator reentrancy.
+- ABI/API: symbol/layout/calling convention change, exception crossing ABI, ownership boundary change, build-mode mismatch.
+- Portability/build: feature macro drift, generated header mismatch, compile option matrix, C/C++ standard version, platform branch.
+- Security: attacker-controlled input, secret exposure, path/temp-file handling, shell/process boundary, hardening regression.
+
+Convergence criteria:
+
+- The same scanner/tool finding no longer reproduces, or the remaining report is documented with a precise false-positive reason.
+- Tests covering the touched behavior pass.
+- Applicable sanitizer/dynamic/fuzz gates pass or have a tracked, justified gap.
+- Fresh-eyes reread found no unresolved sibling bug in the touched file or related boundary.
+- No deferred item remains without a bead/follow-up issue.
+
+Record the multi-pass section in the handoff:
+
+```text
+Multi-pass audit:
+- Scope:
+- Passes run:
+- Tools run:
+- Findings fixed:
+- False positives:
+- Deferred with issue/bead:
+- Manual traces:
+- Fresh-eyes files reread:
+- Related files traced:
+- Reproducers or crash inputs:
+- Regression/fuzz/corpus additions:
+- Sanitizer/dynamic evidence:
+- Static-analysis evidence:
+- ABI/API/build-portability evidence:
+- Rescan command:
+- Convergence status:
+- Residual risk:
+```
+
+Anti-patterns:
+
+- Fixing analyzer warnings merely because a tool suggested them.
+- Letting one green tool override another concrete finding.
+- Combining bug fix, refactor, formatting, and optimization in one pass.
+- Skipping the fresh-eyes reread after a fix.
+- Treating sanitizer success as proof of no UB.
+- Suppressing Valgrind or static-analysis output without a local invariant.
+- Closing a parser/security crash without minimized input or regression coverage.
+- Ignoring ABI, allocator ownership, or build-config changes because tests pass.
+
 ## Risk Scan Scope
 
 Use `cpp_risk_scan.sh` as triage:

@@ -59,7 +59,7 @@ Use the strongest applicable ladder the project can support:
 | Performance | Read [PERFORMANCE.md](references/PERFORMANCE.md), then profile before changing code |
 | Parser/input handling | Read [TESTING-FUZZING.md](references/TESTING-FUZZING.md), then add fuzz and regression coverage |
 | Build system | Read [BUILD-PORTABILITY.md](references/BUILD-PORTABILITY.md), preserve existing presets and developer workflows |
-| Review/audit | Lead with findings, file:line evidence, severity, proof, and gate gaps |
+| Review/audit | Use the multi-pass audit loop in [QUALITY-GATES.md](references/QUALITY-GATES.md), then lead with findings, file:line evidence, severity, proof, and gate gaps |
 | Native UI/pixels | Read [NATIVE-UI-GOLDENS.md](references/NATIVE-UI-GOLDENS.md), then capture and compare rendered artifacts across target viewports/devices |
 
 ## Reference Map

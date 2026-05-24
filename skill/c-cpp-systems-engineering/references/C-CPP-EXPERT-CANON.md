@@ -156,6 +156,31 @@ These line-backed patterns were extracted with `codebase-pattern-extraction` dur
 6. Add regression test or fuzz seed.
 7. Re-run original reproducer, sanitizer, tests, and static analysis.
 
+### Multi-pass bug hunt
+
+1. Start with tools and tests, but do not delegate judgment to them.
+2. Run a surface scan on the narrowest useful target: `ubs`, compiler diagnostics, static analyzer, or project-specific checker.
+3. Classify every finding as fixed, false positive with justification, not applicable with reason, or deferred with a bead/follow-up issue.
+4. Fix one root cause at a time, then rerun the exact tool or reproducer that found it.
+5. Re-read every touched C/C++ source, header, build file, and test with fresh eyes after the fix.
+6. Trace related callers, callees, public headers, ownership boundaries, generated config, and build flags before claiming the defect is isolated.
+7. Run the dynamic gate that matches the risk class: ASan/UBSan for memory/UB, MSan for uninitialized flow, TSan/Helgrind/DRD for races, Valgrind for uninitialized/leak paths, fuzzing for untrusted input.
+8. Repeat audit, fix, and rescan until no new finding appears.
+9. Stop only after the rescan is clean or justified, focused tests pass, no fresh-eyes sibling bug remains, false positives have evidence, and all deferred items are tracked.
+
+Required bug classes:
+
+| Class | Native checks |
+|---|---|
+| Memory/lifetime | owner/release path, cleanup idempotence, invalidation, allocator family, destructor/RAII path |
+| UB | overflow, shift, alignment, aliasing, pointer provenance, object lifetime, uninitialized read, data race |
+| Integer/string | width, sign, allocation multiplication, bounded copies, terminator, format/varargs, encoding/locale |
+| Input/parser | length trust, recursion/resource limits, malformed corpus, recovery path, partial I/O |
+| Concurrency | lock order, wait predicates, atomics order, cancellation, signal safety, loader/allocator callbacks |
+| ABI/API | symbols, layout, calling convention, exception boundary, ownership transfer, C/C++ linkage |
+| Portability/build | feature probes, macro matrix, generated headers, standard version, compiler-specific extensions |
+| Security | attacker boundary, hardening flags, secret exposure, path/process boundary, threat model |
+
 ### Parser, decoder, file format, protocol, compression
 
 1. Identify untrusted byte/string entry points.
