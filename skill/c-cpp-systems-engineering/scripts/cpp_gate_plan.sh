@@ -72,6 +72,8 @@ Additional gates to consider:
   scan-build <build-command>
   ASan+UBSan build and test
   TSan build and test for concurrency changes
+  Helgrind/DRD or rr/stress replay for deadlocks and flaky concurrency
+  lock-order graph and atomic memory-order proof for threaded changes
   fuzz harness or corpus replay for input parsers
   benchmark/profile for performance claims
 PLAN

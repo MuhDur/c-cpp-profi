@@ -56,6 +56,7 @@ Use the strongest applicable ladder the project can support:
 | Fix crash | Reproduce first -> minimize input -> sanitizer/debugger -> regression test -> fix |
 | Security hardening | Threat model -> CERT/Core Guideline checks -> static analysis -> sanitizer/fuzz -> hardening flags |
 | Memory safety | Read [MEMORY-SAFETY.md](references/MEMORY-SAFETY.md), then prove ownership, bounds, lifetimes, and error paths |
+| Concurrency/deadlock | Read [CONCURRENCY-DEADLOCKS.md](references/CONCURRENCY-DEADLOCKS.md), then prove lock order, interleavings, memory ordering, and runtime validation |
 | Performance | Read [PERFORMANCE.md](references/PERFORMANCE.md), then profile before changing code |
 | Parser/input handling | Read [TESTING-FUZZING.md](references/TESTING-FUZZING.md), then add fuzz and regression coverage |
 | Build system | Read [BUILD-PORTABILITY.md](references/BUILD-PORTABILITY.md), preserve existing presets and developer workflows |
@@ -72,6 +73,7 @@ Load only the relevant file:
 | Tool families, commands, manpages, missing-tool handling | [TOOLCHAIN-MATRIX.md](references/TOOLCHAIN-MATRIX.md) |
 | Gate selection and commands | [QUALITY-GATES.md](references/QUALITY-GATES.md) |
 | Ownership, lifetimes, bounds, UB | [MEMORY-SAFETY.md](references/MEMORY-SAFETY.md) |
+| Locks, atomics, threads, signals, loader reentrancy | [CONCURRENCY-DEADLOCKS.md](references/CONCURRENCY-DEADLOCKS.md) |
 | Security review and hardening | [SECURITY-REVIEW.md](references/SECURITY-REVIEW.md) |
 | Fuzzing and test strategy | [TESTING-FUZZING.md](references/TESTING-FUZZING.md) |
 | Performance methodology | [PERFORMANCE.md](references/PERFORMANCE.md) |

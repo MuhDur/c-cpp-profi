@@ -49,6 +49,7 @@ cat <<REPORT
 - Public API/ABI touched: yes/no
 - User-visible rendering/artifacts touched: yes/no
 - Parser/input/security boundary touched: yes/no
+- Threads/locks/atomics/signals touched: yes/no
 - Performance claim: yes/no
 
 ## Commands
@@ -62,6 +63,7 @@ cat <<REPORT
 | static analysis | not run |  |  |
 | ASan+UBSan | not run |  |  |
 | TSan/MSan/LSan | not applicable |  |  |
+| Helgrind/DRD/rr/stress | not applicable |  |  |
 | fuzz/corpus | not applicable |  |  |
 | performance | not applicable |  |  |
 | portability | not applicable |  |  |
@@ -99,6 +101,17 @@ Use statuses: passed, failed, not run, not applicable.
 - Candidate:
 - Profile/hotspot:
 - Result:
+
+## Concurrency Evidence
+
+- Thread/ownership map:
+- Lock graph:
+- Concrete interleavings:
+- Atomic memory-order proof:
+- Condition-variable predicate:
+- Signal/fork/loader surfaces:
+- Callback/FFI/allocator reentrancy:
+- Dynamic/stress gates:
 
 ## Residual Risk
 

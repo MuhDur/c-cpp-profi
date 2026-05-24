@@ -211,12 +211,13 @@ Required bug classes:
 
 ### Concurrency
 
-1. Build a lock/thread ownership map.
-2. Check all nested locks for consistent order.
-3. Require a concrete interleaving before reporting a race or deadlock.
-4. Run TSan or Helgrind/DRD when practical.
-5. For atomics, document the synchronization relation; use stronger ordering when proof is weak.
-6. Check signal/loader/allocator reentrancy for callbacks and interposed libraries.
+1. Read [CONCURRENCY-DEADLOCKS.md](CONCURRENCY-DEADLOCKS.md).
+2. Build a lock/thread ownership map.
+3. Check all nested locks for consistent order.
+4. Require a concrete interleaving before reporting a race or deadlock.
+5. Run TSan or Helgrind/DRD when practical.
+6. For atomics, document the synchronization relation; use stronger ordering when proof is weak.
+7. Check signal/loader/allocator reentrancy for callbacks and interposed libraries.
 
 ## Evidence Packet Template
 

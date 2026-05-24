@@ -261,6 +261,21 @@ valgrind --error-exitcode=99 --leak-check=full <test-or-binary>
 
 Record both leak status and error summary.
 
+## Concurrency Gate
+
+For threads, locks, atomics, condition variables, callbacks, signal handlers, constructors/destructors, plugin/FFI boundaries, and shared-state event loops, read [CONCURRENCY-DEADLOCKS.md](CONCURRENCY-DEADLOCKS.md).
+
+Any concurrency claim needs:
+
+1. Thread and ownership map.
+2. Lock-order graph for nested locks.
+3. Concrete interleaving for each reported race/deadlock/lost wakeup, or a clear statement that no concrete interleaving was found.
+4. Atomic memory-order proof for each synchronization edge.
+5. TSan, Helgrind/DRD, rr, stress, or debugger evidence when practical.
+6. Signal, fork, loader, allocator-hook, and callback reentrancy review when those surfaces exist.
+
+Reject the gate if the finding is only a grep pattern, if the fix is just a timeout around a deadlock, or if `memory_order_relaxed` is changed without proving the stale-read consequence.
+
 ## Release Hardening
 
 For security-sensitive release builds, check whether the project can support:
