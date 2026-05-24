@@ -100,6 +100,32 @@ Result: Valgrind exited 99 after reporting one "Conditional jump or move depends
 
 10. inih demonstrates why static-analysis output cannot be reduced to "exit 0": `clang-tidy` emitted analyzer warnings on `ini.c` even though Meson debug tests and ASan+UBSan tests passed.
 
+## ABI Fallback Forward Test
+
+Rich ABI comparison tooling is still unavailable in this environment:
+
+```text
+abidiff=missing
+abi-dumper=missing
+abi-compliance-checker=missing
+pahole=missing
+```
+
+The skill now includes `cpp_abi_snapshot.sh`, a read-only fallback helper that prints a Markdown ABI/API evidence packet from `readelf`, `objdump`, `nm`, and `c++filt`. It does not create temporary files or modify the target repository. The fallback was forward-tested on real C and C++ shared-library artifacts:
+
+```bash
+bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh /tmp/cpp-profi-ft-zlib-20260524/build/asan-ubsan/libz.so.1.3.2.1 /tmp/cpp-profi-ft-zlib-20260524/build/debug/libz.so.1.3.2.1 > /tmp/cpp-profi-abi-snapshots-20260524/zlib-debug-vs-asan.md
+bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh /tmp/cpp-profi-ft-inih-meson-20260524/build/asan-ubsan/libINIReader.so.0 /tmp/cpp-profi-ft-inih-meson-20260524/build/debug/libINIReader.so.0 > /tmp/cpp-profi-abi-snapshots-20260524/inih-INIReader-debug-vs-asan.md
+```
+
+Results:
+
+- zlib C shared library: generated 1,622-line ABI snapshot; exported symbol-name diff was empty; `SONAME` stayed `libz.so.1`; sanitizer candidate added expected `NEEDED` dependencies on `libasan.so.8` and `libubsan.so.1`.
+- inih C++ shared library: generated 3,528-line ABI snapshot; exported symbol-name diff was empty after demangling; `SONAME` stayed `libINIReader.so.0`; sanitizer candidate added expected `NEEDED` dependencies on `libasan.so.8` and `libubsan.so.1`.
+- Both snapshots explicitly record `abidiff`, `abi-dumper`, `abi-compliance-checker`, and `pahole` as missing.
+
+Interpretation: the fallback can catch missing/renamed exports, obvious visibility drift, `SONAME` drift, and dynamic dependency drift. It is not C++ ABI proof. It does not prove class layout, vtable compatibility, parameter type compatibility, inline/template API stability, exception ABI, allocator ownership, or semantic compatibility.
+
 ## Native UI Golden Forward Test
 
 FTXUI was used to forward-test the skill's native UI/golden-artifact workflow on a deterministic terminal rendering surface.
@@ -133,8 +159,9 @@ This is terminal UI evidence, not graphical pixel or perceptual-diff evidence. F
 - `QUALITY-GATES.md` now documents CMake/CTest version checks, broken wrapper handling, risk-scan scoping, analyzer-output review, and Valgrind/Memcheck as a complementary dynamic gate.
 - This report gives a concrete evidence base for CMake and Meson forward-test fixtures.
 - Meson has now been forward-tested on a real C/C++ project.
+- The ABI fallback snapshot workflow has now been forward-tested on real C and C++ shared-library artifacts.
 - The native UI golden-artifact workflow has now been forward-tested on a real C++ terminal rendering project.
 
 ## Remaining Gaps
 
-- Forward-test real ABI comparison once `abidiff` or equivalent tooling is available.
+- Forward-test real type/layout ABI comparison once `abidiff` or equivalent tooling is available.

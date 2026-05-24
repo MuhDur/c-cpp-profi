@@ -144,6 +144,22 @@ bash skill/c-cpp-systems-engineering/scripts/cpp_risk_scan.sh <changed-files-or-
 
 Prefer changed files, touched directories, or the public API surface under review. Whole-repo scans are useful for orientation, but mature C/C++ repos often contain intentional allocator wrappers, tests, examples, platform shims, and compatibility code. Treat matches as review prompts, not confirmed bugs.
 
+## ABI/API Fallback Snapshot
+
+For shared libraries, plugins, SDKs, FFI boundaries, and public headers, run the project-approved ABI tool first. If no rich ABI tool is available, use the skill fallback snapshot and record that the result is narrower:
+
+```bash
+bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh <candidate-library> [baseline-library]
+```
+
+Required interpretation:
+
+- Exact exported-symbol equality is a smoke pass, not ABI compatibility proof.
+- Any added, removed, renamed, or newly exported symbol is a review item.
+- Review `SONAME`, `NEEDED`, visibility, versioned symbols, language linkage, allocator ownership, exception boundaries, and downstream compile/run evidence.
+- If `abidiff`, `abi-dumper`, `abi-compliance-checker`, or `pahole` is missing, write `not run: <tool> unavailable` with why the narrower fallback is or is not acceptable.
+- For C++ ABI, explicitly state whether class layout, vtables, inline/template API, RTTI, exception ABI, and standard-library ABI were proven. The fallback snapshot usually does not prove them.
+
 ## CMake
 
 Prefer presets when present:

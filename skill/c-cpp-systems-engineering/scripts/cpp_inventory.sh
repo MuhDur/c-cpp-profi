@@ -38,10 +38,10 @@ printf 'count.cpp=%s\n' "$(count_files -name '*.cc' -o -name '*.cpp' -o -name '*
 printf 'count.headers=%s\n' "$(count_files -name '*.h' -o -name '*.hh' -o -name '*.hpp' -o -name '*.hxx')"
 printf 'count.cmake=%s\n' "$(count_files -name 'CMakeLists.txt' -o -name '*.cmake')"
 
-for tool in cmake ctest ninja make meson clang clang++ gcc g++ cl clang-tidy scan-build cppcheck valgrind perf hyperfine heaptrack rg; do
+for tool in cmake ctest ninja make meson clang clang++ gcc g++ cl clang-tidy scan-build cppcheck valgrind perf hyperfine heaptrack rg readelf objdump nm c++filt abidiff abi-dumper abi-compliance-checker pahole; do
   printf 'tool.%s=%s\n' "$tool" "$(has_tool "$tool")"
 done
 
-for tool in cmake ctest ninja meson clang clang++ gcc g++ clang-tidy cppcheck; do
+for tool in cmake ctest ninja meson clang clang++ gcc g++ clang-tidy cppcheck readelf objdump nm; do
   printf 'tool.%s_version_works=%s\n' "$tool" "$(tool_version_works "$tool")"
 done

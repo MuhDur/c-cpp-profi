@@ -31,6 +31,7 @@ REQUIRED_REFERENCES = [
 ]
 
 REQUIRED_SCRIPTS = [
+    "cpp_abi_snapshot.sh",
     "cpp_gate_plan.sh",
     "cpp_gate_report.sh",
     "cpp_inventory.sh",

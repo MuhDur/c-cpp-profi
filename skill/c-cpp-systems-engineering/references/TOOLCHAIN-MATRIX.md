@@ -127,6 +127,8 @@ afl-fuzz -i seeds -o findings -- ./afl_target @@
 ### ABI/API
 
 ```bash
+bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh libafter.so
+bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh libafter.so libbefore.so
 nm -D --defined-only libbefore.so | c++filt > before.symbols
 nm -D --defined-only libafter.so | c++filt > after.symbols
 diff -u before.symbols after.symbols
@@ -134,6 +136,8 @@ abidiff libbefore.so libafter.so
 readelf -Ws libafter.so
 objdump -T libafter.so
 ```
+
+If rich ABI tooling is unavailable, run the snapshot helper anyway and record the missing tool explicitly. Its symbol and ELF metadata evidence can catch removed exports, accidental visibility changes, SONAME/dependency drift, and obvious C linkage mistakes. It cannot prove C++ class layout, vtable compatibility, parameter type compatibility, inline/template API stability, exception ABI, allocator ownership, or semantic compatibility.
 
 ### Dependency and supply-chain
 
@@ -210,7 +214,7 @@ Use strongest available fallbacks without pretending they prove the same thing. 
 4. Sanitizers must cover the touched path, not merely compile.
 5. Every fuzz crash becomes a minimized regression test.
 6. Every performance claim needs baseline, profile, one lever, and remeasure.
-7. Every ABI-sensitive change needs symbol/layout evidence or a recorded ABI gap.
+7. Every ABI-sensitive change needs `cpp_abi_snapshot.sh` or stronger symbol/layout evidence plus a recorded ABI gap for any unavailable rich comparison tool.
 8. Every public header must compile standalone or have a documented exception.
 9. Every security-sensitive change must map findings to CERT/Core Guideline/CWE-style categories.
 10. Every handoff must list commands, outcomes, uncovered risk, and follow-up beads.
