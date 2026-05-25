@@ -66,8 +66,8 @@ Observed on 2026-05-24 and refreshed on 2026-05-25:
 | Python Pillow | available |
 | `magick`, `compare`, `perceptualdiff` | unavailable in this environment |
 | `abi-dumper`, `abi-compliance-checker`, `pahole` | available after tool install; forward-tested on zlib and INIReader |
-| `abidiff` | unavailable; local apt package route is `abigail-tools` |
-| Universal Ctags | unavailable; installed `ctags` is Exuberant Ctags, so `abi-dumper -public-headers` filtering is not trusted |
+| `abidiff` | not on system `PATH`; forward-tested from locally extracted Ubuntu `abigail-tools` + `libabigail7` packages |
+| Universal Ctags | not on system `PATH`; forward-tested from locally extracted Ubuntu `universal-ctags` with a temporary `ctags` shim; installed `ctags` remains Exuberant Ctags |
 
 ## Canonical Command Shapes
 
@@ -141,12 +141,18 @@ abidiff libbefore.so libafter.so
 abi-dumper libbefore.so -o before.abi -vnum before -all
 abi-dumper libafter.so -o after.abi -vnum after -all
 abi-compliance-checker -l <library-name> -old before.abi -new after.abi
+printf '%s\n' include/public_api.h include/public_types.h > public-headers.txt
+abi-dumper libbefore.so -o before-public.abi -vnum before -public-headers public-headers.txt
+abi-dumper libafter.so -o after-public.abi -vnum after -public-headers public-headers.txt
+abi-compliance-checker -l <library-name> -old before-public.abi -new after-public.abi
 pahole -F dwarf -C <public_type> libbefore.so > before.layout
 pahole -F dwarf -C <public_type> libafter.so > after.layout
 diff -u before.layout after.layout
 readelf -Ws libafter.so
 objdump -T libafter.so
 ```
+
+For `abi-dumper -public-headers`, pass a directory of public headers or a file containing one header path per line. Do not pass a single header path unless that file is intentionally a header-list file; otherwise `abi-dumper` may treat every line in the header as a filename and produce useless dumps.
 
 If rich ABI tooling is unavailable, run the snapshot helper anyway and record the missing tool explicitly. Its symbol and ELF metadata evidence can catch removed exports, accidental visibility changes, SONAME/dependency drift, and obvious C linkage mistakes. It cannot prove C++ class layout, vtable compatibility, parameter type compatibility, inline/template API stability, exception ABI, allocator ownership, or semantic compatibility. If `abi-dumper -public-headers` is unavailable because Universal Ctags is missing, label the ABI Compliance Checker result as unfiltered and pair it with exported-symbol and `pahole` layout diffs.
 

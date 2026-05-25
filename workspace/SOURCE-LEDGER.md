@@ -54,6 +54,10 @@ The installed skill catalog was scanned. The relevant patterns used here:
   - Local evidence: `man -w abi-dumper abi-compliance-checker pahole`, `abi-dumper -dumpversion`, `abi-compliance-checker -dumpversion`, and `pahole --version`.
 - Debian/Ubuntu abigail package lookup: used to route the missing `abidiff` tool to its package name.
   - Local evidence: `apt-cache search abigail` returned `abigail-tools - ABI Generic Analysis and Instrumentation Library (tools)`.
+- libabigail `abidiff`: used for ABI comparison on the zlib and inih shared-library forward-test artifacts.
+  - Local evidence: `apt download abigail-tools libabigail7`, `dpkg-deb -x`, `LD_LIBRARY_PATH=/tmp/cpp-profi-abigail-20260525T0253/extracted/usr/lib/x86_64-linux-gnu /tmp/cpp-profi-abigail-20260525T0253/extracted/usr/bin/abidiff --version`, then debug-vs-sanitizer `abidiff` runs with exit `0` and empty output for zlib and INIReader.
+- Universal Ctags: used for public-header-filtered `abi-dumper`/`abi-compliance-checker` reports after the system `ctags` was identified as Exuberant Ctags.
+  - Local evidence: `apt download universal-ctags`, `dpkg-deb -x`, `/tmp/cpp-profi-universal-ctags-20260525T0255/extracted/usr/bin/ctags-universal --version`, a temporary `ctags` symlink under `/tmp/cpp-profi-universal-ctags-20260525T0255/binshim`, and public-header-list ABI reports for zlib and INIReader.
 
 ## Current Interpretation
 

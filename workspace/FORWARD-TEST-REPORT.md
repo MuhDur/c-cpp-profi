@@ -116,19 +116,34 @@ Results:
 - inih C++ shared library: generated 3,528-line ABI snapshot; exported symbol-name diff was empty after demangling; `SONAME` stayed `libINIReader.so.0`; sanitizer candidate added expected `NEEDED` dependencies on `libasan.so.8` and `libubsan.so.1`.
 - The fallback can catch missing/renamed exports, obvious visibility drift, `SONAME` drift, and dynamic dependency drift. It is not C++ ABI proof.
 
-After the user installed more tools, richer ABI tooling was forward-tested on 2026-05-25:
+After the user installed more tools, richer ABI tooling was forward-tested on 2026-05-25. `abidiff` was not on `PATH`, so the Ubuntu packages were downloaded and extracted locally under `/tmp/cpp-profi-abigail-20260525T0253` without sudo:
 
 ```text
-abidiff=missing
+abidiff=/tmp/cpp-profi-abigail-20260525T0253/extracted/usr/bin/abidiff: 2.8.0
 abi-dumper=1.4
 abi-compliance-checker=2.3
 pahole=v1.30
-ctags=Exuberant Ctags 5.9~svn20110310
+ctags on PATH=Exuberant Ctags 5.9~svn20110310
+ctags-universal=/tmp/cpp-profi-universal-ctags-20260525T0255/extracted/usr/bin/ctags-universal: Universal Ctags 5.9.0
 ```
 
-`apt-cache search abigail` reports `abigail-tools - ABI Generic Analysis and Instrumentation Library (tools)`, which is the local apt route for the missing `abidiff` tool.
+`apt-cache search abigail` reports `abigail-tools - ABI Generic Analysis and Instrumentation Library (tools)`, which is the local apt route for the missing `abidiff` tool. `apt download abigail-tools libabigail7` plus `dpkg-deb -x` produced a runnable `abidiff` when paired with `LD_LIBRARY_PATH=/tmp/cpp-profi-abigail-20260525T0253/extracted/usr/lib/x86_64-linux-gnu`.
 
-The installed `ctags` is Exuberant Ctags, not Universal Ctags. A `zlib` run with `abi-dumper -public-headers /tmp/cpp-profi-ft-zlib-20260524/zlib.h` exited `0` but emitted `ERROR: requires Universal Ctags to work properly`; `abi-compliance-checker` then rejected the dumps with `ERROR: no symbols info in the ABI dump`. The skill therefore treats public-header-filtered reports as unavailable until Universal Ctags is installed.
+The installed `ctags` is still Exuberant Ctags. Universal Ctags was therefore downloaded and extracted locally under `/tmp/cpp-profi-universal-ctags-20260525T0255`, then exposed to `abi-dumper` through a temporary `ctags` symlink in `/tmp/cpp-profi-universal-ctags-20260525T0255/binshim`.
+
+Important usage correction: `abi-dumper -public-headers` expects either a directory of public headers or a file containing a list of header paths. Passing a header file directly makes `abi-dumper` interpret each header line as a path; that bad invocation produced thousands of `ctags: Warning: cannot open input file ...` messages and `abi-compliance-checker` rejected the dump with `ERROR: no symbols info in the ABI dump`.
+
+`abidiff` commands:
+
+```bash
+LD_LIBRARY_PATH=/tmp/cpp-profi-abigail-20260525T0253/extracted/usr/lib/x86_64-linux-gnu /tmp/cpp-profi-abigail-20260525T0253/extracted/usr/bin/abidiff /tmp/cpp-profi-ft-zlib-20260524/build/debug/libz.so.1.3.2.1 /tmp/cpp-profi-ft-zlib-20260524/build/asan-ubsan/libz.so.1.3.2.1 > /tmp/cpp-profi-abigail-20260525T0253/zlib-abidiff.txt
+LD_LIBRARY_PATH=/tmp/cpp-profi-abigail-20260525T0253/extracted/usr/lib/x86_64-linux-gnu /tmp/cpp-profi-abigail-20260525T0253/extracted/usr/bin/abidiff /tmp/cpp-profi-ft-inih-meson-20260524/build/debug/libINIReader.so.0 /tmp/cpp-profi-ft-inih-meson-20260524/build/asan-ubsan/libINIReader.so.0 > /tmp/cpp-profi-abigail-20260525T0253/inih-abidiff.txt
+```
+
+Results:
+
+- zlib `abidiff`: exit `0`, empty output, no ABI differences reported.
+- inih `INIReader` `abidiff`: exit `0`, empty output, no ABI differences reported.
 
 Unfiltered ABI Compliance Checker commands:
 
@@ -147,6 +162,27 @@ Results:
 - inih `INIReader` unfiltered ABI report: binary compatibility `100%`, source compatibility `100%`, total binary compatibility problems `0`, total source compatibility problems `0`.
 - Report artifacts: `/tmp/cpp-profi-abi-rich-20260525/zlib-unfiltered-abi-report.html` and `/tmp/cpp-profi-abi-rich-20260525/inih-unfiltered-abi-report.html`.
 
+Public-header-filtered ABI Compliance Checker commands:
+
+```bash
+printf '%s\n' /tmp/cpp-profi-ft-zlib-20260524/zlib.h /tmp/cpp-profi-ft-zlib-20260524/zconf.h > /tmp/cpp-profi-abi-public-20260525T0256/zlib-public-headers.txt
+PATH=/tmp/cpp-profi-universal-ctags-20260525T0255/binshim:$PATH abi-dumper /tmp/cpp-profi-ft-zlib-20260524/build/debug/libz.so.1.3.2.1 -o /tmp/cpp-profi-abi-public-20260525T0256/zlib-debug-public-list.abi -vnum debug -public-headers /tmp/cpp-profi-abi-public-20260525T0256/zlib-public-headers.txt
+PATH=/tmp/cpp-profi-universal-ctags-20260525T0255/binshim:$PATH abi-dumper /tmp/cpp-profi-ft-zlib-20260524/build/asan-ubsan/libz.so.1.3.2.1 -o /tmp/cpp-profi-abi-public-20260525T0256/zlib-asan-public-list.abi -vnum asan-ubsan -public-headers /tmp/cpp-profi-abi-public-20260525T0256/zlib-public-headers.txt
+abi-compliance-checker -l zlib-public-list -old /tmp/cpp-profi-abi-public-20260525T0256/zlib-debug-public-list.abi -new /tmp/cpp-profi-abi-public-20260525T0256/zlib-asan-public-list.abi -report-path /tmp/cpp-profi-abi-public-20260525T0256/zlib-public-list-compat.html
+
+printf '%s\n' /tmp/cpp-profi-ft-inih-meson-20260524/cpp/INIReader.h /tmp/cpp-profi-ft-inih-meson-20260524/ini.h > /tmp/cpp-profi-abi-public-20260525T0256/inih-public-headers.txt
+PATH=/tmp/cpp-profi-universal-ctags-20260525T0255/binshim:$PATH abi-dumper /tmp/cpp-profi-ft-inih-meson-20260524/build/debug/libINIReader.so.0 -o /tmp/cpp-profi-abi-public-20260525T0256/inih-debug-public-list.abi -vnum debug -public-headers /tmp/cpp-profi-abi-public-20260525T0256/inih-public-headers.txt
+PATH=/tmp/cpp-profi-universal-ctags-20260525T0255/binshim:$PATH abi-dumper /tmp/cpp-profi-ft-inih-meson-20260524/build/asan-ubsan/libINIReader.so.0 -o /tmp/cpp-profi-abi-public-20260525T0256/inih-asan-public-list.abi -vnum asan-ubsan -public-headers /tmp/cpp-profi-abi-public-20260525T0256/inih-public-headers.txt
+abi-compliance-checker -l inih-public-list -old /tmp/cpp-profi-abi-public-20260525T0256/inih-debug-public-list.abi -new /tmp/cpp-profi-abi-public-20260525T0256/inih-asan-public-list.abi -report-path /tmp/cpp-profi-abi-public-20260525T0256/inih-public-list-compat.html
+```
+
+Results:
+
+- zlib public-header-filtered ABI report: binary compatibility `100%`, source compatibility `100%`, total binary compatibility problems `0`, total source compatibility problems `0`.
+- inih `INIReader` public-header-filtered ABI report: binary compatibility `100%`, source compatibility `100%`, total binary compatibility problems `0`, total source compatibility problems `0`.
+- Report artifacts: `/tmp/cpp-profi-abi-public-20260525T0256/zlib-public-list-compat.html` and `/tmp/cpp-profi-abi-public-20260525T0256/inih-public-list-compat.html`.
+- `abi-dumper` warned that `-O0`/non-`-Og` debug info is lower quality for this analysis; the warning is recorded as an evidence-quality note, not ignored.
+
 Representative layout commands:
 
 ```bash
@@ -164,7 +200,7 @@ Results:
 - `INIReader`: layout text has size `56`, members `2`, one 4-byte hole before `_values`; debug-vs-sanitizer diff had `0` lines.
 - `pahole -F dwarf` produced useful layout output but exited `1` with `Invalid argument` on these shared objects; the diff step is therefore the gate for the emitted layout text, not the raw `pahole` exit code on this environment.
 
-Interpretation: the skill now has forward-tested evidence for both basic ELF/symbol snapshots and richer ABI/API/layout checks. Unfiltered ABI reports are useful but can include non-public implementation surface; public-header-filtered compatibility reports still need Universal Ctags or another reliable public API filter.
+Interpretation: the skill now has forward-tested evidence for basic ELF/symbol snapshots, `abidiff`, unfiltered and public-header-filtered ABI/API reports, and `pahole` layout checks. Public-header-filtered reports require Universal Ctags and a correct header-list file or header directory.
 
 ## Native UI Golden Forward Test
 
