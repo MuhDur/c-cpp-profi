@@ -34,6 +34,7 @@ The installed skill catalog was scanned. The relevant patterns used here:
   - https://clang.llvm.org/docs/ControlFlowIntegrity.html
 - LLVM libFuzzer docs: used for coverage-guided fuzzing guidance and the `LLVMFuzzerTestOneInput` model.
   - https://llvm.org/docs/LibFuzzer.html
+  - Local evidence: `clang`/`clang++` 20.1.8 built `/tmp/cpp-profi-fuzz-zlib-20260525T0304/zlib_roundtrip_fuzzer` with `-fsanitize=fuzzer,address,undefined`; the zlib round-trip fuzz campaign ran 10,000 units and replayed the generated corpus without sanitizer or oracle failure.
 - CMake presets docs: used for the tracked `CMakePresets.json` versus untracked `CMakeUserPresets.json` distinction and preset-first gate selection.
   - https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html
 - Meson built-in options docs: used for native-file sanitizer option templates.

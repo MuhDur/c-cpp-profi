@@ -93,13 +93,77 @@ Result: Valgrind exited 99 after reporting one "Conditional jump or move depends
 
 6. Valgrind can add value even after sanitizer and CTest passes. zlib's ASan+UBSan CTest run passed, but a representative Valgrind run on `zlib_example` reported an uninitialized-value path. The quality gate now includes a Valgrind/Memcheck option for high memory-risk work.
 
-7. Rich ABI comparison tooling was initially unavailable, so the first ABI pass used `nm`, `readelf`, `objdump`, and `c++filt` as a fallback. After additional tools were installed, `abi-dumper`, `abi-compliance-checker`, and `pahole` were forward-tested as described in the ABI section below. `abidiff` remains unavailable until `abigail-tools` is installed.
+7. Rich ABI comparison tooling was initially unavailable, so the first ABI pass used `nm`, `readelf`, `objdump`, and `c++filt` as a fallback. After additional tools were installed or extracted locally, `abidiff`, `abi-dumper`, `abi-compliance-checker`, Universal Ctags, and `pahole` were forward-tested as described in the ABI section below.
 
 8. `shellcheck`, `clang`, `clang-tidy`, `cppcheck`, `meson`, and `valgrind` are available now. `shellcheck` passed for all helper scripts.
 
 9. Meson sanitizer support worked cleanly on a real mixed C/C++ project through `-Db_sanitize=address,undefined`. The correct skill path is `meson setup`, `meson compile`, `meson test`, `meson introspect`, then a separate sanitizer build directory.
 
 10. inih demonstrates why static-analysis output cannot be reduced to "exit 0": `clang-tidy` emitted analyzer warnings on `ini.c` even though Meson debug tests and ASan+UBSan tests passed.
+
+## Fuzz Forward Tests
+
+The skill's fuzz workflow was forward-tested against zlib's in-memory compression/decompression boundary on 2026-05-25. This target was chosen because it consumes untrusted bytes, has a small round-trip oracle, exercises real C code, and avoids filesystem, network, sleep, randomness, and global mutable state in the hot fuzz path.
+
+Harness path:
+
+```text
+/tmp/cpp-profi-fuzz-zlib-20260525T0304/zlib_roundtrip_fuzzer.cc
+```
+
+Harness oracle:
+
+- Reject inputs larger than 4096 bytes to bound runtime and memory.
+- Compress input bytes with `compress2(..., Z_BEST_SPEED)`.
+- Decompress with `uncompress`.
+- Trap if status is not `Z_OK`, decompressed size differs, or any byte differs from the original input.
+
+The first build attempt compiled every zlib `.c` file and failed on `gz*` POSIX file APIs:
+
+```text
+gzlib.c: call to undeclared function 'lseek'
+gzread.c: call to undeclared function 'read'
+gzwrite.c: call to undeclared function 'write'
+```
+
+Interpretation: a good fuzz harness should link the narrow library slice it actually exercises. The successful target compiled only zlib's in-memory compression/decompression sources.
+
+Successful build:
+
+```bash
+mkdir -p /tmp/cpp-profi-fuzz-zlib-20260525T0304/obj-memory
+for src in adler32.c compress.c crc32.c deflate.c inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c; do
+  clang -g -O1 -fsanitize=fuzzer-no-link,address,undefined -fno-omit-frame-pointer -I/tmp/cpp-profi-ft-zlib-20260524 -c /tmp/cpp-profi-ft-zlib-20260524/$src -o /tmp/cpp-profi-fuzz-zlib-20260525T0304/obj-memory/${src%.c}.o
+done
+clang++ -g -O1 -fsanitize=fuzzer,address,undefined -fno-omit-frame-pointer -I/tmp/cpp-profi-ft-zlib-20260524 /tmp/cpp-profi-fuzz-zlib-20260525T0304/zlib_roundtrip_fuzzer.cc /tmp/cpp-profi-fuzz-zlib-20260525T0304/obj-memory/*.o -o /tmp/cpp-profi-fuzz-zlib-20260525T0304/zlib_roundtrip_fuzzer
+```
+
+Campaign command:
+
+```bash
+ASAN_OPTIONS=detect_leaks=1:abort_on_error=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1 /tmp/cpp-profi-fuzz-zlib-20260525T0304/zlib_roundtrip_fuzzer /tmp/cpp-profi-fuzz-zlib-20260525T0304/corpus -runs=10000 -print_final_stats=1 -max_len=4096
+```
+
+Campaign result:
+
+- Exit `0`, no sanitizer or oracle failure.
+- Seed corpus: 3 files, 44 bytes.
+- Final stats: `10000` executed units, `10000` average exec/s, `241` new units added, peak RSS `346` MB.
+- Corpus after run: 165 files, 3190 bytes on disk.
+- Final libFuzzer state: `cov: 2338`, `ft: 6369`, `corp: 165/3190b`, `lim: 34`.
+
+Corpus replay command:
+
+```bash
+ASAN_OPTIONS=detect_leaks=1:abort_on_error=1 UBSAN_OPTIONS=halt_on_error=1:abort_on_error=1 /tmp/cpp-profi-fuzz-zlib-20260525T0304/zlib_roundtrip_fuzzer /tmp/cpp-profi-fuzz-zlib-20260525T0304/corpus -runs=1 -print_final_stats=1 -max_len=4096
+```
+
+Corpus replay result:
+
+- Exit `0`, no sanitizer or oracle failure.
+- Replayed `166` executed units from the generated corpus.
+- Coverage/features stayed stable: `cov: 2338`, `ft: 6369`.
+- No new units added during replay.
 
 ## ABI Forward Tests
 
