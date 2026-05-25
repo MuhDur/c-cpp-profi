@@ -14,7 +14,7 @@ The goal is not "write clever C++." The goal is code a senior C/C++ maintainer w
 ## First Pass
 
 1. Read project instructions first: `AGENTS.md`, build docs, contribution docs, issue tracker state, and local style files.
-2. Inventory the project instead of guessing: run `bash skill/c-cpp-systems-engineering/scripts/cpp_inventory.sh <repo>` when available.
+2. Inventory the project instead of guessing: run `bash skill/c-cpp-profi/scripts/cpp_inventory.sh <repo>` when available.
 3. Identify the boundary: executable, library, public header, ABI, embedded target, parser, allocator, UI/rendering, or build tooling.
 4. Choose the gate set before editing. A small change still needs compile and focused tests; parser, memory, concurrency, or security changes need sanitizer and fuzz gates.
 5. Keep diffs small. In C/C++, broad cleanup can hide lifetime, ABI, and undefined-behavior changes.
@@ -89,13 +89,13 @@ Load only the relevant file:
 All scripts are read-only unless the script text explicitly says otherwise.
 
 ```bash
-bash skill/c-cpp-systems-engineering/scripts/cpp_inventory.sh .
-bash skill/c-cpp-systems-engineering/scripts/cpp_gate_plan.sh .
-bash skill/c-cpp-systems-engineering/scripts/cpp_risk_scan.sh .
-bash skill/c-cpp-systems-engineering/scripts/cpp_gate_report.sh .
-bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh <candidate-library> [baseline-library]
-python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py <baseline-image> <candidate-image> --threshold 0
-python3 skill/c-cpp-systems-engineering/scripts/validate_skill_contract.py skill/c-cpp-systems-engineering
+bash skill/c-cpp-profi/scripts/cpp_inventory.sh .
+bash skill/c-cpp-profi/scripts/cpp_gate_plan.sh .
+bash skill/c-cpp-profi/scripts/cpp_risk_scan.sh .
+bash skill/c-cpp-profi/scripts/cpp_gate_report.sh .
+bash skill/c-cpp-profi/scripts/cpp_abi_snapshot.sh <candidate-library> [baseline-library]
+python3 skill/c-cpp-profi/scripts/cpp_pixel_diff.py <baseline-image> <candidate-image> --threshold 0
+python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi
 ```
 
 Use the inventory script at the start of non-trivial work, the gate plan before changing build/test commands, the risk scan before review or after touching memory/input/concurrency code, the ABI snapshot helper when public libraries or plugin boundaries are touched, the pixel diff helper when rendered image artifacts are touched, and the gate report script before handoff. Prefer running `cpp_risk_scan.sh` on changed files or touched directories; whole-repo scans on mature C/C++ projects are intentionally noisy triage, not a defect list.

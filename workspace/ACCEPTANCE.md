@@ -4,7 +4,7 @@
 
 The first usable version is complete when all of these are true:
 
-- `skill/c-cpp-systems-engineering/SKILL.md` declares skill identity `c-cpp-profi`, has valid frontmatter, and has no template placeholders.
+- `skill/c-cpp-profi/SKILL.md` declares skill identity `c-cpp-profi`, has valid frontmatter, and has no template placeholders.
 - `agents/openai.yaml` exists and matches the skill purpose.
 - Reference files cover quality gates, memory safety, security, testing/fuzzing, performance, build/portability, and agent operating mode.
 - Scripts are read-only and can run from a target repo without modifying files.
@@ -18,7 +18,7 @@ The first usable version is complete when all of these are true:
 - Meson workflow is forward-tested on a real mixed C/C++ project.
 - Expert canon and toolchain matrix exist and are referenced from `SKILL.md`.
 - Examples exist for C library, modern C++ library, embedded C, parser/input, and native UI/rendering workflows.
-- The conformance harness passes: `python3 skill/c-cpp-systems-engineering/scripts/validate_skill_contract.py skill/c-cpp-systems-engineering`.
+- The conformance harness passes: `python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi`.
 
 ## Quality Bar
 

@@ -11,8 +11,8 @@ For the broader expert workflow and tool catalog, read [C-CPP-EXPERT-CANON.md](C
 Start with:
 
 ```bash
-bash skill/c-cpp-systems-engineering/scripts/cpp_inventory.sh .
-bash skill/c-cpp-systems-engineering/scripts/cpp_gate_plan.sh .
+bash skill/c-cpp-profi/scripts/cpp_inventory.sh .
+bash skill/c-cpp-profi/scripts/cpp_gate_plan.sh .
 ```
 
 Record the compiler, standard, build system, test runner, and whether `compile_commands.json` exists.
@@ -22,7 +22,7 @@ For reusable CMake/Meson sanitizer and fuzz scaffolds, read [TOOLCHAIN-TEMPLATES
 For skill maintenance, run the conformance harness:
 
 ```bash
-python3 skill/c-cpp-systems-engineering/scripts/validate_skill_contract.py skill/c-cpp-systems-engineering
+python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi
 ```
 
 ## Gate Report
@@ -30,7 +30,7 @@ python3 skill/c-cpp-systems-engineering/scripts/validate_skill_contract.py skill
 Every non-trivial C/C++ handoff needs a compact evidence packet. Generate the skeleton, then fill in commands and outcomes:
 
 ```bash
-bash skill/c-cpp-systems-engineering/scripts/cpp_gate_report.sh .
+bash skill/c-cpp-profi/scripts/cpp_gate_report.sh .
 ```
 
 The report must distinguish:
@@ -139,7 +139,7 @@ Anti-patterns:
 Use `cpp_risk_scan.sh` as triage:
 
 ```bash
-bash skill/c-cpp-systems-engineering/scripts/cpp_risk_scan.sh <changed-files-or-dirs>
+bash skill/c-cpp-profi/scripts/cpp_risk_scan.sh <changed-files-or-dirs>
 ```
 
 Prefer changed files, touched directories, or the public API surface under review. Whole-repo scans are useful for orientation, but mature C/C++ repos often contain intentional allocator wrappers, tests, examples, platform shims, and compatibility code. Treat matches as review prompts, not confirmed bugs.
@@ -149,7 +149,7 @@ Prefer changed files, touched directories, or the public API surface under revie
 For shared libraries, plugins, SDKs, FFI boundaries, and public headers, run the project-approved ABI tool first. If no rich ABI tool is available, use the skill fallback snapshot and record that the result is narrower:
 
 ```bash
-bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh <candidate-library> [baseline-library]
+bash skill/c-cpp-profi/scripts/cpp_abi_snapshot.sh <candidate-library> [baseline-library]
 ```
 
 Required interpretation:
@@ -356,7 +356,7 @@ For UI/rendering/native graphics/image/video changes, read [NATIVE-UI-GOLDENS.md
 Fallback image comparison:
 
 ```bash
-python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py <baseline-image> <candidate-image> --threshold 0
+python3 skill/c-cpp-profi/scripts/cpp_pixel_diff.py <baseline-image> <candidate-image> --threshold 0
 ffmpeg -hide_banner -i <baseline-image> -i <candidate-image> -lavfi ssim=stats_file=ssim.log -f null -
 ffmpeg -hide_banner -i <baseline-image> -i <candidate-image> -lavfi psnr=stats_file=psnr.log -f null -
 ```

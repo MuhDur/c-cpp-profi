@@ -130,8 +130,8 @@ afl-fuzz -i seeds -o findings -- ./afl_target @@
 ### ABI/API
 
 ```bash
-bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh libafter.so
-bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh libafter.so libbefore.so
+bash skill/c-cpp-profi/scripts/cpp_abi_snapshot.sh libafter.so
+bash skill/c-cpp-profi/scripts/cpp_abi_snapshot.sh libafter.so libbefore.so
 nm -D --defined-only libbefore.so | c++filt > before.symbols
 nm -D --defined-only libafter.so | c++filt > after.symbols
 diff -u before.symbols after.symbols
@@ -151,8 +151,8 @@ If rich ABI tooling is unavailable, run the snapshot helper anyway and record th
 ### Native UI And Image Artifacts
 
 ```bash
-python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py baseline.png candidate.png --threshold 0
-python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py baseline.ppm candidate.ppm --threshold 0
+python3 skill/c-cpp-profi/scripts/cpp_pixel_diff.py baseline.png candidate.png --threshold 0
+python3 skill/c-cpp-profi/scripts/cpp_pixel_diff.py baseline.ppm candidate.ppm --threshold 0
 ffmpeg -hide_banner -i baseline.png -i candidate.png -lavfi ssim=stats_file=ssim.log -f null -
 ffmpeg -hide_banner -i baseline.png -i candidate.png -lavfi psnr=stats_file=psnr.log -f null -
 ffmpeg -hide_banner -f x11grab -draw_mouse 0 -video_size 160x96 -i "$DISPLAY+0,0" -frames:v 1 capture.png

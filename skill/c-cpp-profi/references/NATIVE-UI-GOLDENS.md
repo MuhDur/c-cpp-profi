@@ -28,7 +28,7 @@ If any value is nondeterministic, freeze it or record that the golden is weaker 
 When no project-approved graphical diff tool exists, use the bundled fallback for image artifacts:
 
 ```bash
-python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py baseline.png candidate.png --threshold 0
+python3 skill/c-cpp-profi/scripts/cpp_pixel_diff.py baseline.png candidate.png --threshold 0
 ```
 
 The helper supports exact or per-channel thresholded pixel comparison. It reads PNG and common image formats through Pillow when available, and reads binary PGM/PPM without external dependencies. A nonzero threshold is a visual contract; record why it is safe.
@@ -47,7 +47,7 @@ For headless X11 GUI capture when a project has no stronger harness:
 ```bash
 xvfb-run -a -s "-screen 0 <width>x<height>x24" sh ./capture-golden.sh
 ffmpeg -hide_banner -f x11grab -draw_mouse 0 -video_size <width>x<height> -i "$DISPLAY+0,0" -frames:v 1 capture.png
-python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py expected.ppm capture.png --threshold 0
+python3 skill/c-cpp-profi/scripts/cpp_pixel_diff.py expected.ppm capture.png --threshold 0
 ```
 
 Record the display server, screen size/depth, window position, capture region, window-manager/compositor state, renderer backend, and whether mouse cursors were suppressed. A screenshot proves the configured matrix only; do not generalize it to untested DPI, font, GPU, theme, compositor, or display-server combinations.

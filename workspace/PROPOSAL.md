@@ -41,7 +41,7 @@ Agents should not be allowed to stop at "it compiles" for risky code. They shoul
 
 ## Design Decisions
 
-- Keep the skill in this repo first: identity `c-cpp-profi`, workspace path `skill/c-cpp-systems-engineering/`.
+- Keep the skill in this repo first: identity `c-cpp-profi`, workspace path `skill/c-cpp-profi/`.
 - Do not install globally until the first version is validated.
 - Do not make C++ "safe" by assertion. Require evidence and residual-risk reporting.
 - Treat C and C++ as related but distinct: C++ defaults to RAII and typed views; C defaults to explicit owner/release protocols and size-carrying APIs.

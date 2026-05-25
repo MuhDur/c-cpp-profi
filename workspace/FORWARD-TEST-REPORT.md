@@ -106,8 +106,8 @@ Result: Valgrind exited 99 after reporting one "Conditional jump or move depends
 The skill includes `cpp_abi_snapshot.sh`, a read-only fallback helper that prints a Markdown ABI/API evidence packet from `readelf`, `objdump`, `nm`, and `c++filt`. It does not create temporary files or modify the target repository. The fallback was forward-tested on real C and C++ shared-library artifacts:
 
 ```bash
-bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh /tmp/cpp-profi-ft-zlib-20260524/build/asan-ubsan/libz.so.1.3.2.1 /tmp/cpp-profi-ft-zlib-20260524/build/debug/libz.so.1.3.2.1 > /tmp/cpp-profi-abi-snapshots-20260524/zlib-debug-vs-asan.md
-bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh /tmp/cpp-profi-ft-inih-meson-20260524/build/asan-ubsan/libINIReader.so.0 /tmp/cpp-profi-ft-inih-meson-20260524/build/debug/libINIReader.so.0 > /tmp/cpp-profi-abi-snapshots-20260524/inih-INIReader-debug-vs-asan.md
+bash skill/c-cpp-profi/scripts/cpp_abi_snapshot.sh /tmp/cpp-profi-ft-zlib-20260524/build/asan-ubsan/libz.so.1.3.2.1 /tmp/cpp-profi-ft-zlib-20260524/build/debug/libz.so.1.3.2.1 > /tmp/cpp-profi-abi-snapshots-20260524/zlib-debug-vs-asan.md
+bash skill/c-cpp-profi/scripts/cpp_abi_snapshot.sh /tmp/cpp-profi-ft-inih-meson-20260524/build/asan-ubsan/libINIReader.so.0 /tmp/cpp-profi-ft-inih-meson-20260524/build/debug/libINIReader.so.0 > /tmp/cpp-profi-abi-snapshots-20260524/inih-INIReader-debug-vs-asan.md
 ```
 
 Results:
@@ -265,7 +265,7 @@ Commands:
 cc -std=c17 -O2 -Wall -Wextra -Wpedantic /tmp/cpp-profi-gui-capture-vGRtCa/x11_capture_fixture.c -lX11 -o /tmp/cpp-profi-gui-capture-vGRtCa/x11_capture_fixture
 xvfb-run -a -s "-screen 0 160x96x24" sh /tmp/cpp-profi-gui-capture-vGRtCa/run_capture.sh
 ffprobe -v error -show_entries stream=width,height,pix_fmt -of default=nw=1 /tmp/cpp-profi-gui-capture-vGRtCa/capture.png
-python3 skill/c-cpp-systems-engineering/scripts/cpp_pixel_diff.py /tmp/cpp-profi-gui-capture-vGRtCa/expected.ppm /tmp/cpp-profi-gui-capture-vGRtCa/capture.png --threshold 0
+python3 skill/c-cpp-profi/scripts/cpp_pixel_diff.py /tmp/cpp-profi-gui-capture-vGRtCa/expected.ppm /tmp/cpp-profi-gui-capture-vGRtCa/capture.png --threshold 0
 ```
 
 The capture script launched the fixture inside Xvfb, captured the 160x96 root region with:
