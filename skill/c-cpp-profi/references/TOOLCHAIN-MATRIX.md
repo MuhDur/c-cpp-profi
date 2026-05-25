@@ -52,7 +52,7 @@ The project contract still wins. Do not migrate a project to a new tool just bec
 
 ## Local Environment Snapshot
 
-Observed on 2026-05-24:
+Observed on 2026-05-24 and refreshed on 2026-05-25:
 
 | Tool | Status |
 |---|---|
@@ -65,7 +65,9 @@ Observed on 2026-05-24:
 | `ffmpeg`, `ffprobe` | available |
 | Python Pillow | available |
 | `magick`, `compare`, `perceptualdiff` | unavailable in this environment |
-| `abidiff`, `abi-dumper`, `abi-compliance-checker`, `pahole` | unavailable in this environment |
+| `abi-dumper`, `abi-compliance-checker`, `pahole` | available after tool install; forward-tested on zlib and INIReader |
+| `abidiff` | unavailable; local apt package route is `abigail-tools` |
+| Universal Ctags | unavailable; installed `ctags` is Exuberant Ctags, so `abi-dumper -public-headers` filtering is not trusted |
 
 ## Canonical Command Shapes
 

@@ -93,7 +93,7 @@ Result: Valgrind exited 99 after reporting one "Conditional jump or move depends
 
 6. Valgrind can add value even after sanitizer and CTest passes. zlib's ASan+UBSan CTest run passed, but a representative Valgrind run on `zlib_example` reported an uninitialized-value path. The quality gate now includes a Valgrind/Memcheck option for high memory-risk work.
 
-7. Rich ABI comparison tooling is not installed in this environment: `abidiff`, `abi-dumper`, and `abi-compliance-checker` were unavailable. Basic symbol extraction with `nm` worked and is useful as a minimum ABI visibility probe, but it is not ABI compatibility proof.
+7. Rich ABI comparison tooling was initially unavailable, so the first ABI pass used `nm`, `readelf`, `objdump`, and `c++filt` as a fallback. After additional tools were installed, `abi-dumper`, `abi-compliance-checker`, and `pahole` were forward-tested as described in the ABI section below. `abidiff` remains unavailable until `abigail-tools` is installed.
 
 8. `shellcheck`, `clang`, `clang-tidy`, `cppcheck`, `meson`, and `valgrind` are available now. `shellcheck` passed for all helper scripts.
 
