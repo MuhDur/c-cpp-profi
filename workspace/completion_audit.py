@@ -8,6 +8,7 @@ evidence, local skill-root exposure, stale wording, and the remaining Beads.
 
 from __future__ import annotations
 
+import argparse
 import json
 import subprocess  # nosec B404 - this only invokes fixed local validators.
 import sys
@@ -26,8 +27,10 @@ REQUIRED_FILES = [
     "workspace/ACCEPTANCE.md",
     "workspace/FORWARD-TEST-REPORT.md",
     "workspace/PROPOSAL.md",
+    "workspace/RATING.md",
     "workspace/SOURCE-LEDGER.md",
     ".skill-loop-progress.md",
+    ".github/workflows/skill-validate.yml",
     "skill/c-cpp-profi/SKILL.md",
     "skill/c-cpp-profi/agents/openai.yaml",
     "skill/c-cpp-profi/references/C-CPP-EXPERT-CANON.md",
@@ -35,6 +38,7 @@ REQUIRED_FILES = [
     "skill/c-cpp-profi/references/QUALITY-GATES.md",
     "skill/c-cpp-profi/references/TESTING-FUZZING.md",
     "skill/c-cpp-profi/references/NATIVE-UI-GOLDENS.md",
+    "skill/c-cpp-profi/scripts/cpp_evidence_check.py",
 ]
 
 STALE_PHRASES = [
@@ -54,6 +58,8 @@ EVIDENCE_NEEDLES = {
         "FTXUI was used",
         "FFmpeg SSIM/PSNR",
         "X11/Xvfb",
+        "/usr/bin/abidiff",
+        "abigail-tools` and `libabigail7` are installed",
     ],
     "workspace/SOURCE-LEDGER.md": [
         "LLVM libFuzzer docs",
@@ -62,6 +68,7 @@ EVIDENCE_NEEDLES = {
         "Universal Ctags",
         "C++ Core Guidelines",
         "SEI CERT C and C++ Coding Standards",
+        "After global installation",
     ],
     ".skill-loop-progress.md": [
         "## Status: COMPLETE - 7 of 7",
@@ -84,13 +91,31 @@ EVIDENCE_NEEDLES = {
     "workspace/ACCEPTANCE.md": [
         "Remaining gaps are repo hygiene or remote-publication follow-ups",
         "Local skill-root availability",
+        "Evidence-packet enforcement",
         "Proven locally",
+    ],
+    "workspace/RATING.md": [
+        "Before rating: 10.4/12",
+        "After rating: 12.0/12",
+        "Innovation credit",
+        "Not Proven By This Rating",
+    ],
+    "skill/c-cpp-profi/SKILL.md": [
+        "cpp_evidence_check.py",
+    ],
+    "skill/c-cpp-profi/references/QUALITY-GATES.md": [
+        "validate the filled packet",
+        "Profiles are intentionally stricter",
+    ],
+    ".github/workflows/skill-validate.yml": [
+        "workspace/completion_audit.py --portable",
+        "Evidence checker rejects template",
+        "Evidence checker accepts filled parser report",
     ],
 }
 
 ALLOWED_OPEN_BEADS = {
     "cpp-1ko": "Clean generated foo.gz after explicit approval",
-    "cpp-oym": "Configure git remote and upstream for landing workflow",
 }
 JSON_DECODER = json.JSONDecoder()
 
@@ -209,27 +234,40 @@ def check_open_beads(errors: list[str]) -> None:
         )
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--portable",
+        action="store_true",
+        help="skip local skill-root and quick_validate checks that depend on this workstation",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_args()
     errors: list[str] = []
 
     if not SKILL.exists():
         add_error(errors, f"skill directory missing: {SKILL}")
 
     check_required_files(errors)
-    check_skill_roots(errors)
+    if not args.portable:
+        check_skill_roots(errors)
     check_acceptance_table(errors)
     check_stale_phrases(errors)
     check_evidence_needles(errors)
     check_open_beads(errors)
 
     validator = SKILL / "scripts" / "validate_skill_contract.py"
-    for target in [SKILL, CODEX_ROOT, AGENTS_ROOT]:
+    validator_targets = [SKILL] if args.portable else [SKILL, CODEX_ROOT, AGENTS_ROOT]
+    for target in validator_targets:
         run_checked([sys.executable, str(validator), str(target)], errors)
 
-    if QUICK_VALIDATE.exists():
-        for target in [SKILL, CODEX_ROOT, AGENTS_ROOT]:
+    if QUICK_VALIDATE.exists() and not args.portable:
+        for target in validator_targets:
             run_checked([sys.executable, str(QUICK_VALIDATE), str(target)], errors)
-    else:
+    elif not args.portable:
         add_error(errors, f"quick_validate.py missing: {QUICK_VALIDATE}")
 
     if errors:

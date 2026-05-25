@@ -135,4 +135,15 @@ Use statuses: passed, failed, not run, not applicable.
 - Missing gates:
 - Why missing gates are acceptable or follow-up issue:
 - Follow-up issues:
+
+## Evidence Checker
+
+Run before claiming completion:
+
+\`\`\`bash
+python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <this-report.md> --profile basic
+\`\`\`
+
+Add risk profiles for the touched surface: parser, memory, security, public-abi,
+performance, concurrency, refactor, native-ui, portability.
 REPORT

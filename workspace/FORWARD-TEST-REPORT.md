@@ -180,7 +180,7 @@ Results:
 - inih C++ shared library: generated 3,528-line ABI snapshot; exported symbol-name diff was empty after demangling; `SONAME` stayed `libINIReader.so.0`; sanitizer candidate added expected `NEEDED` dependencies on `libasan.so.8` and `libubsan.so.1`.
 - The fallback can catch missing/renamed exports, obvious visibility drift, `SONAME` drift, and dynamic dependency drift. It is not C++ ABI proof.
 
-After the user installed more tools, richer ABI tooling was forward-tested on 2026-05-25. `abidiff` was not on `PATH`, so the Ubuntu packages were downloaded and extracted locally under `/tmp/cpp-profi-abigail-20260525T0253` without sudo:
+After the user installed more tools, richer ABI tooling was forward-tested on 2026-05-25. Before global installation, `abidiff` was not on `PATH`, so the Ubuntu packages were downloaded and extracted locally under `/tmp/cpp-profi-abigail-20260525T0253` without sudo:
 
 ```text
 abidiff=/tmp/cpp-profi-abigail-20260525T0253/extracted/usr/bin/abidiff: 2.8.0
@@ -265,6 +265,20 @@ Results:
 - `pahole -F dwarf` produced useful layout output but exited `1` with `Invalid argument` on these shared objects; the diff step is therefore the gate for the emitted layout text, not the raw `pahole` exit code on this environment.
 
 Interpretation: the skill now has forward-tested evidence for basic ELF/symbol snapshots, `abidiff`, unfiltered and public-header-filtered ABI/API reports, and `pahole` layout checks. Public-header-filtered reports require Universal Ctags and a correct header-list file or header directory.
+
+Refresh after the user installed `abigail-tools` globally:
+
+```bash
+command -v abidiff
+abidiff --version
+apt-cache policy abigail-tools libabigail7
+```
+
+Results:
+
+- `abidiff` is now available at `/usr/bin/abidiff`.
+- `abidiff --version` reports `abidiff: 2.8.0`.
+- `abigail-tools` and `libabigail7` are installed at version `2.8-2`.
 
 ## Native UI Golden Forward Test
 
@@ -397,7 +411,8 @@ Interpretation: the skill now has forward-tested evidence for real headless GUI 
 - The graphical pixel golden-artifact workflow has now been forward-tested on a deterministic C PNG renderer, including both pass and fail behavior.
 - FFmpeg SSIM/PSNR metric evidence has now been forward-tested on the same image artifacts.
 - Headless GUI screenshot capture has now been forward-tested through a real C/Xlib window under Xvfb with FFmpeg `x11grab`.
+- `cpp_evidence_check.py` now turns filled gate reports into deterministic completion contracts by risk profile, and the GitHub Actions workflow exercises both reject-template and accept-filled-report paths.
 
 ## Remaining Gaps
 
-- Forward-test `abidiff` once `abigail-tools` is installed, and forward-test public-header-filtered ABI reports once Universal Ctags or another reliable public API filter is available.
+- No known skill-capability gap remains in the forward-tested C/C++ workflow set. Remaining work is release hygiene, broader blind-agent validation, and project-specific matrices that cannot be proven generically inside this workspace.

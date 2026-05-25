@@ -66,7 +66,7 @@ Observed on 2026-05-24 and refreshed on 2026-05-25:
 | Python Pillow | available |
 | `magick`, `compare`, `perceptualdiff` | unavailable in this environment |
 | `abi-dumper`, `abi-compliance-checker`, `pahole` | available after tool install; forward-tested on zlib and INIReader |
-| `abidiff` | not on system `PATH`; forward-tested from locally extracted Ubuntu `abigail-tools` + `libabigail7` packages |
+| `abidiff` | available at `/usr/bin/abidiff`, version 2.8.0 from installed `abigail-tools`; also forward-tested earlier from locally extracted Ubuntu `abigail-tools` + `libabigail7` packages |
 | Universal Ctags | not on system `PATH`; forward-tested from locally extracted Ubuntu `universal-ctags` with a temporary `ctags` shim; installed `ctags` remains Exuberant Ctags |
 
 ## Canonical Command Shapes

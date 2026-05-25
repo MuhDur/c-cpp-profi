@@ -33,6 +33,15 @@ Every non-trivial C/C++ handoff needs a compact evidence packet. Generate the sk
 bash skill/c-cpp-profi/scripts/cpp_gate_report.sh .
 ```
 
+Before claiming completion, validate the filled packet with the applicable risk profile:
+
+```bash
+python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile basic
+python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile parser --profile public-abi
+```
+
+Profiles are intentionally stricter than prose handoff. `basic` requires inventory, compile, and tests. `memory` adds static analysis and ASan+UBSan. `parser` adds static analysis, ASan+UBSan, and fuzz/corpus evidence. `public-abi`, `performance`, `concurrency`, `refactor`, `native-ui`, `portability`, and `security` each require their matching gate to be passed or the checker fails. For a blocked handoff, use `--allow-failed` only when the final answer clearly says the work is not complete.
+
 The report must distinguish:
 
 - `passed`: exact command ran and covered the touched behavior.

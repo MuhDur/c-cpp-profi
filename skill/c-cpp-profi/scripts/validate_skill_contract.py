@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404 - this only invokes fixed local syntax checks.
 import sys
 from pathlib import Path
 
@@ -32,6 +32,7 @@ REQUIRED_REFERENCES = [
 
 REQUIRED_SCRIPTS = [
     "cpp_abi_snapshot.sh",
+    "cpp_evidence_check.py",
     "cpp_gate_plan.sh",
     "cpp_gate_report.sh",
     "cpp_inventory.sh",
@@ -67,6 +68,7 @@ REQUIRED_SKILL_TEXT = [
     "CONCURRENCY-DEADLOCKS.md",
     "REFACTOR-ISOMORPHISM.md",
     "examples/c-library.md",
+    "cpp_evidence_check.py",
     "validate_skill_contract.py",
 ]
 
@@ -139,7 +141,7 @@ def run_bash_syntax(skill_dir: Path, errors: list[str]) -> None:
         stderr=subprocess.STDOUT,
         check=False,
         timeout=15,
-    )
+    )  # nosec B603 - shell script paths come from the skill contract constants.
     if result.returncode != 0:
         fail(errors, "bash -n failed:\n" + result.stdout)
 

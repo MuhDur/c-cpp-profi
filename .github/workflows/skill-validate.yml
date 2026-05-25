@@ -1,0 +1,62 @@
+name: skill-validate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Contract and portable completion audit
+        run: |
+          python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi
+          python3 workspace/completion_audit.py --portable
+
+      - name: Syntax checks
+        run: |
+          bash -n skill/c-cpp-profi/scripts/*.sh
+          python3 -m py_compile skill/c-cpp-profi/scripts/*.py workspace/completion_audit.py
+
+      - name: Evidence checker rejects template
+        run: |
+          if bash skill/c-cpp-profi/scripts/cpp_gate_report.sh . | python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py - --profile basic; then
+            echo "unfilled gate-report template unexpectedly passed"
+            exit 1
+          fi
+
+      - name: Evidence checker accepts filled parser report
+        run: |
+          python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py - --profile basic --profile parser <<'REPORT'
+          # C/C++ Gate Report
+
+          ## Change Scope
+
+          - Issue/task: ci-positive-fixture
+          - Touched files: parser.c
+          - Public API/ABI touched: no
+          - User-visible rendering/artifacts touched: no
+          - Parser/input/security boundary touched: yes
+          - Threads/locks/atomics/signals touched: no
+          - Refactor/simplification claim: no
+          - Performance claim: no
+
+          ## Commands
+
+          | Gate | Status | Command | Evidence |
+          |---|---|---|---|
+          | inventory | passed | bash skill/c-cpp-profi/scripts/cpp_inventory.sh . | source/build inventory reviewed |
+          | compile | passed | cmake --build build/debug | build completed |
+          | tests | passed | ctest --test-dir build/debug --output-on-failure | focused parser tests passed |
+          | static analysis | passed | clang-tidy -p build/debug parser.c | no relevant findings |
+          | ASan+UBSan | passed | ctest --test-dir build/asan-ubsan --output-on-failure | sanitizer tests passed |
+          | fuzz/corpus | passed | ./parser_fuzzer corpus -runs=10000 | corpus replay and campaign passed |
+
+          ## Residual Risk
+
+          - Missing gates: none
+          - Why missing gates are acceptable or follow-up issue: none missing
+          - Follow-up issues: none
+          REPORT

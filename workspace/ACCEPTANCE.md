@@ -16,6 +16,7 @@ The first usable version is complete when all of these are true:
 - Beads state reflects the work item.
 - Sanitizer/fuzz templates exist as reusable assets and are referenced from the skill.
 - Gate-report generation, ABI workflow, and native UI golden-artifact workflow are documented and discoverable from `SKILL.md`.
+- Filled gate reports can be checked by a deterministic evidence-packet validator.
 - Meson workflow is forward-tested on a real mixed C/C++ project.
 - Expert canon and toolchain matrix exist and are referenced from `SKILL.md`.
 - Examples exist for C library, modern C++ library, embedded C, parser/input, and native UI/rendering workflows.
@@ -44,6 +45,7 @@ The ambitious target needs additional evidence:
 - ABI workflow is forward-tested with the binutils snapshot helper, locally extracted `abidiff`, unfiltered and public-header-filtered `abi-dumper`/`abi-compliance-checker`, Universal Ctags, and `pahole` layout diffs.
 - Add examples for C library, modern C++ library, embedded C, parser, and native UI/rendering work.
 - Add a small conformance harness that checks the skill references and scripts stay synchronized.
+- Add an evidence-packet checker that rejects unfilled or under-gated C/C++ handoffs.
 
 ## Expanded Open-Source Bar
 
@@ -76,8 +78,8 @@ Status on 2026-05-25: the skill is locally usable, exposed through local skill r
 | Conformance harness | `python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi` passes with 13 references, 5 examples, and 8 assets. | Proven locally |
 | Local skill-root availability | `validate_skill_contract.py` and `quick_validate.py` pass through `/home/durakovic/.codex/skills/c-cpp-profi` and `/home/durakovic/.agents/skills/c-cpp-profi`. | Proven locally |
 | Completion audit harness | `python3 workspace/completion_audit.py` checks required files, stale claims, evidence strings, skill-root validation, quick validation, and allowed open Beads. | Proven locally |
+| Evidence-packet enforcement | `cpp_evidence_check.py` validates filled `cpp_gate_report.sh` packets against risk profiles such as `basic`, `parser`, `memory`, `public-abi`, `concurrency`, `performance`, `refactor`, `native-ui`, `portability`, and `security`. | Proven locally |
 
 Remaining tracked gaps:
 
 - `cpp-1ko`: remove generated `foo.gz` only after exact deletion-command approval.
-- `cpp-oym`: configure a git remote/upstream if this workspace must satisfy the original push-to-remote landing policy; the user has currently instructed that work may remain local.
