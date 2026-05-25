@@ -59,6 +59,8 @@ The installed skill catalog was scanned. The relevant patterns used here:
   - Local evidence: `apt download abigail-tools libabigail7`, `dpkg-deb -x`, `LD_LIBRARY_PATH=/tmp/cpp-profi-abigail-20260525T0253/extracted/usr/lib/x86_64-linux-gnu /tmp/cpp-profi-abigail-20260525T0253/extracted/usr/bin/abidiff --version`, then debug-vs-sanitizer `abidiff` runs with exit `0` and empty output for zlib and INIReader.
 - Universal Ctags: used for public-header-filtered `abi-dumper`/`abi-compliance-checker` reports after the system `ctags` was identified as Exuberant Ctags.
   - Local evidence: `apt download universal-ctags`, `dpkg-deb -x`, `/tmp/cpp-profi-universal-ctags-20260525T0255/extracted/usr/bin/ctags-universal --version`, a temporary `ctags` symlink under `/tmp/cpp-profi-universal-ctags-20260525T0255/binshim`, and public-header-list ABI reports for zlib and INIReader.
+- Local skill roots: used to verify the skill is consumable by future local agent sessions, not only present as a workspace artifact.
+  - Local evidence: `/home/durakovic/.codex/skills/c-cpp-profi` and `/home/durakovic/.agents/skills/c-cpp-profi` are symlinks to `/home/durakovic/projects/cpp/skill/c-cpp-profi`; `validate_skill_contract.py` and `quick_validate.py` pass through both root paths.
 
 ## Current Interpretation
 

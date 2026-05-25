@@ -6,6 +6,7 @@ The first usable version is complete when all of these are true:
 
 - `skill/c-cpp-profi/SKILL.md` declares skill identity `c-cpp-profi`, has valid frontmatter, and has no template placeholders.
 - `agents/openai.yaml` exists and matches the skill purpose.
+- The skill is exposed through the local Codex and shared-agent skill roots for future sessions.
 - Reference files cover quality gates, memory safety, security, testing/fuzzing, performance, build/portability, and agent operating mode.
 - Scripts are read-only and can run from a target repo without modifying files.
 - `quick_validate.py` passes for the skill directory.
@@ -39,7 +40,7 @@ The ambitious target needs additional evidence:
 
 - Forward-test the sanitizer, fuzz, gate-report, ABI, and golden-artifact workflows.
 - Native UI/golden artifact workflow has terminal UI evidence through FTXUI, image pixel-diff evidence through a deterministic C renderer, FFmpeg SSIM/PSNR metric evidence, and real X11/Xvfb screenshot capture evidence; broader GUI matrices remain project-specific.
-- ABI workflow is forward-tested with the binutils snapshot helper, `abi-dumper`, `abi-compliance-checker`, and `pahole` layout diffs; `abidiff` remains unavailable, and public-header filtering is limited until Universal Ctags is installed.
+- ABI workflow is forward-tested with the binutils snapshot helper, locally extracted `abidiff`, unfiltered and public-header-filtered `abi-dumper`/`abi-compliance-checker`, Universal Ctags, and `pahole` layout diffs.
 - Add examples for C library, modern C++ library, embedded C, parser, and native UI/rendering work.
 - Add a small conformance harness that checks the skill references and scripts stay synchronized.
 
@@ -56,11 +57,11 @@ The user-expanded target is not complete until the skill can credibly act as an 
 
 ## Current Evidence Audit
 
-Status on 2026-05-25: the skill is locally usable and evidence-backed, but the full 12/10 target still has tracked follow-ups. Do not mark the broader goal complete until the remaining gaps below are either resolved or deliberately accepted by the operator.
+Status on 2026-05-25: the skill is locally usable, exposed through local skill roots, and evidence-backed. Remaining gaps are repo hygiene or remote-publication follow-ups, not known skill capability gaps.
 
 | Requirement | Current evidence | Status |
 |---|---|---|
-| Skill identity and packaging | `skill/c-cpp-profi/SKILL.md` declares `name: c-cpp-profi`; `agents/openai.yaml` exists; old `skill/c-cpp-systems-engineering` path references were removed. | Proven locally |
+| Skill identity and packaging | `skill/c-cpp-profi/SKILL.md` declares `name: c-cpp-profi`; `agents/openai.yaml` exists; old `skill/c-cpp-systems-engineering` path references were removed; `/home/durakovic/.codex/skills/c-cpp-profi` and `/home/durakovic/.agents/skills/c-cpp-profi` link to the repo skill. | Proven locally |
 | Progressive disclosure | `SKILL.md` routes to 13 reference files, 5 examples, scripts, and assets; `quick_validate.py skill/c-cpp-profi` passes. | Proven locally |
 | Enforcing operating mode | `SKILL.md`, `AGENT-OPERATING-MODE.md`, `QUALITY-GATES.md`, and `C-CPP-EXPERT-CANON.md` require inventory, gate selection, exact evidence packets, missing-gate disclosure, and residual-risk handoff. | Proven by current files |
 | Tool and manpage coverage | `TOOLCHAIN-MATRIX.md` covers compiler, linker, build, package, static, sanitizer, dynamic, fuzz, coverage, ABI/API, profiler, debugger, hardening, documentation, native UI/artifact, portability, safety/formal, kernel, GPU, and platform-specific families; `workspace/SOURCE-LEDGER.md` records local manpage/tool evidence for ABI and visual tools. | Proven by current files |
@@ -72,6 +73,7 @@ Status on 2026-05-25: the skill is locally usable and evidence-backed, but the f
 | ABI workflow | `FORWARD-TEST-REPORT.md` records binutils snapshot, locally extracted `abidiff`, unfiltered and public-header-filtered `abi-dumper`/`abi-compliance-checker`, and `pahole` layout evidence on zlib and INIReader. | Proven locally |
 | Native UI/pixel output | `FORWARD-TEST-REPORT.md` records FTXUI terminal goldens, deterministic PNG pixel diff pass/fail, FFmpeg SSIM/PSNR, and X11/Xvfb/FFmpeg screenshot capture. | Proven locally |
 | Conformance harness | `python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi` passes with 13 references, 5 examples, and 8 assets. | Proven locally |
+| Local skill-root availability | `validate_skill_contract.py` and `quick_validate.py` pass through `/home/durakovic/.codex/skills/c-cpp-profi` and `/home/durakovic/.agents/skills/c-cpp-profi`. | Proven locally |
 
 Remaining tracked gaps:
 
