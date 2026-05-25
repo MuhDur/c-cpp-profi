@@ -157,6 +157,8 @@ def check_gates(
     rows: dict[str, GateRow],
     profiles: list[str],
     allow_failed: bool,
+    require_warning_clean: bool,
+    require_analyzer_review: bool,
     errors: list[str],
 ) -> None:
     for gate_name, row in sorted(rows.items()):
@@ -169,6 +171,33 @@ def check_gates(
                 errors.append(f"gate {row.gate}: passed without exact command")
             if is_placeholder(row.evidence):
                 errors.append(f"gate {row.gate}: passed without evidence")
+            evidence = normalize(row.evidence)
+            if require_warning_clean and gate_name == "compile":
+                warning_clean = (
+                    "warning-clean: yes" in evidence
+                    or "warnings: 0" in evidence
+                    or "0 warnings" in evidence
+                )
+                if not warning_clean:
+                    errors.append(
+                        "gate compile: passed compile evidence must state "
+                        "'warning-clean: yes' or 'warnings: 0'"
+                    )
+            if require_analyzer_review and gate_name == "static analysis":
+                analyzer_reviewed = (
+                    "findings: 0" in evidence
+                    or "0 findings" in evidence
+                    or "no findings" in evidence
+                    or "no relevant findings" in evidence
+                    or "findings reviewed:" in evidence
+                    or "findings triaged:" in evidence
+                )
+                if not analyzer_reviewed:
+                    errors.append(
+                        "gate static analysis: passed evidence must state "
+                        "'findings: 0', 'no relevant findings', "
+                        "'findings reviewed:', or 'findings triaged:'"
+                    )
 
     for group in required_gate_groups(profiles):
         matching_rows = [rows.get(normalize(gate)) for gate in group]
@@ -181,7 +210,13 @@ def check_gates(
             )
 
 
-def check_report(text: str, profiles: list[str], allow_failed: bool) -> list[str]:
+def check_report(
+    text: str,
+    profiles: list[str],
+    allow_failed: bool,
+    require_warning_clean: bool,
+    require_analyzer_review: bool,
+) -> list[str]:
     errors: list[str] = []
     if "# C/C++ Gate Report" not in text:
         errors.append("missing '# C/C++ Gate Report' heading")
@@ -194,7 +229,14 @@ def check_report(text: str, profiles: list[str], allow_failed: bool) -> list[str
     require_filled("Residual Risk", residual, RESIDUAL_KEYS, errors)
     if not rows:
         errors.append("Commands: no gate table rows found")
-    check_gates(rows, profiles, allow_failed, errors)
+    check_gates(
+        rows,
+        profiles,
+        allow_failed,
+        require_warning_clean,
+        require_analyzer_review,
+        errors,
+    )
     return errors
 
 
@@ -213,6 +255,22 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="allow failed gates for blocked handoffs; still rejects missing required gates",
     )
+    parser.add_argument(
+        "--require-warning-clean",
+        action="store_true",
+        help=(
+            "require passed compile evidence to explicitly state "
+            "'warning-clean: yes' or 'warnings: 0'"
+        ),
+    )
+    parser.add_argument(
+        "--require-analyzer-review",
+        action="store_true",
+        help=(
+            "require passed static-analysis evidence to explicitly state "
+            "zero findings or triaged/reviewed findings"
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="emit JSON result")
     return parser.parse_args(argv)
 
@@ -221,7 +279,13 @@ def main(argv: list[str]) -> int:
     args = parse_args(argv)
     profiles = args.profile or ["basic"]
     text = read_report(args.report)
-    errors = check_report(text, profiles, args.allow_failed)
+    errors = check_report(
+        text,
+        profiles,
+        args.allow_failed,
+        args.require_warning_clean,
+        args.require_analyzer_review,
+    )
 
     if args.json:
         print(
@@ -229,6 +293,8 @@ def main(argv: list[str]) -> int:
                 {
                     "ok": not errors,
                     "profiles": profiles,
+                    "require_analyzer_review": args.require_analyzer_review,
+                    "require_warning_clean": args.require_warning_clean,
                     "errors": errors,
                 },
                 indent=2,

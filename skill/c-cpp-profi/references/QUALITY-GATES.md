@@ -38,9 +38,14 @@ Before claiming completion, validate the filled packet with the applicable risk 
 ```bash
 python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile basic
 python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile parser --profile public-abi
+python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile parser --require-warning-clean --require-analyzer-review
 ```
 
 Profiles are intentionally stricter than prose handoff. `basic` requires inventory, compile, and tests. `memory` adds static analysis and ASan+UBSan. `parser` adds static analysis, ASan+UBSan, and fuzz/corpus evidence. `public-abi`, `performance`, `concurrency`, `refactor`, `native-ui`, `portability`, and `security` each require their matching gate to be passed or the checker fails. For a blocked handoff, use `--allow-failed` only when the final answer clearly says the work is not complete.
+
+Use `--require-warning-clean` when a passed compile gate should mean more than "the compiler produced an artifact." With that flag, the compile evidence must explicitly say `warning-clean: yes`, `warnings: 0`, or `0 warnings`. If warnings remain, mark the gate failed or record the warning count and explain why the handoff is blocked or intentionally risk-accepted.
+
+Use `--require-analyzer-review` for release, parser, memory, security, and review work. With that flag, a passed static-analysis gate must explicitly say `findings: 0`, `no relevant findings`, `findings reviewed: ...`, or `findings triaged: ...`. Static tools often exit `0` while printing warnings, portability errors, or analyzer notes; the evidence packet must prove the output was read.
 
 The report must distinguish:
 

@@ -78,8 +78,10 @@ Status on 2026-05-25: the skill is locally usable, exposed through local skill r
 | Conformance harness | `python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi` passes with 13 references, 5 examples, and 8 assets. | Proven locally |
 | Local skill-root availability | `validate_skill_contract.py` and `quick_validate.py` pass through `/home/durakovic/.codex/skills/c-cpp-profi` and `/home/durakovic/.agents/skills/c-cpp-profi`. | Proven locally |
 | Completion audit harness | `python3 workspace/completion_audit.py` checks required files, stale claims, evidence strings, skill-root validation, quick validation, and allowed open Beads. | Proven locally |
-| Evidence-packet enforcement | `cpp_evidence_check.py` validates filled `cpp_gate_report.sh` packets against risk profiles such as `basic`, `parser`, `memory`, `public-abi`, `concurrency`, `performance`, `refactor`, `native-ui`, `portability`, and `security`. | Proven locally |
+| Evidence-packet enforcement | `cpp_evidence_check.py` validates filled `cpp_gate_report.sh` packets against risk profiles such as `basic`, `parser`, `memory`, `public-abi`, `concurrency`, `performance`, `refactor`, `native-ui`, `portability`, and `security`; strict mode now enforces explicit warning-clean and analyzer-review claims. | Proven locally |
+| Empirical confidence rating | `workspace/EMPIRICAL-VALIDATION.md` records fresh cloned-repo trials on cJSON, tinyxml2, and libuv; `workspace/RATING.md` separates 12.0/12 design-enforcement rating from 11.1/12 empirical-confidence rating. | Proven locally |
 
 Remaining tracked gaps:
 
 - `cpp-1ko`: remove generated `foo.gz` only after exact deletion-command approval.
+- `cpp-c5p`: run blind-agent and platform empirical trials to raise empirical confidence beyond the current 11.1/12.

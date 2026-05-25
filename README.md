@@ -17,6 +17,7 @@ The aim is evidence-grade C/C++ engineering: explicit ownership, no known UB aft
 - Source ledger: `workspace/SOURCE-LEDGER.md`
 - Acceptance criteria: `workspace/ACCEPTANCE.md`
 - Forward-test report: `workspace/FORWARD-TEST-REPORT.md`
+- Empirical validation report: `workspace/EMPIRICAL-VALIDATION.md`
 - Rating ledger: `workspace/RATING.md`
 - Completion audit: `workspace/completion_audit.py`
 
@@ -44,5 +45,5 @@ bash skill/c-cpp-profi/scripts/cpp_inventory.sh .
 bash skill/c-cpp-profi/scripts/cpp_gate_plan.sh .
 bash skill/c-cpp-profi/scripts/cpp_risk_scan.sh .
 bash skill/c-cpp-profi/scripts/cpp_gate_report.sh .
-python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <filled-gate-report.md> --profile basic
+python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <filled-gate-report.md> --profile basic --require-warning-clean --require-analyzer-review
 ```

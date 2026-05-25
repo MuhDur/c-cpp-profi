@@ -61,6 +61,8 @@ The installed skill catalog was scanned. The relevant patterns used here:
   - Local evidence: `apt download universal-ctags`, `dpkg-deb -x`, `/tmp/cpp-profi-universal-ctags-20260525T0255/extracted/usr/bin/ctags-universal --version`, a temporary `ctags` symlink under `/tmp/cpp-profi-universal-ctags-20260525T0255/binshim`, and public-header-list ABI reports for zlib and INIReader.
 - Local skill roots: used to verify the skill is consumable by future local agent sessions, not only present as a workspace artifact.
   - Local evidence: `/home/durakovic/.codex/skills/c-cpp-profi` and `/home/durakovic/.agents/skills/c-cpp-profi` are symlinks to `/home/durakovic/projects/cpp/skill/c-cpp-profi`; `validate_skill_contract.py` and `quick_validate.py` pass through both root paths.
+- Fresh empirical validation clones: used to test whether the skill produces honest outcomes on unseen C/C++ repos after the 12.0/12 design rating.
+  - Local evidence: `/tmp/cpp-profi-empirical-20260525T094900Z/cJSON` at `fb16e5c`, `/tmp/cpp-profi-empirical-20260525T094900Z/tinyxml2` at `8224e42`, and `/tmp/cpp-profi-empirical-20260525T094900Z/libuv` at `6179e7a`; `workspace/EMPIRICAL-VALIDATION.md` records CMake/CTest/ASan+UBSan/fuzz/static-analysis results, static-analysis findings, libuv CTest failures, and the resulting warning-clean/analyzer-review evidence-checker improvement.
 
 ## Current Interpretation
 

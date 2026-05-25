@@ -80,3 +80,29 @@ Innovation credit:
 - It does not prove every possible C/C++ domain, platform, compiler, GPU, embedded board, or safety-certification regime.
 - It does not prove empirical productivity or defect-rate improvement until blind agents use the skill on unseen repositories and results are scored.
 - It does not select an open-source license; that is an operator decision.
+
+## Empirical Confidence Layer
+
+The 12.0/12 score above is the design-enforcement rating for the skill artifact. It should not be read as proof that every future agent or every C/C++ domain is already empirically conquered.
+
+After the 2026-05-25 empirical validation pass in `workspace/EMPIRICAL-VALIDATION.md`, the rating model has a second layer:
+
+| Layer | Rating | Meaning |
+|---|---:|---|
+| Design-enforcement | 12.0/12 | The skill package, references, scripts, CI, audit harness, and evidence checker are complete and innovative enough to merit full artifact credit. |
+| Empirical confidence | 11.1/12 | Fresh cloned repos show the workflow drives real C/C++ evidence and preserves failures honestly, but blind-agent outcome lift and broader platform coverage are not yet proven. |
+
+Empirical-confidence scoring dimensions:
+
+| Dimension | Points |
+|---|---:|
+| Fresh repo diversity | 1.5/2.0 |
+| Gate execution depth | 1.8/2.0 |
+| Negative evidence honesty | 2.0/2.0 |
+| Finding-driven improvement | 2.0/2.0 |
+| Reproducibility and machine checks | 1.8/2.0 |
+| Innovation and transfer value | 2.0/2.0 |
+
+Current public claim: `c-cpp-profi` is a **12.0/12 design-enforcement skill** with **11.1/12 empirical confidence** after additional fresh trials on cJSON, tinyxml2, and libuv.
+
+The main improvement from the empirical pass is stricter evidence enforcement: `cpp_evidence_check.py` now has `--require-warning-clean` and `--require-analyzer-review`, so agents cannot silently treat a warning-producing compile or an analyzer run with unread output as a clean gate.

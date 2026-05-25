@@ -59,9 +59,9 @@ cat <<REPORT
 |---|---|---|---|
 | inventory | not run |  |  |
 | format | not applicable |  |  |
-| compile | not run |  |  |
+| compile | not run |  | include warning-clean: yes or warnings: <count> |
 | tests | not run |  |  |
-| static analysis | not run |  |  |
+| static analysis | not run |  | include findings: 0 or findings triaged: <summary> |
 | ASan+UBSan | not run |  |  |
 | TSan/MSan/LSan | not applicable |  |  |
 | Helgrind/DRD/rr/stress | not applicable |  |  |
@@ -146,4 +146,11 @@ python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <this-report.md> --profi
 
 Add risk profiles for the touched surface: parser, memory, security, public-abi,
 performance, concurrency, refactor, native-ui, portability.
+
+For release, security, parser, memory, or review work, also require explicit
+compile-warning and analyzer-output claims:
+
+\`\`\`bash
+python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <this-report.md> --profile basic --require-warning-clean --require-analyzer-review
+\`\`\`
 REPORT

@@ -26,6 +26,7 @@ QUICK_VALIDATE = Path(
 REQUIRED_FILES = [
     "workspace/ACCEPTANCE.md",
     "workspace/FORWARD-TEST-REPORT.md",
+    "workspace/EMPIRICAL-VALIDATION.md",
     "workspace/PROPOSAL.md",
     "workspace/RATING.md",
     "workspace/SOURCE-LEDGER.md",
@@ -92,30 +93,48 @@ EVIDENCE_NEEDLES = {
         "Remaining gaps are repo hygiene or remote-publication follow-ups",
         "Local skill-root availability",
         "Evidence-packet enforcement",
+        "Empirical confidence rating",
         "Proven locally",
     ],
     "workspace/RATING.md": [
         "Before rating: 10.4/12",
         "After rating: 12.0/12",
+        "Empirical Confidence Layer",
+        "11.1/12 empirical confidence",
         "Innovation credit",
         "Not Proven By This Rating",
     ],
+    "workspace/EMPIRICAL-VALIDATION.md": [
+        "cJSON",
+        "tinyxml2",
+        "libuv",
+        "Current empirical-confidence rating after this pass: **11.1/12**",
+        "--require-warning-clean",
+        "--require-analyzer-review",
+        "static-analysis findings",
+    ],
     "skill/c-cpp-profi/SKILL.md": [
         "cpp_evidence_check.py",
+        "--require-warning-clean",
+        "--require-analyzer-review",
     ],
     "skill/c-cpp-profi/references/QUALITY-GATES.md": [
         "validate the filled packet",
         "Profiles are intentionally stricter",
+        "--require-warning-clean",
+        "--require-analyzer-review",
     ],
     ".github/workflows/skill-validate.yml": [
         "workspace/completion_audit.py --portable",
         "Evidence checker rejects template",
         "Evidence checker accepts filled parser report",
+        "Evidence checker enforces warning and analyzer claims",
     ],
 }
 
 ALLOWED_OPEN_BEADS = {
     "cpp-1ko": "Clean generated foo.gz after explicit approval",
+    "cpp-c5p": "Run blind-agent and platform empirical trials for c-cpp-profi",
 }
 JSON_DECODER = json.JSONDecoder()
 
