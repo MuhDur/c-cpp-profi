@@ -39,7 +39,7 @@ The ambitious target needs additional evidence:
 
 - Forward-test the sanitizer, fuzz, gate-report, ABI, and golden-artifact workflows.
 - Native UI/golden artifact workflow has terminal UI evidence through FTXUI, image pixel-diff evidence through a deterministic C renderer, FFmpeg SSIM/PSNR metric evidence, and real X11/Xvfb screenshot capture evidence; broader GUI matrices remain project-specific.
-- ABI fallback snapshot workflow is forward-tested with binutils; real type/layout ABI comparison remains blocked until `abidiff` or equivalent tooling is available.
+- ABI workflow is forward-tested with the binutils snapshot helper, `abi-dumper`, `abi-compliance-checker`, and `pahole` layout diffs; `abidiff` remains unavailable, and public-header filtering is limited until Universal Ctags is installed.
 - Add examples for C library, modern C++ library, embedded C, parser, and native UI/rendering work.
 - Add a small conformance harness that checks the skill references and scripts stay synchronized.
 

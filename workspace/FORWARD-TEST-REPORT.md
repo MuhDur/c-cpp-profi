@@ -101,18 +101,9 @@ Result: Valgrind exited 99 after reporting one "Conditional jump or move depends
 
 10. inih demonstrates why static-analysis output cannot be reduced to "exit 0": `clang-tidy` emitted analyzer warnings on `ini.c` even though Meson debug tests and ASan+UBSan tests passed.
 
-## ABI Fallback Forward Test
+## ABI Forward Tests
 
-Rich ABI comparison tooling is still unavailable in this environment:
-
-```text
-abidiff=missing
-abi-dumper=missing
-abi-compliance-checker=missing
-pahole=missing
-```
-
-The skill now includes `cpp_abi_snapshot.sh`, a read-only fallback helper that prints a Markdown ABI/API evidence packet from `readelf`, `objdump`, `nm`, and `c++filt`. It does not create temporary files or modify the target repository. The fallback was forward-tested on real C and C++ shared-library artifacts:
+The skill includes `cpp_abi_snapshot.sh`, a read-only fallback helper that prints a Markdown ABI/API evidence packet from `readelf`, `objdump`, `nm`, and `c++filt`. It does not create temporary files or modify the target repository. The fallback was forward-tested on real C and C++ shared-library artifacts:
 
 ```bash
 bash skill/c-cpp-systems-engineering/scripts/cpp_abi_snapshot.sh /tmp/cpp-profi-ft-zlib-20260524/build/asan-ubsan/libz.so.1.3.2.1 /tmp/cpp-profi-ft-zlib-20260524/build/debug/libz.so.1.3.2.1 > /tmp/cpp-profi-abi-snapshots-20260524/zlib-debug-vs-asan.md
@@ -123,9 +114,57 @@ Results:
 
 - zlib C shared library: generated 1,622-line ABI snapshot; exported symbol-name diff was empty; `SONAME` stayed `libz.so.1`; sanitizer candidate added expected `NEEDED` dependencies on `libasan.so.8` and `libubsan.so.1`.
 - inih C++ shared library: generated 3,528-line ABI snapshot; exported symbol-name diff was empty after demangling; `SONAME` stayed `libINIReader.so.0`; sanitizer candidate added expected `NEEDED` dependencies on `libasan.so.8` and `libubsan.so.1`.
-- Both snapshots explicitly record `abidiff`, `abi-dumper`, `abi-compliance-checker`, and `pahole` as missing.
+- The fallback can catch missing/renamed exports, obvious visibility drift, `SONAME` drift, and dynamic dependency drift. It is not C++ ABI proof.
 
-Interpretation: the fallback can catch missing/renamed exports, obvious visibility drift, `SONAME` drift, and dynamic dependency drift. It is not C++ ABI proof. It does not prove class layout, vtable compatibility, parameter type compatibility, inline/template API stability, exception ABI, allocator ownership, or semantic compatibility.
+After the user installed more tools, richer ABI tooling was forward-tested on 2026-05-25:
+
+```text
+abidiff=missing
+abi-dumper=1.4
+abi-compliance-checker=2.3
+pahole=v1.30
+ctags=Exuberant Ctags 5.9~svn20110310
+```
+
+`apt-cache search abigail` reports `abigail-tools - ABI Generic Analysis and Instrumentation Library (tools)`, which is the local apt route for the missing `abidiff` tool.
+
+The installed `ctags` is Exuberant Ctags, not Universal Ctags. A `zlib` run with `abi-dumper -public-headers /tmp/cpp-profi-ft-zlib-20260524/zlib.h` exited `0` but emitted `ERROR: requires Universal Ctags to work properly`; `abi-compliance-checker` then rejected the dumps with `ERROR: no symbols info in the ABI dump`. The skill therefore treats public-header-filtered reports as unavailable until Universal Ctags is installed.
+
+Unfiltered ABI Compliance Checker commands:
+
+```bash
+abi-dumper /tmp/cpp-profi-ft-zlib-20260524/build/debug/libz.so.1.3.2.1 -o /tmp/cpp-profi-abi-rich-20260525/zlib-debug-unfiltered.abi -vnum debug -all
+abi-dumper /tmp/cpp-profi-ft-zlib-20260524/build/asan-ubsan/libz.so.1.3.2.1 -o /tmp/cpp-profi-abi-rich-20260525/zlib-asan-unfiltered.abi -vnum asan-ubsan -all
+abi-compliance-checker -l zlib -old /tmp/cpp-profi-abi-rich-20260525/zlib-debug-unfiltered.abi -new /tmp/cpp-profi-abi-rich-20260525/zlib-asan-unfiltered.abi -report-path /tmp/cpp-profi-abi-rich-20260525/zlib-unfiltered-abi-report.html
+abi-dumper /tmp/cpp-profi-ft-inih-meson-20260524/build/debug/libINIReader.so.0 -o /tmp/cpp-profi-abi-rich-20260525/inih-debug-unfiltered.abi -vnum debug -all
+abi-dumper /tmp/cpp-profi-ft-inih-meson-20260524/build/asan-ubsan/libINIReader.so.0 -o /tmp/cpp-profi-abi-rich-20260525/inih-asan-unfiltered.abi -vnum asan-ubsan -all
+abi-compliance-checker -l INIReader -old /tmp/cpp-profi-abi-rich-20260525/inih-debug-unfiltered.abi -new /tmp/cpp-profi-abi-rich-20260525/inih-asan-unfiltered.abi -report-path /tmp/cpp-profi-abi-rich-20260525/inih-unfiltered-abi-report.html
+```
+
+Results:
+
+- zlib unfiltered ABI report: binary compatibility `100%`, source compatibility `100%`, total binary compatibility problems `0`, total source compatibility problems `0`.
+- inih `INIReader` unfiltered ABI report: binary compatibility `100%`, source compatibility `100%`, total binary compatibility problems `0`, total source compatibility problems `0`.
+- Report artifacts: `/tmp/cpp-profi-abi-rich-20260525/zlib-unfiltered-abi-report.html` and `/tmp/cpp-profi-abi-rich-20260525/inih-unfiltered-abi-report.html`.
+
+Representative layout commands:
+
+```bash
+pahole -F dwarf -C z_stream_s /tmp/cpp-profi-ft-zlib-20260524/build/debug/libz.so.1.3.2.1 > /tmp/cpp-profi-abi-rich-20260525/zlib-debug-z_stream_s-dwarf.pahole
+pahole -F dwarf -C z_stream_s /tmp/cpp-profi-ft-zlib-20260524/build/asan-ubsan/libz.so.1.3.2.1 > /tmp/cpp-profi-abi-rich-20260525/zlib-asan-z_stream_s-dwarf.pahole
+diff -u /tmp/cpp-profi-abi-rich-20260525/zlib-debug-z_stream_s-dwarf.pahole /tmp/cpp-profi-abi-rich-20260525/zlib-asan-z_stream_s-dwarf.pahole
+pahole -F dwarf -C INIReader /tmp/cpp-profi-ft-inih-meson-20260524/build/debug/libINIReader.so.0 > /tmp/cpp-profi-abi-rich-20260525/inih-debug-INIReader-dwarf.pahole
+pahole -F dwarf -C INIReader /tmp/cpp-profi-ft-inih-meson-20260524/build/asan-ubsan/libINIReader.so.0 > /tmp/cpp-profi-abi-rich-20260525/inih-asan-INIReader-dwarf.pahole
+diff -u /tmp/cpp-profi-abi-rich-20260525/inih-debug-INIReader-dwarf.pahole /tmp/cpp-profi-abi-rich-20260525/inih-asan-INIReader-dwarf.pahole
+```
+
+Results:
+
+- `z_stream_s`: layout text has size `112`, members `14`, holes `3`, sum holes `12`; debug-vs-sanitizer diff had `0` lines.
+- `INIReader`: layout text has size `56`, members `2`, one 4-byte hole before `_values`; debug-vs-sanitizer diff had `0` lines.
+- `pahole -F dwarf` produced useful layout output but exited `1` with `Invalid argument` on these shared objects; the diff step is therefore the gate for the emitted layout text, not the raw `pahole` exit code on this environment.
+
+Interpretation: the skill now has forward-tested evidence for both basic ELF/symbol snapshots and richer ABI/API/layout checks. Unfiltered ABI reports are useful but can include non-public implementation surface; public-header-filtered compatibility reports still need Universal Ctags or another reliable public API filter.
 
 ## Native UI Golden Forward Test
 
@@ -253,7 +292,7 @@ Interpretation: the skill now has forward-tested evidence for real headless GUI 
 - `QUALITY-GATES.md` now documents CMake/CTest version checks, broken wrapper handling, risk-scan scoping, analyzer-output review, and Valgrind/Memcheck as a complementary dynamic gate.
 - This report gives a concrete evidence base for CMake and Meson forward-test fixtures.
 - Meson has now been forward-tested on a real C/C++ project.
-- The ABI fallback snapshot workflow has now been forward-tested on real C and C++ shared-library artifacts.
+- The ABI fallback snapshot workflow and richer `abi-dumper`/`abi-compliance-checker`/`pahole` workflow have now been forward-tested on real C and C++ shared-library artifacts.
 - The native UI golden-artifact workflow has now been forward-tested on a real C++ terminal rendering project.
 - The graphical pixel golden-artifact workflow has now been forward-tested on a deterministic C PNG renderer, including both pass and fail behavior.
 - FFmpeg SSIM/PSNR metric evidence has now been forward-tested on the same image artifacts.
@@ -261,4 +300,4 @@ Interpretation: the skill now has forward-tested evidence for real headless GUI 
 
 ## Remaining Gaps
 
-- Forward-test real type/layout ABI comparison once `abidiff` or equivalent tooling is available.
+- Forward-test `abidiff` once `abigail-tools` is installed, and forward-test public-header-filtered ABI reports once Universal Ctags or another reliable public API filter is available.

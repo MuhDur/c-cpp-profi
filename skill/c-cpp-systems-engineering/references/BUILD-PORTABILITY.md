@@ -60,7 +60,12 @@ abidiff <old.so> <new.so>
 abi-dumper <old.so> -o old.abi
 abi-dumper <new.so> -o new.abi
 abi-compliance-checker -l <name> -old old.abi -new new.abi
+pahole -F dwarf -C <public_type> <lib.so>
 ```
+
+When using `abi-dumper -public-headers`, first verify that `ctags --version` is Universal Ctags. Exuberant Ctags can misparse headers and produce dumps that `abi-compliance-checker` rejects. If public-header filtering is unavailable, say so and run an unfiltered comparison plus explicit symbol and layout checks; do not present it as a clean public-API-only report.
+
+On Debian/Ubuntu-style systems, `abidiff` is commonly shipped by the `abigail-tools` package. If it is unavailable, record that exact package/tool gap and use `abi-dumper`, `abi-compliance-checker`, `pahole`, `readelf`, `objdump`, and `nm` as the available evidence set.
 
 5. Compile at least one downstream consumer against the new headers. When binary compatibility is promised, also run an old binary against the new library.
 6. Record the result in the gate report: supported contract, tools used, exact artifacts compared, incompatible changes, intentional breaks, and migration notes.

@@ -332,7 +332,7 @@ Reject the gate if the result depends on changed inputs, changed flags, changed 
 
 ## ABI Gate
 
-Required for public headers, shared libraries, plugins, FFI, SDKs, or package exports. Read [BUILD-PORTABILITY.md](BUILD-PORTABILITY.md), then record old/new library paths, headers, compiler, flags, symbol diff, layout/API diff, and downstream compile/run evidence.
+Required for public headers, shared libraries, plugins, FFI, SDKs, or package exports. Read [BUILD-PORTABILITY.md](BUILD-PORTABILITY.md), then record old/new library paths, headers, compiler, flags, symbol diff, ABI/API checker result, representative layout diff, and downstream compile/run evidence. If `abi-dumper -public-headers` is used, verify Universal Ctags first; otherwise mark the report unfiltered and pair it with explicit exported-symbol and `pahole` type-layout evidence.
 
 ## Refactor Isomorphism Gate
 

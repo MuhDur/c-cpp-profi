@@ -50,6 +50,10 @@ The installed skill catalog was scanned. The relevant patterns used here:
   - https://ffmpeg.org/ffmpeg-filters.html
 - X11/Xvfb and FFmpeg `x11grab`: used as the available headless GUI screenshot-capture stack for a real C/Xlib window.
   - Local evidence: `pkg-config --modversion x11`, `/usr/bin/xvfb-run`, and `ffmpeg -hide_banner -h demuxer=x11grab`.
+- ABI Dumper, ABI Compliance Checker, and pahole man pages: used for the rich ABI forward-test after the tools became available.
+  - Local evidence: `man -w abi-dumper abi-compliance-checker pahole`, `abi-dumper -dumpversion`, `abi-compliance-checker -dumpversion`, and `pahole --version`.
+- Debian/Ubuntu abigail package lookup: used to route the missing `abidiff` tool to its package name.
+  - Local evidence: `apt-cache search abigail` returned `abigail-tools - ABI Generic Analysis and Instrumentation Library (tools)`.
 
 ## Current Interpretation
 

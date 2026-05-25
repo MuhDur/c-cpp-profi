@@ -136,11 +136,17 @@ nm -D --defined-only libbefore.so | c++filt > before.symbols
 nm -D --defined-only libafter.so | c++filt > after.symbols
 diff -u before.symbols after.symbols
 abidiff libbefore.so libafter.so
+abi-dumper libbefore.so -o before.abi -vnum before -all
+abi-dumper libafter.so -o after.abi -vnum after -all
+abi-compliance-checker -l <library-name> -old before.abi -new after.abi
+pahole -F dwarf -C <public_type> libbefore.so > before.layout
+pahole -F dwarf -C <public_type> libafter.so > after.layout
+diff -u before.layout after.layout
 readelf -Ws libafter.so
 objdump -T libafter.so
 ```
 
-If rich ABI tooling is unavailable, run the snapshot helper anyway and record the missing tool explicitly. Its symbol and ELF metadata evidence can catch removed exports, accidental visibility changes, SONAME/dependency drift, and obvious C linkage mistakes. It cannot prove C++ class layout, vtable compatibility, parameter type compatibility, inline/template API stability, exception ABI, allocator ownership, or semantic compatibility.
+If rich ABI tooling is unavailable, run the snapshot helper anyway and record the missing tool explicitly. Its symbol and ELF metadata evidence can catch removed exports, accidental visibility changes, SONAME/dependency drift, and obvious C linkage mistakes. It cannot prove C++ class layout, vtable compatibility, parameter type compatibility, inline/template API stability, exception ABI, allocator ownership, or semantic compatibility. If `abi-dumper -public-headers` is unavailable because Universal Ctags is missing, label the ABI Compliance Checker result as unfiltered and pair it with exported-symbol and `pahole` layout diffs.
 
 ### Native UI And Image Artifacts
 
