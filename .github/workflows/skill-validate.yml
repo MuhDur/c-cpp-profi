@@ -98,3 +98,71 @@ jobs:
             echo "strict evidence checker unexpectedly accepted missing warning/analyzer claims"
             exit 1
           fi
+
+      - name: Evidence checker accepts filled performance report
+        run: |
+          python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py - --profile basic --profile performance --require-performance-proof <<'REPORT'
+          # C/C++ Gate Report
+
+          ## Change Scope
+
+          - Issue/task: ci-performance-positive-fixture
+          - Touched files: hot_path.cc
+          - Public API/ABI touched: no
+          - User-visible rendering/artifacts touched: no
+          - Parser/input/security boundary touched: no
+          - Threads/locks/atomics/signals touched: no
+          - Refactor/simplification claim: no
+          - Performance claim: yes
+
+          ## Commands
+
+          | Gate | Status | Command | Evidence |
+          |---|---|---|---|
+          | inventory | passed | bash skill/c-cpp-profi/scripts/cpp_inventory.sh . | source/build inventory reviewed |
+          | compile | passed | cmake --build build/release | release build completed |
+          | tests | passed | ctest --test-dir build/release --output-on-failure | focused tests passed |
+          | performance | passed | hyperfine --warmup 3 --runs 10 './bench input' | baseline: p95 44ms; profile: perf showed parse_hot at 38%; score: 3.0; oracle: sha256sum -c golden_checksums.txt passed; after: p95 31ms |
+
+          ## Residual Risk
+
+          - Missing gates: none
+          - Why missing gates are acceptable or follow-up issue: none missing
+          - Follow-up issues: none
+          REPORT
+
+      - name: Evidence checker rejects incomplete performance proof
+        run: |
+          if python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py - --profile basic --profile performance --require-performance-proof <<'REPORT'
+          # C/C++ Gate Report
+
+          ## Change Scope
+
+          - Issue/task: ci-performance-negative-fixture
+          - Touched files: hot_path.cc
+          - Public API/ABI touched: no
+          - User-visible rendering/artifacts touched: no
+          - Parser/input/security boundary touched: no
+          - Threads/locks/atomics/signals touched: no
+          - Refactor/simplification claim: no
+          - Performance claim: yes
+
+          ## Commands
+
+          | Gate | Status | Command | Evidence |
+          |---|---|---|---|
+          | inventory | passed | bash skill/c-cpp-profi/scripts/cpp_inventory.sh . | source/build inventory reviewed |
+          | compile | passed | cmake --build build/release | release build completed |
+          | tests | passed | ctest --test-dir build/release --output-on-failure | focused tests passed |
+          | performance | passed | hyperfine './bench input' | faster after change |
+
+          ## Residual Risk
+
+          - Missing gates: none
+          - Why missing gates are acceptable or follow-up issue: none missing
+          - Follow-up issues: none
+          REPORT
+          then
+            echo "strict performance checker unexpectedly accepted incomplete proof"
+            exit 1
+          fi

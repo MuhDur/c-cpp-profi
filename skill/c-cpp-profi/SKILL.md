@@ -48,6 +48,20 @@ Use the strongest applicable ladder the project can support:
 9. `portability`: at least one non-primary compiler or platform check when the touched code is intended to be portable.
 10. `handoff`: document residual risk, exact commands run, and what was not proven.
 
+## Optimization Card
+
+For any request that says optimize, slow, bottleneck, hotspot, p95, latency, throughput, memory, allocation, cache, SIMD, startup, frame time, or binary size, follow this card before editing:
+
+1. `baseline`: run the workload in a release-like build and record command, inputs, environment, build flags, warmup, repetitions, p50/p95/p99 or throughput, memory when relevant, and noise controls.
+2. `profile`: identify a top hotspot in the changed path using the best available tool: `perf`, Google Benchmark, `heaptrack`, `callgrind`, `cachegrind`, `massif`, `strace -c`, VTune, Instruments, WPA, Tracy, or project tooling.
+3. `score`: write an opportunity row using `score = impact * confidence / effort`; only change candidates with score >= 2.0.
+4. `oracle`: capture behavior proof before editing: golden outputs, checksum/corpus replay, differential scalar-vs-SIMD comparison, ABI/API/layout check, numeric tolerance, and error/ordering/ownership semantics as applicable.
+5. `one lever`: change one performance lever per commit. Do not mix formatting, cleanup, bug fixes, and optimization.
+6. `verify`: rerun the same oracle and benchmark, then re-profile because bottlenecks shift.
+7. `report`: fill the performance gate with `baseline:`, `profile:` or `hotspot:`, `score:` or `opportunity:`, `oracle:` or `isomorphism:`, and `after:` or `result:`; then run `cpp_evidence_check.py --profile performance --require-performance-proof`.
+
+Native C/C++ extras are mandatory when relevant: no UB-for-speed contracts, no `-ffast-math` semantic drift unless declared, no `-march=native` or target intrinsics without dispatch/fallback proof, no allocator swap without allocation evidence, no average-latency win that hides p99 or worst-case regression, and no ABI/API/ownership change hidden inside a speed patch. Read [PERFORMANCE.md](references/PERFORMANCE.md) for the full matrix.
+
 ## Task Router
 
 | User asks for | Do this |
@@ -94,6 +108,7 @@ bash skill/c-cpp-profi/scripts/cpp_gate_plan.sh .
 bash skill/c-cpp-profi/scripts/cpp_risk_scan.sh .
 bash skill/c-cpp-profi/scripts/cpp_gate_report.sh .
 python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <filled-gate-report.md> --profile basic --require-warning-clean --require-analyzer-review
+python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <filled-gate-report.md> --profile performance --require-performance-proof
 bash skill/c-cpp-profi/scripts/cpp_abi_snapshot.sh <candidate-library> [baseline-library]
 python3 skill/c-cpp-profi/scripts/cpp_pixel_diff.py <baseline-image> <candidate-image> --threshold 0
 python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi

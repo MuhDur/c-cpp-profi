@@ -159,6 +159,7 @@ def check_gates(
     allow_failed: bool,
     require_warning_clean: bool,
     require_analyzer_review: bool,
+    require_performance_proof: bool,
     errors: list[str],
 ) -> None:
     for gate_name, row in sorted(rows.items()):
@@ -198,6 +199,24 @@ def check_gates(
                         "'findings: 0', 'no relevant findings', "
                         "'findings reviewed:', or 'findings triaged:'"
                     )
+            if require_performance_proof and gate_name == "performance":
+                requirements = {
+                    "baseline/before": ("baseline:" in evidence or "before:" in evidence),
+                    "profile/hotspot": ("profile:" in evidence or "hotspot:" in evidence),
+                    "opportunity score": ("score:" in evidence or "opportunity:" in evidence),
+                    "behavior oracle": (
+                        "oracle:" in evidence
+                        or "golden:" in evidence
+                        or "isomorphism:" in evidence
+                    ),
+                    "after/result": ("after:" in evidence or "result:" in evidence),
+                }
+                missing = [name for name, ok in requirements.items() if not ok]
+                if missing:
+                    errors.append(
+                        "gate performance: passed evidence missing strict proof fields: "
+                        + ", ".join(missing)
+                    )
 
     for group in required_gate_groups(profiles):
         matching_rows = [rows.get(normalize(gate)) for gate in group]
@@ -216,6 +235,7 @@ def check_report(
     allow_failed: bool,
     require_warning_clean: bool,
     require_analyzer_review: bool,
+    require_performance_proof: bool,
 ) -> list[str]:
     errors: list[str] = []
     if "# C/C++ Gate Report" not in text:
@@ -235,6 +255,7 @@ def check_report(
         allow_failed,
         require_warning_clean,
         require_analyzer_review,
+        require_performance_proof,
         errors,
     )
     return errors
@@ -271,6 +292,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
             "zero findings or triaged/reviewed findings"
         ),
     )
+    parser.add_argument(
+        "--require-performance-proof",
+        action="store_true",
+        help=(
+            "require passed performance evidence to include baseline/before, "
+            "profile/hotspot, score/opportunity, oracle/golden/isomorphism, and after/result"
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="emit JSON result")
     return parser.parse_args(argv)
 
@@ -285,6 +314,7 @@ def main(argv: list[str]) -> int:
         args.allow_failed,
         args.require_warning_clean,
         args.require_analyzer_review,
+        args.require_performance_proof,
     )
 
     if args.json:
@@ -294,6 +324,7 @@ def main(argv: list[str]) -> int:
                     "ok": not errors,
                     "profiles": profiles,
                     "require_analyzer_review": args.require_analyzer_review,
+                    "require_performance_proof": args.require_performance_proof,
                     "require_warning_clean": args.require_warning_clean,
                     "errors": errors,
                 },

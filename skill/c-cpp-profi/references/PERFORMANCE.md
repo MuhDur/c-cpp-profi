@@ -16,6 +16,30 @@ C/C++ earns its advantage only when the implementation is measured and the abstr
 
 Do not accept "tool suggested it", "this looks faster", or "modern C++ should optimize it" as a reason to change code. simdjson's contribution rules are a good model: performance work needs hard numbers, and broad taste-driven rewrites are not evidence.
 
+## Quick Optimization Card
+
+Use this compact card in the handoff for every performance patch:
+
+```text
+Optimization claim:
+- Baseline: <command, input, build, p50/p95/p99 or throughput, memory if relevant>
+- Profile: <tool and top hotspot in changed path>
+- Opportunity score: <impact * confidence / effort = score, must be >= 2.0>
+- Oracle/isomorphism: <goldens/checksums/corpus/differential/ABI/numeric/error-ordering proof>
+- One lever: <single optimization mechanism>
+- After/result: <same benchmark and profile comparison>
+- Native risk: <UB, FP, ABI/API, allocator, SIMD fallback, portability, p99/worst-case>
+- Residual risk: <what was not proven>
+```
+
+Machine check:
+
+```bash
+python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile performance --require-performance-proof
+```
+
+The strict checker only validates evidence shape. The agent must still inspect the actual benchmark/profile output and reject weak data.
+
 ## Absolute Rules
 
 - No performance patch is allowed without a baseline, a profile, and a behavior oracle captured before editing.

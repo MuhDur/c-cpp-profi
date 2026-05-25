@@ -66,7 +66,7 @@ cat <<REPORT
 | TSan/MSan/LSan | not applicable |  |  |
 | Helgrind/DRD/rr/stress | not applicable |  |  |
 | fuzz/corpus | not applicable |  |  |
-| performance | not applicable |  |  |
+| performance | not applicable |  | include baseline:, profile:/hotspot:, score:/opportunity:, oracle:/isomorphism:, after:/result: |
 | portability | not applicable |  |  |
 | ABI/API | not applicable |  |  |
 | refactor isomorphism | not applicable |  |  |
@@ -152,5 +152,11 @@ compile-warning and analyzer-output claims:
 
 \`\`\`bash
 python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <this-report.md> --profile basic --require-warning-clean --require-analyzer-review
+\`\`\`
+
+For optimization claims, require a self-contained performance proof:
+
+\`\`\`bash
+python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <this-report.md> --profile performance --require-performance-proof
 \`\`\`
 REPORT

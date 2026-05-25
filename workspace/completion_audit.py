@@ -93,6 +93,7 @@ EVIDENCE_NEEDLES = {
         "Remaining gaps are repo hygiene or remote-publication follow-ups",
         "Local skill-root availability",
         "Evidence-packet enforcement",
+        "Optimization self-containment",
         "Empirical confidence rating",
         "Proven locally",
     ],
@@ -115,20 +116,30 @@ EVIDENCE_NEEDLES = {
     ],
     "skill/c-cpp-profi/SKILL.md": [
         "cpp_evidence_check.py",
+        "Optimization Card",
+        "--require-performance-proof",
         "--require-warning-clean",
         "--require-analyzer-review",
     ],
     "skill/c-cpp-profi/references/QUALITY-GATES.md": [
         "validate the filled packet",
         "Profiles are intentionally stricter",
+        "--require-performance-proof",
         "--require-warning-clean",
         "--require-analyzer-review",
+    ],
+    "skill/c-cpp-profi/references/PERFORMANCE.md": [
+        "Quick Optimization Card",
+        "--require-performance-proof",
+        "Opportunity score",
     ],
     ".github/workflows/skill-validate.yml": [
         "workspace/completion_audit.py --portable",
         "Evidence checker rejects template",
         "Evidence checker accepts filled parser report",
         "Evidence checker enforces warning and analyzer claims",
+        "Evidence checker accepts filled performance report",
+        "Evidence checker rejects incomplete performance proof",
     ],
 }
 

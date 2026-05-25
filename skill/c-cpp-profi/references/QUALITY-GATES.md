@@ -39,6 +39,7 @@ Before claiming completion, validate the filled packet with the applicable risk 
 python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile basic
 python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile parser --profile public-abi
 python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile parser --require-warning-clean --require-analyzer-review
+python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile performance --require-performance-proof
 ```
 
 Profiles are intentionally stricter than prose handoff. `basic` requires inventory, compile, and tests. `memory` adds static analysis and ASan+UBSan. `parser` adds static analysis, ASan+UBSan, and fuzz/corpus evidence. `public-abi`, `performance`, `concurrency`, `refactor`, `native-ui`, `portability`, and `security` each require their matching gate to be passed or the checker fails. For a blocked handoff, use `--allow-failed` only when the final answer clearly says the work is not complete.
@@ -46,6 +47,8 @@ Profiles are intentionally stricter than prose handoff. `basic` requires invento
 Use `--require-warning-clean` when a passed compile gate should mean more than "the compiler produced an artifact." With that flag, the compile evidence must explicitly say `warning-clean: yes`, `warnings: 0`, or `0 warnings`. If warnings remain, mark the gate failed or record the warning count and explain why the handoff is blocked or intentionally risk-accepted.
 
 Use `--require-analyzer-review` for release, parser, memory, security, and review work. With that flag, a passed static-analysis gate must explicitly say `findings: 0`, `no relevant findings`, `findings reviewed: ...`, or `findings triaged: ...`. Static tools often exit `0` while printing warnings, portability errors, or analyzer notes; the evidence packet must prove the output was read.
+
+Use `--require-performance-proof` for every optimization claim. With that flag, a passed performance gate must include baseline or before data, profile or hotspot evidence, an opportunity score, a behavior oracle or isomorphism proof, and after or result data. The checker verifies that the packet is self-contained; it does not verify that the benchmark methodology is strong enough.
 
 The report must distinguish:
 
@@ -341,6 +344,7 @@ Read [PERFORMANCE.md](PERFORMANCE.md) before changing hot-path code. Any optimiz
 4. Behavior oracle captured before edit.
 5. Rerun with same benchmark and representative data.
 6. Evidence packet with timing, CPU/cache/allocation/syscall evidence where relevant, benchmark limitations, ABI/API impact, and residual risk.
+7. Strict evidence check: `cpp_evidence_check.py gate-report.md --profile performance --require-performance-proof`.
 
 Reject the gate if the result depends on changed inputs, changed flags, changed allocator mode, different CPU policy, unsupported target-specific code, or a changed correctness oracle.
 
