@@ -20,6 +20,7 @@ The first usable version is complete when all of these are true:
 - Expert canon and toolchain matrix exist and are referenced from `SKILL.md`.
 - Examples exist for C library, modern C++ library, embedded C, parser/input, and native UI/rendering workflows.
 - The conformance harness passes: `python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi`.
+- The completion audit passes: `python3 workspace/completion_audit.py`.
 
 ## Quality Bar
 
@@ -61,7 +62,7 @@ Status on 2026-05-25: the skill is locally usable, exposed through local skill r
 
 | Requirement | Current evidence | Status |
 |---|---|---|
-| Skill identity and packaging | `skill/c-cpp-profi/SKILL.md` declares `name: c-cpp-profi`; `agents/openai.yaml` exists; old `skill/c-cpp-systems-engineering` path references were removed; `/home/durakovic/.codex/skills/c-cpp-profi` and `/home/durakovic/.agents/skills/c-cpp-profi` link to the repo skill. | Proven locally |
+| Skill identity and packaging | `skill/c-cpp-profi/SKILL.md` declares `name: c-cpp-profi`; `agents/openai.yaml` exists; legacy skill-directory references were removed; `/home/durakovic/.codex/skills/c-cpp-profi` and `/home/durakovic/.agents/skills/c-cpp-profi` link to the repo skill. | Proven locally |
 | Progressive disclosure | `SKILL.md` routes to 13 reference files, 5 examples, scripts, and assets; `quick_validate.py skill/c-cpp-profi` passes. | Proven locally |
 | Enforcing operating mode | `SKILL.md`, `AGENT-OPERATING-MODE.md`, `QUALITY-GATES.md`, and `C-CPP-EXPERT-CANON.md` require inventory, gate selection, exact evidence packets, missing-gate disclosure, and residual-risk handoff. | Proven by current files |
 | Tool and manpage coverage | `TOOLCHAIN-MATRIX.md` covers compiler, linker, build, package, static, sanitizer, dynamic, fuzz, coverage, ABI/API, profiler, debugger, hardening, documentation, native UI/artifact, portability, safety/formal, kernel, GPU, and platform-specific families; `workspace/SOURCE-LEDGER.md` records local manpage/tool evidence for ABI and visual tools. | Proven by current files |
@@ -74,6 +75,7 @@ Status on 2026-05-25: the skill is locally usable, exposed through local skill r
 | Native UI/pixel output | `FORWARD-TEST-REPORT.md` records FTXUI terminal goldens, deterministic PNG pixel diff pass/fail, FFmpeg SSIM/PSNR, and X11/Xvfb/FFmpeg screenshot capture. | Proven locally |
 | Conformance harness | `python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi` passes with 13 references, 5 examples, and 8 assets. | Proven locally |
 | Local skill-root availability | `validate_skill_contract.py` and `quick_validate.py` pass through `/home/durakovic/.codex/skills/c-cpp-profi` and `/home/durakovic/.agents/skills/c-cpp-profi`. | Proven locally |
+| Completion audit harness | `python3 workspace/completion_audit.py` checks required files, stale claims, evidence strings, skill-root validation, quick validation, and allowed open Beads. | Proven locally |
 
 Remaining tracked gaps:
 
