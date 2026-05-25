@@ -53,3 +53,29 @@ The user-expanded target is not complete until the skill can credibly act as an 
 - Cross-skill extraction: at least five sibling skills are applied through the repeat-skill workflow and logged in `.skill-loop-progress.md`.
 - Enforcement: the skill must force agents to produce exact gate evidence and residual-risk handoff, not optional suggestions.
 - Missing tools: unavailable tools become tracked gaps or installation notes, never silent omissions.
+
+## Current Evidence Audit
+
+Status on 2026-05-25: the skill is locally usable and evidence-backed, but the full 12/10 target still has tracked external/tooling follow-ups. Do not mark the broader goal complete until the remaining gaps below are either resolved or deliberately accepted by the operator.
+
+| Requirement | Current evidence | Status |
+|---|---|---|
+| Skill identity and packaging | `skill/c-cpp-profi/SKILL.md` declares `name: c-cpp-profi`; `agents/openai.yaml` exists; old `skill/c-cpp-systems-engineering` path references were removed. | Proven locally |
+| Progressive disclosure | `SKILL.md` routes to 13 reference files, 5 examples, scripts, and assets; `quick_validate.py skill/c-cpp-profi` passes. | Proven locally |
+| Enforcing operating mode | `SKILL.md`, `AGENT-OPERATING-MODE.md`, `QUALITY-GATES.md`, and `C-CPP-EXPERT-CANON.md` require inventory, gate selection, exact evidence packets, missing-gate disclosure, and residual-risk handoff. | Proven by current files |
+| Tool and manpage coverage | `TOOLCHAIN-MATRIX.md` covers compiler, linker, build, package, static, sanitizer, dynamic, fuzz, coverage, ABI/API, profiler, debugger, hardening, documentation, native UI/artifact, portability, safety/formal, kernel, GPU, and platform-specific families; `SOURCE-LEDGER.md` records local manpage/tool evidence for ABI and visual tools. | Proven by current files |
+| Internals coverage | `C-CPP-EXPERT-CANON.md`, `MEMORY-SAFETY.md`, `CONCURRENCY-DEADLOCKS.md`, `BUILD-PORTABILITY.md`, `PERFORMANCE.md`, and `SECURITY-REVIEW.md` cover C/C++ UB, ownership, aliasing, lifetime, allocators, POSIX/Linux, ELF/linker/loader, atomics, pthreads, signals, RAII, templates, exceptions, ABI, and optimization contracts. | Proven by current files |
+| Elite project study | `SOURCE-LEDGER.md` and `C-CPP-EXPERT-CANON.md` record extracted patterns from simdjson, mimalloc, SQLite, and curl; forward-test report also exercises zlib, fmt, tree-sitter, inih, FTXUI, and stb. | Proven locally |
+| Cross-skill extraction | `.skill-loop-progress.md` records seven repeated skill passes: research-software, codebase-pattern-extraction, testing-fuzzing, extreme-software-optimization, multi-pass-bug-hunting, deadlock-finder-and-fixer, and simplify-and-refactor-code-isomorphically. | Proven locally |
+| Build/test/static/dynamic forward tests | `FORWARD-TEST-REPORT.md` records CMake, Meson, CTest, ASan+UBSan, Valgrind, clang-tidy, cppcheck, and risk-scan evidence on real C/C++ projects. | Proven locally |
+| Fuzz workflow | `TESTING-FUZZING.md`, `TOOLCHAIN-TEMPLATES.md`, and `assets/fuzz/` provide libFuzzer/AFL/FuzzTest guidance and reusable harness templates; the acceptance bar still treats broad fuzz workflow evidence as part of the forward-test set, so future project-specific fuzz runs should be added when a suitable target is selected. | Partially proven |
+| ABI workflow | `FORWARD-TEST-REPORT.md` records binutils snapshot, `abi-dumper`, `abi-compliance-checker`, and `pahole` layout evidence on zlib and INIReader. | Proven except external follow-ups |
+| Native UI/pixel output | `FORWARD-TEST-REPORT.md` records FTXUI terminal goldens, deterministic PNG pixel diff pass/fail, FFmpeg SSIM/PSNR, and X11/Xvfb/FFmpeg screenshot capture. | Proven locally |
+| Conformance harness | `python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi` passes with 13 references, 5 examples, and 8 assets. | Proven locally |
+
+Remaining tracked gaps:
+
+- `cpp-ztq`: install `abigail-tools` and forward-test `abidiff`.
+- `cpp-30i`: install Universal Ctags and forward-test public-header-filtered ABI reports.
+- `cpp-1ko`: remove generated `foo.gz` only after exact deletion-command approval.
+- `cpp-oym`: configure a git remote/upstream if this workspace must satisfy the original push-to-remote landing policy; the user has currently instructed that work may remain local.
