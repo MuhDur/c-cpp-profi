@@ -1,0 +1,51 @@
+# RUBRIC-100 — honest 0–100 scoring contract for c-cpp-profi
+
+Replaces the prior self-graded 0–12 design scale. Weighted across the user's 6 capabilities plus two
+cross-cutting quality dimensions. **A dimension's score is the lesser of its design score and what evidence
+supports** (see honesty contract in [LOOP-PROTOCOL](LOOP-PROTOCOL.md)).
+
+| Dim | Capability | Weight | What full marks require |
+|---|---|---:|---|
+| C1 | Understand any C/C++ repo, every level/angle/depth | 15 | inventory→build-graph→arch→ISA/codegen→domain-intent ladder, archaeology method, evidence that an agent can reconstruct a mental model of unseen code |
+| C2 | Transform code however needed | 12 | refactor (have), + port/modernize/re-target/re-architect methods with behavior+ABI proofs |
+| C3 | Improve code in any way | 15 | correctness, memory safety, concurrency, perf, size, security — all with proof-before-claim gates (mostly have) |
+| C4 | Generate ideas / radical innovation | 12 | an explicit ideation engine: accretive + radical idea generation, adversarial scoring, evidence gates before commit |
+| C5 | Document | 8 | doc methodology: README, architecture docs, API docs, changelog, docs-site, slop-free prose |
+| C6 | Domain-agnostic ultimate mastery | 18 | universal core + **plug-n-play domain packs** (space/embedded/kernel/GPU/HPC/crypto/net/safety-cert) + a pack-authoring template so unknown domains are handled |
+| Q1 | Enforcement & machine-checkability | 8 | gate report + evidence checker + contract validator + CI (have, strong) |
+| Q2 | Empirical validation | 12 | **50 diverse fresh repos**, each applied for ≥1 of up to 20 valid reasons, negative evidence preserved, blind-ish outcome lift, findings folded back |
+
+Total = 100. 100 is reachable **only** with Q2 closed; design work alone caps ≈ 80.
+
+---
+
+## Baseline rating — Iteration 0 (2026-05-29), pre-improvement
+
+Evidence base: read of `SKILL.md` (140 lines) + all 13 references (2219 lines) + 5 examples + 8 assets;
+`validate_skill_contract.py` PASS (references=13 examples=5 assets=8); `completion_audit.py` PASS (3 skill
+roots, allowed open beads); `cpp_evidence_check.py` profiles present; prior `EMPIRICAL-VALIDATION.md` (cJSON,
+tinyxml2, libuv — light trials). Prior loop self-grade was 12/12 design / 11.1/12 empirical.
+
+| Dim | Score | Evidence for the score | Why not full |
+|---|---:|---|---|
+| C1 | 11/15 | `cpp_inventory.sh`, `cpp_risk_scan.sh`, `cpp_gate_plan.sh`, EXPERT-CANON invariants, multi-pass audit loop | No explicit *archaeology* method (build a mental model of unseen code); ISA/codegen-reading ladder is implicit, not a taught procedure |
+| C2 | 7/12 | REFACTOR-ISOMORPHISM.md (164 lines), ABI snapshot script | Only behavior-preserving refactor is first-class. No port/modernize/re-target/standard-migration methodology |
+| C3 | 12/15 | PERFORMANCE, MEMORY-SAFETY, CONCURRENCY-DEADLOCKS, TESTING-FUZZING, SECURITY-REVIEW refs + gates + sanitizer/fuzz/perf cards | Runtime-debugging (gdb/core-dump) depth thin; no metamorphic/conformance oracle methods yet |
+| C4 | 3/12 | Idea generation only implicit in "follow-up issues" handoff line | **No ideation/innovation engine.** Largest single gap vs. the brief's "radical innovation + accretive additions" |
+| C5 | 4/8 | Handoff contract; docs-as-tests mentioned in canon | No README/architecture-doc/changelog/docs-site/de-slop methodology as first-class procedure |
+| C6 | 10/18 | Covers systems/parser/embedded/UI/concurrency surfaces + TOOLCHAIN-MATRIX; examples for c-lib/cpp-lib/embedded/parser/native-ui | Not *structured* as domain-agnostic kernel + plug-n-play packs; no space/kernel/GPU/HPC/crypto/safety-cert packs; no pack-authoring template for unknown domains |
+| Q1 | 7/8 | `cpp_evidence_check.py` (profile-aware, `--require-warning-clean`, `--require-analyzer-review`), contract validator, GitHub Actions CI | Checker validates evidence *shape*, not truth of command output |
+| Q2 | 4/12 | EMPIRICAL-VALIDATION.md over cJSON/tinyxml2/libuv with honest negatives | Only 3 repos, light depth, self-scored; the 50-repo × 20-reason gauntlet not run; no blind outcome lift |
+
+**Baseline composite = 11+7+12+3+4+10+7+4 = 58/100.**
+
+Honest read: `c-cpp-profi` is a **strong design-enforcement skill (~80/100 on design dimensions C1/C3/Q1)**
+that is **materially incomplete** on innovation (C4), documentation methodology (C5), domain-agnostic
+structuring (C6), transform breadth (C2), and — most of all — **empirical proof (Q2)**. The route to 100 is
+the [SKILL-MATRIX](SKILL-MATRIX.md) backlog plus the 50-repo gauntlet, re-rated adversarially each iteration.
+
+## Re-rating log
+(append one row per iteration: dim deltas + the evidence that justified them)
+| Iter | Date | Composite | Deltas | Evidence |
+|---|---|---:|---|---|
+| 0 | 2026-05-29 | 58 | baseline | this file |
