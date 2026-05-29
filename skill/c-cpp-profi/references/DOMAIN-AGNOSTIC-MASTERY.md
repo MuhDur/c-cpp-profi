@@ -72,7 +72,7 @@ Worked unknown-domain example (industrial motion control, never briefed). Signal
 ## Seed Packs (worked examples — copy the shape, not the contents)
 
 ### Space / satellites
-- Authorities: NASA/JPL "Power of Ten" rules; JPL Institutional Coding Standard for C; NASA cFS; JPL/NASA F´ (F-Prime); RTEMS; ECSS-Q-ST-80C; MISRA C.
+- Authorities: NASA/JPL "Power of Ten" rules; JPL Institutional Coding Standard for C; NASA cFS; JPL/NASA F´ (F-Prime); RTEMS; ECSS-Q-ST-80C; MISRA C. Two distinct NASA frameworks dominate the open-source flight code: cFE/cFS wears the uppercase `cFE_`/`CFE_`/`OS_*` C API, while F´/F-Prime wears `CCSDS`/`Framer`/`Deframer`/`Tlm`/`Telemetry`/`APID`/`FwOpcode`/`CmdResponse` plus a `watchdog`/`spacecraft` vocabulary — detect either.
 - Invariants: no dynamic allocation after init; bounded loops (fixed upper bound, statically checkable); no recursion; functions short and assertion-dense (>= 2 asserts/function, Power of Ten rule 5); check every return value; restrict pointer use and indirection levels.
 - Oracle: flight-software unit harness + processor-in-the-loop sim; cFS Software Bus message contracts; F´ component port/topology autocoded contracts.
 - Constraints: SEU/radiation -> bit flips in RAM/registers: EDAC/ECC, triple-modular redundancy on critical state, scrubbing; watchdog kick deadlines; deterministic, no `malloc`; ground-uploadable, single-event-functional-interrupt recovery.
@@ -112,7 +112,7 @@ Worked unknown-domain example (industrial motion control, never briefed). Signal
 - Failure modes: fast-math eating a NaN guard, misaligned SIMD load fault, reduction reordering changing results across thread counts, denormal flush-to-zero divergence, accumulation error in long sums.
 
 ### Crypto
-- Authorities: FIPS 140-3, NIST test vectors (CAVP/ACVP), the algorithm RFC/standard; constant-time guidance (BearSSL, libsodium).
+- Authorities: FIPS 140-3, NIST test vectors (CAVP/ACVP), the algorithm RFC/standard; constant-time guidance (BearSSL, libsodium). The repo wears its primitive names — `blake2`/`sha`/`md5`/`hmac`/`chacha`/`poly1305`/`aead`, a `cipher`/`digest`/`keystream`/`nonce` API, `aes`/`rsa`/`ecdsa`/`ecdh`/`x509`/`pkcs` — and these identify a crypto library even when its hot path is SIMD intrinsics (a vectorized hash is still Crypto, not HPC).
 - Invariants: constant-time on secret-dependent paths — no secret-dependent branch, index, or memory access; no early-return on MAC/compare (use constant-time compare); zeroize key material; reject reduced-strength parameters.
 - Oracle: published test vectors (KAT), differential against a reference library, `dudect`/`ctgrind`/`valgrind --track-origins` for timing leakage.
 - Constraints: side channels (timing, cache, branch, power); compiler may reintroduce branches or remove `memset` zeroization (use `explicit_bzero`/`memset_s`); no UB that the optimizer exploits to leak.
@@ -120,12 +120,20 @@ Worked unknown-domain example (industrial motion control, never briefed). Signal
 - Failure modes: secret-dependent branch, table lookup indexed by secret, non-constant-time `memcmp` on tags, dead-store-eliminated key wipe, padding-oracle in error handling.
 
 ### Networking / protocols
-- Authorities: the governing RFC(s); the wire spec/ICD; curl's protocol test harness (`tests/data/*`, `docs/tests/FILEFORMAT.md:7-77`).
+- Authorities: the governing RFC(s); the wire spec/ICD; curl's protocol test harness (`tests/data/*`, `docs/tests/FILEFORMAT.md:7-77`). The repo's identity vocabulary is the transport idiom — `socket`/`listener`/`dialer`/`endpoint`/`transport`, the POSIX syscall verbs `connect`/`bind`/`accept`/`send`/`recv`/`sendto`/`recvfrom`/`poll`/`epoll`, `sockaddr`/`setsockopt` — alongside the byte-order/framing tokens (`ntohl`/`htons`, packed wire structs, `RFC`).
 - Invariants: validate length before read; never trust attacker-supplied size/offset/count; bounded recursion on nested structures; explicit handling of partial/short read/write and `EINTR`/`EAGAIN`; canonical encode/decode round-trip.
 - Oracle: executable wire transcripts (client command + expected bytes), RFC conformance vectors, packet-of-death corpora as permanent regressions.
 - Constraints: byte order, alignment of wire structs (no casting raw buffers to structs), MTU/fragmentation, state-machine legality, untrusted-input boundary.
 - Toolchain: protocol fuzzer (libFuzzer/AFL++) at the parse boundary + ASan/UBSan, test servers/fixtures, Wireshark/pcap.
 - Failure modes: heap overflow from unchecked length field, integer overflow in `len*count` allocation, infinite loop on crafted nesting, use-after-free on connection teardown, parser desync from a single malformed packet.
+
+### Compression / codec
+- Authorities: the codec's format spec (RFC 1950/1951/1952 for zlib/DEFLATE/gzip, the LZ4/Zstandard frame specs); DEFLATE/LZ77 + Huffman literature; the project's reference implementation; the format's decompression-bomb and fuzzing literature (zlib/lz4/zstd OSS-Fuzz corpora).
+- Invariants: **bound the decompressed size before writing it** — a small input may claim an enormous output (the decompression-bomb / zip-bomb guard); **validate the stream header and checksum before trusting any embedded length** (CRC-32/Adler-32/xxHash over the frame); never write unbounded output — every literal/match copy is bounds-checked against the output ceiling; the window/dictionary offset is range-checked before a back-reference copy; compress → decompress is the identity round-trip.
+- Oracle: compress → decompress round-trip identity over a corpus (random data + a real document corpus + edge cases: empty, single byte, already-compressed, highly-repetitive); differential against the reference codec at every level; crash inputs promoted to permanent regression seeds.
+- Constraints: the **decompress path is the untrusted-input boundary** — the entire compressed stream is attacker-controlled; integer overflow in `windowSize`/`blockSize`/`literalLength` math; a malformed back-reference must be rejected, not read out of bounds; output-size ceilings are a contract, not a default; the on-the-wire frame format is a frozen, versioned ABI.
+- Toolchain: a coverage-guided fuzzer (libFuzzer/AFL++) on the **decompress** entry point + ASan/UBSan (the classic codec CVE surface), the round-trip + corpus differential as a regression gate, a decompression-ratio cap on the bomb guard, a checksum verifier.
+- Failure modes: decompression bomb exhausting memory/disk from an unbounded output, heap overflow from an unchecked literal-length/match-length field, out-of-bounds read from a back-reference offset past the window start, integer overflow in window/block-size math, a corrupt-but-accepted stream because the checksum was checked after (or instead of before) the length-trusting copy, mismatched compress/decompress round-trip silently corrupting data.
 
 ### Compilers / interpreters / VMs
 - Authorities: ISO C/C++ standards (the source language contract); the target ISA/ABI; the IR specification (LLVM LangRef, the bytecode/opcode spec); CSmith/Csmith-style random-program literature; "Finding and Understanding Bugs in C Compilers" (Yang et al.).
@@ -192,6 +200,7 @@ The honest fallback for a real C/C++ library that matches no domain: header-only
 | HPC / SIMD | scalar-vs-SIMD differential fuzz, FP tolerance proof | bitwise-equality oracle forbidden; `-ffast-math` requires explicit contract |
 | Crypto | KAT vectors, ctgrind/dudect constant-time, zeroization check | secret-dependent branch/index forbidden; `memcmp` on tags forbidden |
 | Networking | parse-boundary fuzz + ASan/UBSan, RFC conformance transcript, packet-of-death corpus | casting raw buffers to packed structs forbidden; trusting wire length forbidden |
+| Compression / codec | fuzz the DECOMPRESS path (libFuzzer/AFL++) + ASan/UBSan, compress→decompress round-trip + corpus differential, decompression-bomb / output-size cap, checksum verify | unbounded decompressed output forbidden; trusting an embedded length before checksum/bounds validation forbidden; reading a back-reference past the window forbidden |
 | Compilers / interpreters / VMs | differential vs `-O0`/second compiler (CSmith + checksum), IR verifier after each pass, frontend fuzz | introducing UB in the compiler forbidden; eyeball "looks optimized" forbidden |
 | Databases / storage engines | crash-injection (`dm-flakey`/ALICE) + recovery oracle, fsync-ordering trace, page-checksum verify | reporting commit before `fsync` durable forbidden; un-versioned on-disk format change forbidden |
 | Audio / DSP / real-time media | xrun/callback-duration check, real-time-safety (no malloc/lock in callback), golden-buffer differential | `malloc`/lock/syscall in the audio callback forbidden; bitwise-equality FP oracle forbidden |
@@ -206,7 +215,7 @@ Run the inventory first, then match signals. A repo may match several packs — 
 How the mechanized detector ranks (so its output is trustworthy, not a keyword soup):
 
 - It scans the project's **shipped code only** — `tests/`, `test/`, `docs/`, `examples/`, `bench*/`, `runners/`, and vendored/`third_party/` trees are excluded, and **comment/doc lines are stripped** before matching, so "left-hand coordinate **system**", a `/* delete */` doc, or a `tests/*.toml` build rule never decide a domain.
-- It **ranks matched packs by distinct code-match count** and reports the strongest as `primary`, the rest as `secondary` (a repo can legitimately span several — e.g. a codec is both Parser and HPC/SIMD). gpu/kernel signatures (`__global__`, `MODULE_LICENSE`) are unambiguous and always outrank the generic fallback.
+- It **ranks matched packs by distinct code-match count** and reports the strongest as `primary`, the rest as `secondary` (a repo can legitimately span several — e.g. a Compression codec also lights up HPC/SIMD when it ships a vectorized fast path). gpu/kernel signatures (`__global__`, `MODULE_LICENSE`) are unambiguous and always outrank the generic fallback.
 - A pack with a **single incidental code match is dropped** (one `__attribute__((__packed__))` is not "Networking"; one `ring buffer` identifier is not "Audio").
 - **`generic` is the least-specific pack** and only becomes `primary` when it strictly dominates (>= 2x the next pack's count); otherwise the more-specific pack wins. `generic` is still distinct from `unknown-domain` — generic means "a real general-purpose library with domain-light invariants", unknown means "no pack — derive one from the template".
 
@@ -214,33 +223,36 @@ How the mechanized detector ranks (so its output is trustworthy, not a keyword s
 bash skill/c-cpp-profi/scripts/cpp_domain_detect.sh .   # mechanical pack selection; prints matched pack(s) + anchor
 bash skill/c-cpp-profi/scripts/cpp_inventory.sh .
 git ls-files | grep -Ei 'misra|cFE|fprime|Fw/|rtems|zephyr|FreeRTOS|cuda|\.cu$|sycl|\.cl$' || true
+grep -RInE 'misra|Power of Ten|cFE_|CFE_|OS_[A-Z]|CCSDS|Framer|Deframer|\bTlm|APID|FwOpcode|CmdResponse|watchdog|RTEMS' . | head || true
 grep -RInE '__user|copy_(to|from)_user|MODULE_LICENSE|EXPORT_SYMBOL' --include=*.c . | head || true
 grep -RInE '__global__|__device__|cudaMalloc|sycl::|#pragma omp' . | head || true
 grep -RInE '-ffast-math|_mm_|vld1|svptrue|Eigen/|highway' . | head || true
-grep -RInE 'constant.time|secret|EVP_|crypto_|explicit_bzero|memset_s' . | head || true
-grep -RInE 'recvfrom|parse_packet|ntohl|RFC[0-9]|struct .*__attribute__.*packed' . | head || true
+grep -RInE 'constant.time|secret|EVP_|crypto_|explicit_bzero|memset_s|\bhmac\b|\baead\b|\bblake|\bsha[0-9]?\b|\bmd5\b|\bchacha\b|\bpoly1305\b|\bdigest\b|\bcipher\b|\bnonce\b' . | head || true
+grep -RInE 'recvfrom|parse_packet|ntohl|RFC[0-9]|struct .*__attribute__.*packed|\bsocket\b|\blistener\b|\bdialer\b|\bendpoint\b|\bsockaddr|connect|bind|accept|send|recv|epoll' . | head || true
+grep -RInE 'deflate|inflate|inflateBack|\blz4\b|LZ4_|LZ77|huffman|zstd|ZSTD_|compress|uncompress|decompress|gzip|gzopen|crc32|adler32' . | head || true
 grep -RInE 'LLVMContext|llvm::|emitOpcode|opcode|bytecode|interpreter|codegen|\bIRBuilder\b' . | head || true
 grep -RInE 'fsync|fdatasync|write-ahead|\bWAL\b|MVCC|crash.consistency|page_checksum|pwrite' . | head || true
 grep -RInE 'audio_callback|process_block|denormal|xrun|jack_|kAudioUnit|VST3|flush.to.zero' . | head || true
 grep -RInE 'superblock|inode|on-disk|mount|fsck|dm-flakey|barrier|FUA|crash.injection' . | head || true
-grep -RInE '\b(json|xml|yaml|toml|ini|csv|protobuf|msgpack)\b|_parse|parse_|tokeniz|lexer|_decode|deserialize|phr_' . | head || true
+grep -RInE '\b(json|xml|yaml|toml|ini|csv|protobuf|msgpack)\b|_parse|parse_|tokeniz|lexer|(json|xml|http|url|base64|token|header|message)[a-z0-9]*_decode|deserialize|phr_' . | head || true
 grep -RInE 'typedef +struct|_init\b|_free\b|KHASH|HASH_(ADD|FIND|DEL)|#define +[A-Z0-9_]*IMPLEMENTATION' . | head || true
 ```
 
 | Signal | Pack |
 |---|---|
-| `MISRA`, `rules of ten`, `Pa###` deviations, watchdog, `cFE_`/`OS_`, `Fw/`, `Os/`, `.rtems`, no `malloc` after init | Space / satellites |
+| `MISRA`, `rules of ten`, `Pa###` deviations, `watchdog`/`spacecraft`, cFE/cFS `cFE_`/`CFE_`/`OS_*`, F´/F-Prime `CCSDS`/`Framer`/`Deframer`/`Tlm`/`APID`/`FwOpcode`/`CmdResponse`, `Fw/`, `Os/`, `.rtems`, no `malloc` after init | Space / satellites |
 | `FreeRTOS`/`Zephyr`/`xTaskCreate`, linker `.ld` + map, `volatile` MMIO, ISR handlers, `-ffreestanding`, vendor HAL | Embedded / real-time |
 | `__user`, `copy_*_user`, `MODULE_LICENSE`, `EXPORT_SYMBOL`, `Kconfig`/`Kbuild`, GFP flags, spinlock/RCU | Kernel / drivers |
 | `.cu`/`.cl`, `__global__`/`__device__`, `cudaMalloc`, `sycl::`, `nvcc`/`-fsycl` in build | GPU |
 | `-march`/intrinsics headers, Eigen/Highway/BLAS, `<cfenv>`, OpenMP, reduction loops, `-ffast-math` | HPC / SIMD / numerics |
-| constant-time comments, `EVP_`/`crypto_`, `explicit_bzero`, KAT/test-vector dirs, FIPS | Crypto |
-| `ntohl`/`htons`, packed wire structs, `RFC` references, protocol test fixtures, socket I/O | Networking / protocols |
+| constant-time comments, `EVP_`/`crypto_`, `explicit_bzero`, KAT/test-vector dirs, FIPS; primitive names `hash`/`digest`/`cipher`/`hmac`/`aead`/`blake`/`sha`/`md5`/`chacha`/`poly1305`/`keystream`/`nonce` (a vectorized hash is still Crypto, not HPC) | Crypto |
+| `ntohl`/`htons`, packed wire structs, `RFC` references, protocol test fixtures; the transport idiom `socket`/`listener`/`dialer`/`endpoint`/`transport`, lowercase POSIX verbs `connect`/`bind`/`accept`/`send`/`recv`/`sendto`/`recvfrom`/`poll`/`epoll` | Networking / protocols |
+| `deflate`/`inflate`/`inflateBack`, `lz4`/`LZ4_`/`LZ77`/`huffman`/`zstd`/`ZSTD_`, `compress`/`uncompress`/`decompress`, `gzip`/`gzopen`, `crc32`/`adler32`, window/dictionary/literal-length | Compression / codec |
 | `llvm::`/`IRBuilder`/`LLVMContext`, opcode/`bytecode` dispatch `switch`, `interpreter`/`codegen`, gas/fuel counter, IR `-verify` | Compilers / interpreters / VMs |
 | `fsync`/`fdatasync`/`pwrite`, `WAL`/write-ahead, `MVCC`, page checksum, crash-consistency tests, `dm-flakey`/ALICE | Databases / storage engines |
 | `process_block`/`audio_callback`, `denormal`/flush-to-zero, `xrun`, JACK/CoreAudio/ASIO/VST3 | Audio / DSP / real-time media |
 | `superblock`/`inode`/on-disk struct, `mount`/`fsck`, `barrier`/FUA, crash-injection, format-version compat | Filesystems / block storage |
-| JSON/XML/YAML/INI/CSV/HTTP/protobuf, `*_parse`/`parse_*`/`tokeniz`/`lexer`/`*_decode`/`deserialize`/`phr_`/`yy*`, file-format magic (RIFF/FOURCC), codec readers | Parser / text-format / serialization |
+| JSON/XML/YAML/INI/CSV/HTTP/protobuf, `*_parse`/`parse_*`/`tokeniz`/`lexer`, a **format-prefixed** `*_decode` (`json`/`xml`/`http`/`url`/`base64`/`token`/`header`/`message` + `_decode`, so a codec identifier like `decode_full_block` does NOT count), `deserialize`/`phr_`/`yy*`, file-format magic (RIFF/FOURCC), text-format readers | Parser / text-format / serialization |
 | header-only containers, hashtable/vector/list/btree/string macros (KHASH/`HASH_ADD`/kvec/sds), `typedef struct` + `*_init`/`*_free` API, single-header `#define …IMPLEMENTATION` — and **no specific domain dominates** | Generic library / data-structures / strings |
 | None of the above match cleanly (and not even a generic-library shape) | Build a **Domain Pack** on the spot with [UNKNOWN-DOMAIN.md](UNKNOWN-DOMAIN.md) before editing |
 

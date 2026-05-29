@@ -149,6 +149,7 @@ EVIDENCE_NEEDLES = {
         "Seed Packs",
         "Pack-Selection Procedure",
         "Space / satellites",
+        "Compression / codec",
         "Compilers / interpreters / VMs",
         "Databases / storage engines",
         "Audio / DSP / real-time media",

@@ -250,7 +250,7 @@ pack_anchors() {
 # detect() so it never masks a genuine domain match.
 pack_ids() {
   printf '%s\n' \
-    space embedded kernel gpu hpc crypto networking \
+    space embedded kernel gpu hpc crypto networking compression \
     compilers databases audio filesystems parser generic
 }
 
@@ -263,6 +263,7 @@ pack_label() {
     hpc)         printf 'HPC / SIMD / numerics' ;;
     crypto)      printf 'Crypto' ;;
     networking)  printf 'Networking / protocols' ;;
+    compression) printf 'Compression / codec' ;;
     compilers)   printf 'Compilers / interpreters / VMs' ;;
     databases)   printf 'Databases / storage engines' ;;
     audio)       printf 'Audio / DSP / real-time media' ;;
@@ -275,26 +276,39 @@ pack_label() {
 
 # Signal regex per pack. Patterns are deliberately conservative: they mirror the
 # documented signals and avoid tokens that fire on unrelated code. Matching is
-# case-insensitive by default; a DISTINCTIVE uppercase-API token is wrapped in an
-# inline `(?-i:...)` group so it is matched CASE-SENSITIVELY (R8) — the SPACE pack's
-# `cFE_`/`CFE_`/`OS_API`/`OS_*` (with `OS_(?!CODE\b)` dropping zlib's gzip-header
-# `OS_CODE`) and the Compilers pack's `opcode`/`OPCODE` (so cFS/compiler vocabulary
-# matches but ordinary identifiers like zlib `OS_CODE`/`os_flush` and fprime's
-# CamelCase `FwOpcodeType` do not).
+# case-insensitive by default; a DISTINCTIVE token is wrapped in an inline
+# `(?-i:...)` group so it is matched CASE-SENSITIVELY (R8/R9-vocab):
+#   - SPACE: `cFE_`/`CFE_`/`OS_API`/`OS_*` (with `OS_(?!CODE\b)` dropping zlib's
+#     gzip-header `OS_CODE`) plus F´/F-Prime `CCSDS`/`Framer`/`Deframer`/`Tlm`/
+#     `APID`/`FwOpcode`/`CmdResponse` (case-sensitive so they match fprime's flight
+#     vocabulary but not prose), and Compilers' `opcode`/`OPCODE` — so cFS/F´/compiler
+#     vocabulary matches but ordinary identifiers (zlib `OS_CODE`/`os_flush`, fprime's
+#     CamelCase `FwOpcodeType`) do not.
+#   - COMPRESSION: `LZ4_`/`LZ77`/`ZSTD_` are case-sensitive (the codec API spelling),
+#     while `deflate`/`inflate`/`compress`/`crc32`/`adler32`/`gzip` stay loose.
+#   - NETWORKING: the distinctive nouns (`socket`/`listener`/`dialer`/`endpoint`/
+#     `sockaddr`) stay loose, but the generic syscall verbs `connect`/`bind`/`accept`/
+#     `send`/`recv`/`sendto`/`recvfrom`/`poll`/`epoll` are case-sensitive LOWERCASE
+#     (the POSIX socket convention) so they match real socket I/O but NOT CamelCase
+#     methods that merely share the spelling (tinyxml2's visitor `Accept()`).
+#   - CRYPTO: the bare `hash` token is NOT used (it fires on hashtable containers —
+#     klib/uthash/lua); `hash` only counts inside a crypto context
+#     (`crypto`/`sha`/`blake`/`hmac` prefix or a `256`/`512`/`sha` suffix).
 pack_regex() {
   case "$1" in
-    space)       printf '%s' '\bMISRA\b|rules? of ten|Power of Ten|(?-i:\bcFE_|\bCFE_|\bOS_API|\bOS_(?!CODE\b)[A-Z])|\bwatchdog\b|\bRTEMS\b|EXPORT_SYMBOL_NASA' ;;
+    space)       printf '%s' '\bMISRA\b|rules? of ten|Power of Ten|(?-i:\bcFE_|\bCFE_|\bOS_API|\bOS_(?!CODE\b)[A-Z]|\bCCSDS\b|\bFramer\b|\bDeframer\b|\bTlm\b|\bAPID\b|\bFwOpcode|\bCmdResponse)|\btelemetry\b|\bspacecraft\b|\bwatchdog\b|\bRTEMS\b|EXPORT_SYMBOL_NASA' ;;
     embedded)    printf '%s' '\bFreeRTOS\b|\bZephyr\b|xTaskCreate|-ffreestanding|\bvolatile\b.*(0x[0-9A-Fa-f]+|register)|ISR_HANDLER|\bHAL_' ;;
     kernel)      printf '%s' '(^|[^A-Za-z0-9_])__user([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])copy_(to|from)_user([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])MODULE_LICENSE([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])EXPORT_SYMBOL([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])spin_lock([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])GFP_(KERNEL|ATOMIC)([^A-Za-z0-9_]|$)' ;;
     gpu)         printf '%s' '(^|[^A-Za-z0-9_])__global__([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])__device__([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])__syncthreads([^A-Za-z0-9_]|$)|\bcudaMalloc\b|\bcudaMemcpy\b|\bhipMalloc\b|sycl::|-fsycl' ;;
     hpc)         printf '%s' '-ffast-math|_mm_[a-z]|vld1|svptrue|Eigen/|highway|#pragma omp|<cfenv>' ;;
-    crypto)      printf '%s' 'constant.time|secret-dependent|\bEVP_|crypto_[a-z]|explicit_bzero|memset_s|\bFIPS\b|test.vector' ;;
-    networking)  printf '%s' '\bntohl\b|\bhtons\b|\bntohs\b|\bhtonl\b|recvfrom|parse_packet|RFC[0-9]|__attribute__.*packed|#pragma pack' ;;
+    crypto)      printf '%s' 'constant.time|secret-dependent|\bEVP_|crypto_[a-z]|explicit_bzero|memset_s|\bFIPS\b|test.vector|\bhmac\b|\baead\b|\bblake|\bsha[0-9]?\b|\bsha3\b|\bmd5\b|\bchacha\b|\bpoly1305\b|\bkeystream\b|\bnonce\b|\bdigest\b|\bcipher\b|\baes\b|\bgcm\b|\bccm\b|\brsa\b|\becdsa\b|\becdh\b|\becdhe\b|\bx509\b|\bpkcs\b|\bpsk\b|\bcamellia\b|\bblowfish\b|\baria\b|\bsalsa20\b|\bcurve25519\b|\bed25519\b|\bsiphash\b|\bencrypt\b|\bdecrypt\b|\bciphertext\b|\bplaintext\b|\bkeypair\b|(crypto|secure|keyed|message|one.?way)[a-z0-9_]*hash|hash[a-z0-9_]*(256|512|384|224|md5|sha)|(sha|blake|md5|hmac|keccak)[a-z0-9_]*hash' ;;
+    networking)  printf '%s' '\bntohl\b|\bhtons\b|\bntohs\b|\bhtonl\b|parse_packet|RFC[0-9]|__attribute__.*packed|#pragma pack|\bsocket\b|\blistener\b|\bdialer\b|\bsockaddr|\bsetsockopt\b|\bgetsockopt\b|\bendpoint\b|\btransport\b|(?-i:\bconnect\b|\bbind\b|\baccept\b|\bsend\b|\brecv\b|\bsendto\b|\brecvfrom\b|\bpoll\b|\bepoll\b)' ;;
+    compression) printf '%s' '\bdeflate\b|\binflate\b|\binflateBack\b|(?-i:\bLZ4_|\bLZ77\b|\bZSTD_)|\blz4\b|\bzstd\b|\bhuffman\b|\bcompress\b|\buncompress\b|\bdecompress\b|\bgzip\b|\bgzopen\b|\bcrc32\b|\badler32\b|literal.length|sliding.window' ;;
     compilers)   printf '%s' 'LLVMContext|llvm::|IRBuilder|emitOpcode|(?-i:\bopcode\b|\bOPCODE\b)|\bbytecode\b|interpreter|codegen|opt -verify' ;;
     databases)   printf '%s' '\bfsync\b|fdatasync|write-ahead|\bWAL\b|\bMVCC\b|crash.consistency|page_checksum|\bpwrite\b|dm-flakey|\bALICE\b' ;;
     audio)       printf '%s' 'audio_?callback|audio_?buffer|process_block|\bdenormal|\bxrun\b|\bjack_|kAudioUnit|\bVST3\b|\bASIO\b|\bCoreAudio\b|flush.to.zero|samples?_per_(buffer|frame)' ;;
     filesystems) printf '%s' '\bsuperblock\b|\binode\b|on-disk|\bmount\b|\bfsck\b|dm-flakey|\bFUA\b|crash.injection|barrier' ;;
-    parser)      printf '%s' '\b(json|xml|yaml|toml|ini|csv|protobuf|msgpack|riff|fourcc)\b|\bhttp_?(parse|request|response)|[a-z0-9]+_parse\b|\bparse_[a-z]|\btokeniz|\blexer\b|\bgrammar\b|[a-z0-9]+_decode\b|\bdeserialize\b|\bphr_|\byy(parse|lex|_)|\bdr(wav|flac|mp3)_' ;;
+    parser)      printf '%s' '\b(json|xml|yaml|toml|ini|csv|protobuf|msgpack|riff|fourcc)\b|\bhttp_?(parse|request|response)|[a-z0-9]+_parse\b|\bparse_[a-z]|\btokeniz|\blexer\b|\bgrammar\b|\b(json|xml|yaml|toml|http|url|base64|hex|utf8?|token|field|header|message)[a-z0-9]*_decode\b|\bdeserialize\b|\bphr_|\byy(parse|lex|_)|\bdr(wav|flac|mp3)_' ;;
     generic)     printf '%s' '\bKHASH|\bkh_init\b|\bkvec_t\b|kv_(init|push)\b|\bUT_hash|HASH_(ADD|FIND|DEL)\b|stb_ds|\bsds[a-z]+\(|typedef +struct[^;]*\{|[A-Za-z][A-Za-z0-9]*_(init|free|destroy|new)\b|#define +[A-Z0-9_]*IMPLEMENTATION' ;;
     *)           printf '%s' 'a^' ;;   # never matches
   esac
@@ -652,8 +666,94 @@ SRC
 void run_opcode_interpreter() { /* opcode bytecode codegen interpreter */ }
 SRC
 
+  # Fixture COMP (R9-vocab): a zlib/lz4-like compression codec. Its defining
+  # vocabulary (`deflate`/`inflate`/`compress`/`crc32`/`LZ4_`/`huffman`) must select
+  # the NEW Compression pack as PRIMARY — before R9-vocab there was no compression
+  # pack, so zlib mis-primaried Networking and lz4 mis-primaried Parser. The file
+  # also carries the codec identifier `decode_full_block`: the NARROWED Parser
+  # `_decode` token (now format/parser-prefixed) must NOT match it, so Parser does
+  # not steal a codec.
+  mkdir -p "$tmp/codec/lib"
+  cat >"$tmp/codec/lib/deflate.c" <<'SRC'
+#include "deflate.h"
+typedef enum { decode_full_block = 0, partial_decode = 1 } earlyEnd_directive;
+int deflate(void *strm, int flush) { return huffman_encode(strm); }
+int inflate(void *strm, int flush) { return LZ4_decompress_safe(strm, flush); }
+int inflateBack(void *strm) { return 0; }
+int compress(unsigned char *dest, unsigned long *destLen) { return 0; }
+int uncompress(unsigned char *dest, unsigned long *srcLen) { return 0; }
+unsigned long crc32(unsigned long crc, const unsigned char *buf, unsigned len) { return crc; }
+unsigned long adler32(unsigned long adler, const unsigned char *buf, unsigned len) { return adler; }
+SRC
+  cat >"$tmp/codec/lib/lz4.h" <<'SRC'
+#ifndef LZ4_H
+#define LZ4_H
+int LZ4_compress_default(const char *src, char *dst, int srcSize, int dstCap);
+int LZ4_decompress_safe(const char *src, char *dst, int compressedSize, int dstCap);
+#endif
+SRC
+
+  # Fixture NET (R9-vocab): a messaging/transport library using the socket/listener/
+  # dialer/send/recv idiom — the vocabulary nng is built on. Before R9-vocab the
+  # Networking pack only knew ntohl/htons/packed-struct/RFC and scored ~9 on nng,
+  # losing PRIMARY to Parser. It must now select Networking PRIMARY.
+  mkdir -p "$tmp/net/src"
+  cat >"$tmp/net/src/transport.c" <<'SRC'
+#include "transport.h"
+int sock_open(void) {
+    int s = socket(2, 1, 0);
+    bind(s, 0, 0);
+    listen(s, 5);
+    int c = accept(s, 0, 0);
+    connect(c, 0, 0);
+    send(c, "x", 1, 0);
+    recv(c, 0, 0, 0);
+    return c;
+}
+SRC
+  cat >"$tmp/net/src/dialer.c" <<'SRC'
+#include "dialer.h"
+struct listener { int fd; };
+struct dialer { int fd; };
+void endpoint_init(struct listener *l, struct dialer *d) { (void)l; (void)d; }
+SRC
+
+  # Fixture CRY (R9-vocab): a hash/cipher library (blake2-like) whose identity is the
+  # primitive names `blake2`/`sha256`/`hmac`/`digest`/`chacha`/`poly1305`/`nonce`,
+  # NOT the constant-time/EVP_/FIPS engineering signals. Before R9-vocab a textbook
+  # hash lib scored ~10 Crypto (incidental `test.vector`) and lost PRIMARY to HPC off
+  # its own SIMD intrinsics. It must now select Crypto PRIMARY.
+  mkdir -p "$tmp/cipher"
+  cat >"$tmp/cipher/blake2b.c" <<'SRC'
+#include "blake2.h"
+int blake2b_update(void *S, const void *in, unsigned long inlen) { return 0; }
+int blake2b_final(void *S, void *out, unsigned long outlen) { return 0; }
+void chacha20_block(unsigned char *keystream, const unsigned char *nonce) { (void)nonce; }
+int poly1305_mac(unsigned char *digest, const unsigned char *m) { return 0; }
+int hmac_sha256(unsigned char *out, const unsigned char *key) { return 0; }
+SRC
+
+  # Fixture FP2 (R9-vocab): an F´/F-Prime flight repo whose vocabulary is fprime's
+  # own — `CCSDS`/`Framer`/`Deframer`/`Tlm`/`APID`/`FwOpcode`/`CmdResponse`/`telemetry`
+  # — NOT cFE's `OS_*`/`CFE_*`. Before R9-vocab the Space pack was cFE-tuned and blind
+  # to F´, so fprime barely cleared Space on incidental `OS_[A-Z]` collisions. It must
+  # select Space PRIMARY off the F´ vocabulary alone (no OS_/CFE_ tokens here).
+  mkdir -p "$tmp/fprime2/Svc/ComFramer"
+  cat >"$tmp/fprime2/Svc/ComFramer/Framer.cpp" <<'SRC'
+#include "Framer.hpp"
+void Framer::frame(FwOpcodeType opCode) {
+    CCSDS_Header hdr;
+    hdr.APID = 0x10;
+    Deframer deframer;
+    TlmChan telemetry;
+    CmdResponse resp;
+    (void)opCode; (void)hdr; (void)deframer; (void)telemetry; (void)resp;
+}
+SRC
+
   local gpu_out kernel_out plain_out hpc_out parser_out generic_out comments_out
   local zlibish_out cfsish_out fprimeish_out
+  local codec_out net_out cry_out fp2_out
   gpu_out="$(run_detect "$tmp/gpu" no)"
   kernel_out="$(run_detect "$tmp/kernel" no)"
   plain_out="$(run_detect "$tmp/plain" no)"
@@ -664,6 +764,10 @@ SRC
   zlibish_out="$(run_detect "$tmp/zlibish" no)"
   cfsish_out="$(run_detect "$tmp/cfsish" no)"
   fprimeish_out="$(run_detect "$tmp/fprimeish" no)"
+  codec_out="$(run_detect "$tmp/codec" no)"
+  net_out="$(run_detect "$tmp/net" no)"
+  cry_out="$(run_detect "$tmp/cipher" no)"
+  fp2_out="$(run_detect "$tmp/fprime2" no)"
 
   # Assertion 1: the CUDA fixture selects the GPU pack as primary, anchored to
   # the .cu file. Output format: "pack[<role>]: <label> | <anchor> (N code matches)".
@@ -694,7 +798,8 @@ SRC
   local out
   for out in "$gpu_out" "$kernel_out" "$plain_out" "$hpc_out" \
              "$parser_out" "$generic_out" "$comments_out" \
-             "$zlibish_out" "$cfsish_out" "$fprimeish_out"; do
+             "$zlibish_out" "$cfsish_out" "$fprimeish_out" \
+             "$codec_out" "$net_out" "$cry_out" "$fp2_out"; do
     if printf '%s\n' "$out" | grep -qF "$tmp"; then
       printf 'cpp_domain_detect self-test: FAIL (absolute path leaked into output)\n'
       printf '%s\n%s\n' '--- out ---' "$out"
@@ -710,6 +815,14 @@ SRC
   # case-sensitive `OS_(?!CODE\b)`/`OS_API` tokens no longer match.
   if printf '%s\n' "$zlibish_out" | grep -qE 'pack\[primary\]: Space / satellites'; then
     printf 'cpp_domain_detect self-test: FAIL (R8: OS_CODE/os_flush case-fold made a compression lib SPACE-primary)\n'
+    printf '%s\n%s\n' '--- zlibish ---' "$zlibish_out"
+    exit 1
+  fi
+  # R9-vocab strengthens R8.1: the inflate/deflate/compress vocabulary now selects
+  # the Compression pack as PRIMARY (not merely "not SPACE") — the honest classifier
+  # for a compression lib, locking zlib's Networking->Compression reclassification.
+  if ! printf '%s\n' "$zlibish_out" | grep -qE 'pack\[primary\]: Compression / codec'; then
+    printf 'cpp_domain_detect self-test: FAIL (R9-vocab: zlib-like fixture did not select Compression primary)\n'
     printf '%s\n%s\n' '--- zlibish ---' "$zlibish_out"
     exit 1
   fi
@@ -734,6 +847,50 @@ SRC
     printf '%s\n%s\n' '--- fprimeish ---' "$fprimeish_out"
     exit 1
   fi
+
+  # -------------------------------------------------------------------------
+  # R9-vocab assertions: each reclassification proved on the real cloned repos
+  # (zlib/lz4 -> Compression, nng -> Networking, blake2 -> Crypto, fprime -> Space)
+  # is locked here on a synthetic fixture carrying the same defining vocabulary.
+  # -------------------------------------------------------------------------
+  # R9.1: the codec fixture selects the NEW Compression pack as PRIMARY off
+  # deflate/inflate/compress/crc32/LZ4_/huffman (zlib mis-primaried Networking,
+  # lz4 mis-primaried Parser before the pack existed).
+  if ! printf '%s\n' "$codec_out" | grep -qE 'pack\[primary\]: Compression / codec \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (R9-vocab: codec fixture did not select Compression pack)\n'
+    printf '%s\n%s\n' '--- codec ---' "$codec_out"
+    exit 1
+  fi
+  # R9.2: the narrowed Parser `_decode` token must NOT fire on the codec
+  # identifier `decode_full_block`/`partial_decode` -> the codec is not Parser.
+  if printf '%s\n' "$codec_out" | grep -qE 'pack\[primary\]: Parser'; then
+    printf 'cpp_domain_detect self-test: FAIL (R9-vocab: narrowed _decode token still snagged a codec into Parser)\n'
+    printf '%s\n%s\n' '--- codec ---' "$codec_out"
+    exit 1
+  fi
+  # R9.3: the messaging fixture selects Networking PRIMARY off the
+  # socket/listener/dialer/send/recv idiom (nng lost to Parser before).
+  if ! printf '%s\n' "$net_out" | grep -qE 'pack\[primary\]: Networking / protocols \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (R9-vocab: socket/listener/dialer fixture did not select Networking)\n'
+    printf '%s\n%s\n' '--- net ---' "$net_out"
+    exit 1
+  fi
+  # R9.4: the hash/cipher fixture selects Crypto PRIMARY off primitive names
+  # (blake2/sha256/hmac/chacha/poly1305/nonce/digest), not HPC (blake2 lost to HPC).
+  if ! printf '%s\n' "$cry_out" | grep -qE 'pack\[primary\]: Crypto \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (R9-vocab: hash/cipher fixture did not select Crypto)\n'
+    printf '%s\n%s\n' '--- cipher ---' "$cry_out"
+    exit 1
+  fi
+  # R9.5: the F´/F-Prime fixture selects Space PRIMARY off the fprime vocabulary
+  # (CCSDS/Framer/Deframer/Tlm/APID/FwOpcode/CmdResponse) with NO cFE OS_/CFE_
+  # tokens present — the Space pack was cFE-tuned and blind to F´ before.
+  if ! printf '%s\n' "$fp2_out" | grep -qE 'pack\[primary\]: Space / satellites \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (R9-vocab: F´ CCSDS/Framer/Tlm/APID fixture did not select Space)\n'
+    printf '%s\n%s\n' '--- fprime2 ---' "$fp2_out"
+    exit 1
+  fi
+
   # Assertion 6: reproducibility - two consecutive runs byte-match.
   local gpu_out2
   gpu_out2="$(run_detect "$tmp/gpu" no)"
