@@ -23,11 +23,13 @@ No problem-evidence means no idea. No behavior oracle means no radical change.
 > `cpp_evidence_check.py`
 > (profiles `basic/parser/memory/public-abi/concurrency/performance/refactor/native-ui/portability/security/docs-scripts/idea/comprehension/port/modernize/rearchitect`,
 > the `comprehension` profile with `--require-comprehension-proof` and backed by [REPO-COMPREHENSION.md](REPO-COMPREHENSION.md),
-> the `port`/`modernize`/`rearchitect` profiles with `--require-transform-proof` and backed by [CODE-TRANSFORM.md](CODE-TRANSFORM.md))
-> exist today. The remaining proposal-specific tooling named below — `--derive-profiles`/`--strict-numeric` —
-> is the *specification* this engine is built against; it is implemented by the skill's own improvement loop
-> (the `idea-wizard` and `mcp-server-design` passes). Until a named tool exists, perform its step **manually**
-> against the Idea Card below and record the result honestly; never claim a gate you did not actually run.
+> the `port`/`modernize`/`rearchitect` profiles with `--require-transform-proof` and backed by [CODE-TRANSFORM.md](CODE-TRANSFORM.md),
+> and `--derive-profiles` (derives the required profile set from the report's `## Change Scope` answers and
+> constrains those answers to `yes`/`no`) plus `--strict-numeric` (alias for `--require-performance-proof`))
+> exist today. There is no remaining planned proposal-specific tool: the profile-derivation and strict-numeric
+> steps named below are now run by `cpp_evidence_check.py` directly, not by hand. Still, never claim a gate you
+> did not actually run, and where a step lacks a dedicated tool, perform it **manually** against the Idea Card
+> below and record the result honestly.
 
 Step 0 is mandatory. You may not propose a change to code you cannot model. "I understood it" is falsifiable: cite a symbol name or `file:line` for each field, the same way "I optimized it" cites a benchmark.
 
@@ -132,7 +134,7 @@ Never commit the first idea. Compete them, steelman, refute, then score.
 No radical change lands without **all four**. These are checked by the implementation profiles, not by promises.
 
 1. **Behavior oracle** — golden outputs, corpus replay, differential test against the reference/origin, or recorded traces. For a `port`, this is a *differential oracle* naming origin triple, target triple, emulator/hardware path, and corpus size (`--profile port --require-transform-proof` verifies the named substructure, not a bare grep). See [CODE-TRANSFORM.md](CODE-TRANSFORM.md).
-2. **Baseline measurement** — captured before the change with command, inputs, CPU, compiler, flags, commit. A perf claim must pass `cpp_perf_proof.py` / `--strict-numeric`: real `hyperfine`/Google-Benchmark/`perf stat` JSON, before-and-after both parse, after beats before by more than `k*stddev`, same command/input in both. A regression export must FAIL; a within-noise export must FAIL.
+2. **Baseline measurement** — captured before the change with command, inputs, CPU, compiler, flags, commit. A perf claim must pass `--strict-numeric` (today an alias for `--require-performance-proof`, so the performance gate must carry baseline/before, profile/hotspot, score/opportunity, oracle/golden/isomorphism, and after/result). The richer numeric oracle — `cpp_perf_proof.py` parsing real `hyperfine`/Google-Benchmark/`perf stat` JSON, requiring after to beat before by more than `k*stddev` over the same command/input, and FAILing a regression or within-noise export — is the next planned increment, not yet shipped; until it exists, capture and read that JSON by hand.
 3. **ABI/API check** — `cpp_abi_snapshot.sh` before/after; no unintended symbol/layout delta on any public boundary. A `modernize` carries a per-transform isomorphism field plus the ABI snapshot; a `rearchitect` carries a rearchitecture ledger plus tests plus ABI.
 4. **Reversible one-lever commit** — one lever per commit; the change reverts cleanly. A `rearchitect`/`port` carries a migration ledger with a per-commit caller census (`--profile rearchitect --require-transform-proof` verifies it). See [CODE-TRANSFORM.md](CODE-TRANSFORM.md).
 

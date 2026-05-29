@@ -78,6 +78,7 @@ Size delta:
 | tests | passed | make test | 41 tests pass; new corpus/crash-mul case asserts errno==ENOMEM, rc==-1 |
 | static analysis | passed | clang-tidy -checks=bugprone-* src/tlv.c | findings: 0 after the fix; pre-fix flagged the unchecked multiply |
 | ASan+UBSan | passed | make asan && ./tlvtool < corpus/crash-mul | ASan+UBSan clean; pre-fix heap-buffer-overflow at src/tlv.c:48 no longer reproduces; unsigned-integer-overflow not triggered |
+| fuzz/corpus | passed | ./tlv_fuzzer -runs=5000000 corpus/ (ASan+UBSan) | pre-fix: crash at src/tlv.c:48 in 3s; post-fix: 0 crashes over 5e6 execs; crash-mul minimized and promoted to corpus/ as a permanent regression |
 | performance | passed | size -A tlvtool; bloaty -d symbols old.elf -- tlvtool | baseline: .text 41232 / total 78064; profile: bloaty per-symbol size oracle; score: -7952 B total (-10.2%) reclaimed dead helpers; oracle: 41 golden parse outputs + tests byte-identical; after: .text 33980 / total 70112; result: behavior-preserving size win, no hot-path regression |
 
 ## Residual Risk

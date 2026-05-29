@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -52,6 +53,28 @@ SCOPE_KEYS = {
     "Threads/locks/atomics/signals touched",
     "Refactor/simplification claim",
     "Performance claim",
+}
+
+# The six yes/no Change Scope fields whose answers select risk profiles.
+# Each maps to the profiles its affirmative answer requires. `--derive-profiles`
+# reads the report's own answers so profile selection is derived from the work,
+# not self-attested on the command line.
+SCOPE_BOOLEAN_KEYS = (
+    "Public API/ABI touched",
+    "User-visible rendering/artifacts touched",
+    "Parser/input/security boundary touched",
+    "Threads/locks/atomics/signals touched",
+    "Refactor/simplification claim",
+    "Performance claim",
+)
+
+SCOPE_PROFILE_MAP = {
+    "Public API/ABI touched": ("public-abi",),
+    "User-visible rendering/artifacts touched": ("native-ui",),
+    "Parser/input/security boundary touched": ("parser", "security"),
+    "Threads/locks/atomics/signals touched": ("concurrency",),
+    "Refactor/simplification claim": ("refactor",),
+    "Performance claim": ("performance",),
 }
 
 RESIDUAL_KEYS = {
@@ -110,6 +133,62 @@ def parse_key_values(lines: list[str]) -> dict[str, str]:
         key, value = stripped[2:].split(":", 1)
         values[key.strip()] = value.strip()
     return values
+
+
+def scope_answer(value: str) -> str | None:
+    """Classify a Change Scope yes/no answer.
+
+    Returns "yes", "no", or None when the answer is not machine-usable.
+    A trailing parenthetical note is tolerated (e.g. "yes (TLV parser)") so the
+    report can stay human-readable while the answer stays deterministic.
+    """
+    normalized = normalize(value)
+    if normalized == "yes" or normalized.startswith("yes ") or normalized.startswith("yes("):
+        return "yes"
+    if normalized == "no" or normalized.startswith("no ") or normalized.startswith("no("):
+        return "no"
+    return None
+
+
+def derive_profiles(
+    scope: dict[str, str],
+    explicit: list[str],
+    errors: list[str],
+) -> tuple[list[str], bool]:
+    """Compute the minimum profile set from the report's Change Scope answers.
+
+    The scope vocabulary is constrained here: every *present* boolean field must
+    read as yes or no. Anything else (maybe, sort of, free-text) is rejected so
+    the answers stay machine-usable. Absent fields are governed by the existing
+    require_filled presence check, not treated as a vocabulary error, so this
+    does not change behavior for reports that omit a field.
+
+    Returns (derived_profiles, require_performance_proof_from_scope).
+    """
+    derived = ["basic"]
+    perf_proof = False
+    for key in SCOPE_BOOLEAN_KEYS:
+        if key not in scope:
+            continue
+        answer = scope_answer(scope[key])
+        if answer is None:
+            errors.append(
+                f"Change Scope: field {key!r} must be yes or no (got {scope[key]!r})"
+            )
+            continue
+        if answer == "yes":
+            derived.extend(SCOPE_PROFILE_MAP[key])
+            if key == "Performance claim":
+                perf_proof = True
+
+    combined = list(derived) + list(explicit)
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for profile in combined:
+        if profile not in seen:
+            seen.add(profile)
+            deduped.append(profile)
+    return deduped, perf_proof
 
 
 def parse_gates(text: str) -> dict[str, GateRow]:
@@ -206,6 +285,25 @@ def check_gates(
                         "'findings: 0', 'no relevant findings', "
                         "'findings reviewed:', or 'findings triaged:'"
                     )
+                # Shape-only proof-of-execution tightening (checks the shape of
+                # the claim, NOT its truth). A 'findings reviewed:'/'findings
+                # triaged:' claim must carry a following non-empty token, and a
+                # 'findings: <n>' count must be a digit, so the claim cannot be
+                # an empty header or a non-numeric placeholder.
+                for label in ("findings reviewed:", "findings triaged:"):
+                    if label in evidence and not re.search(
+                        re.escape(label) + r"\s*\S", evidence
+                    ):
+                        errors.append(
+                            f"gate static analysis: '{label.rstrip(':')}' "
+                            "must be followed by a non-empty summary"
+                        )
+                count_match = re.search(r"findings:\s*(\S+)", evidence)
+                if count_match and not count_match.group(1).isdigit():
+                    errors.append(
+                        "gate static analysis: 'findings: <n>' count must be a "
+                        f"digit (got {count_match.group(1)!r})"
+                    )
             if require_performance_proof and gate_name == "performance":
                 requirements = {
                     "baseline/before": ("baseline:" in evidence or "before:" in evidence),
@@ -287,7 +385,8 @@ def check_report(
     require_performance_proof: bool,
     require_comprehension_proof: bool,
     require_transform_proof: bool,
-) -> list[str]:
+    derive: bool = False,
+) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     if "# C/C++ Gate Report" not in text:
         errors.append("missing '# C/C++ Gate Report' heading")
@@ -295,6 +394,10 @@ def check_report(
     scope = parse_key_values(section_lines(text, "## Change Scope"))
     residual = parse_key_values(section_lines(text, "## Residual Risk"))
     rows = parse_gates(text)
+
+    if derive:
+        profiles, perf_proof_from_scope = derive_profiles(scope, profiles, errors)
+        require_performance_proof = require_performance_proof or perf_proof_from_scope
 
     require_filled("Change Scope", scope, SCOPE_KEYS, errors)
     require_filled("Residual Risk", residual, RESIDUAL_KEYS, errors)
@@ -311,7 +414,7 @@ def check_report(
         require_transform_proof,
         errors,
     )
-    return errors
+    return errors, profiles
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -370,23 +473,44 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
             "evidence to include caller-census and ledger"
         ),
     )
+    parser.add_argument(
+        "--derive-profiles",
+        action="store_true",
+        help=(
+            "derive the required profile set from the report's '## Change Scope' "
+            "yes/no answers (parser-touched -> parser+security; ABI-touched -> "
+            "public-abi; threads-touched -> concurrency; perf-claim -> performance "
+            "+ --require-performance-proof; refactor-claim -> refactor; "
+            "rendering-touched -> native-ui; always basic), union it with any "
+            "explicit --profile, and constrain each present scope answer to yes/no"
+        ),
+    )
+    parser.add_argument(
+        "--strict-numeric",
+        action="store_true",
+        help="alias for --require-performance-proof",
+    )
     parser.add_argument("--json", action="store_true", help="emit JSON result")
     return parser.parse_args(argv)
 
 
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
-    profiles = args.profile or ["basic"]
+    # When --derive-profiles is set, --profile is a seed the scope answers extend;
+    # without it the explicit profile set wins, defaulting to basic as before.
+    explicit_profiles = args.profile or ([] if args.derive_profiles else ["basic"])
+    require_performance_proof = args.require_performance_proof or args.strict_numeric
     text = read_report(args.report)
-    errors = check_report(
+    errors, profiles = check_report(
         text,
-        profiles,
+        explicit_profiles,
         args.allow_failed,
         args.require_warning_clean,
         args.require_analyzer_review,
-        args.require_performance_proof,
+        require_performance_proof,
         args.require_comprehension_proof,
         args.require_transform_proof,
+        args.derive_profiles,
     )
 
     if args.json:
@@ -394,10 +518,11 @@ def main(argv: list[str]) -> int:
             json.dumps(
                 {
                     "ok": not errors,
+                    "derived_profiles": profiles if args.derive_profiles else [],
                     "profiles": profiles,
                     "require_analyzer_review": args.require_analyzer_review,
                     "require_comprehension_proof": args.require_comprehension_proof,
-                    "require_performance_proof": args.require_performance_proof,
+                    "require_performance_proof": require_performance_proof,
                     "require_transform_proof": args.require_transform_proof,
                     "require_warning_clean": args.require_warning_clean,
                     "errors": errors,

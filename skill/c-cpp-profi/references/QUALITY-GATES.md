@@ -48,7 +48,19 @@ Use `--require-warning-clean` when a passed compile gate should mean more than "
 
 Use `--require-analyzer-review` for release, parser, memory, security, and review work. With that flag, a passed static-analysis gate must explicitly say `findings: 0`, `no relevant findings`, `findings reviewed: ...`, or `findings triaged: ...`. Static tools often exit `0` while printing warnings, portability errors, or analyzer notes; the evidence packet must prove the output was read.
 
-Use `--require-performance-proof` for every optimization claim. With that flag, a passed performance gate must include baseline or before data, profile or hotspot evidence, an opportunity score, a behavior oracle or isomorphism proof, and after or result data. The checker verifies that the packet is self-contained; it does not verify that the benchmark methodology is strong enough.
+Use `--require-performance-proof` for every optimization claim. With that flag, a passed performance gate must include baseline or before data, profile or hotspot evidence, an opportunity score, a behavior oracle or isomorphism proof, and after or result data. The checker verifies that the packet is self-contained; it does not verify that the benchmark methodology is strong enough. `--strict-numeric` is an alias for `--require-performance-proof`.
+
+Use `--derive-profiles` to make profile selection derived rather than self-attested. With that flag, the checker reads the `## Change Scope` yes/no answers and computes the minimum required profile set, unions it with any explicit `--profile`, and enforces it:
+
+- `Parser/input/security boundary touched: yes` adds `parser` and `security`.
+- `Public API/ABI touched: yes` adds `public-abi`.
+- `Threads/locks/atomics/signals touched: yes` adds `concurrency`.
+- `Performance claim: yes` adds `performance` and turns on `--require-performance-proof`.
+- `Refactor/simplification claim: yes` adds `refactor`.
+- `User-visible rendering/artifacts touched: yes` adds `native-ui`.
+- `basic` is always included.
+
+Each scope answer that is present must read as `yes` or `no` (a trailing parenthetical note such as `yes (TLV parser)` is allowed); anything else — `maybe`, `sort of`, or free text — fails with `Change Scope: field '<key>' must be yes or no (got '<value>')` so the answers stay machine-usable. This closes the hole where a report that touches a parser or a public ABI could pass on `--profile basic` alone. The `--json` output adds a `derived_profiles` array showing exactly what was derived.
 
 The report must distinguish:
 
