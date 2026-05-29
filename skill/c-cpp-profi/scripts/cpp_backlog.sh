@@ -75,10 +75,29 @@ EXCLUDE_GLOBS=(
   --glob '!**/extra/**'
   --glob '!**/docs/**'
   --glob '!**/doc/**'
-  --glob '!**/utest.h'
-  --glob '!**/unity*'
-  --glob '!**/catch.hpp'
-  --glob '!**/catch2/**'
+  # R10: vendored *runtime* deps + generated amalgam/aux trees the
+  # `_deps/`/`third_party/`/`vendor/` set missed (kept identical to the sibling
+  # scripts): bare `deps/` (redis bundles), `dependencies/` (simdjson bench deps),
+  # `singleheader/` generated amalgam (simdjson), `autosetup/` + the `jimsh0.c`
+  # bootstrap amalgam (sqlite), and OSS-Fuzz `fuzz/`/`fuzzing/` harness dirs. The
+  # test-fuzz-coverage lane still discovers harnesses via its own explicit
+  # `**/fuzz/**` / `**/fuzzing/**` globs, so coverage detection is unaffected.
+  --glob '!**/deps/**'
+  --glob '!**/dependencies/**'
+  --glob '!**/singleheader/**'
+  --glob '!**/fuzz/**'
+  --glob '!**/fuzzing/**'
+  --glob '!**/autosetup/**'
+  --glob '!**/jimsh0.c'
+  # R11: vendored-framework excludes anchored to VENDORED LOCATIONS only, so the
+  # framework's OWN shipped source is scanned when the repo IS that framework
+  # (Catch2 `src/catch2/`) while embedded copies in OTHER repos are still dropped.
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/unity*'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/utest.h'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/catch.hpp'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/catch2/**'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/gtest/**'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/gmock/**'
   --glob '!**/*_test.*'
   --glob '!**/*_tests.*'
   --glob '!**/*test*.c'
@@ -295,48 +314,63 @@ EOF
 }
 
 # api-ergonomics: pointer+length signatures, owning raw alloc in headers ------
+#
+# R1-mixed: the std::span/string_view recommendation is a C++-only construct, so the
+# span-vs-C-ownership decision is made PER FILE by extension, not repo-wide. The old
+# code keyed on the repo-level `repo_has_cpp` signal: on a MIXED C/C++ repo (zephyr:
+# 8849 .c + 50 .cpp) that returned yes, so EVERY ptr+len hit — including the ~9400 in
+# pure-C `arch/*/*.c` — got a "no std::span/string_view" suggestion that is N/A in C.
+# Now a hit in a C++ TU/header (.cc/.cpp/.cxx/.hpp/.hh/.hxx/.h++) gets the span advice;
+# a hit in a `.c`/`.h` file gets the W2 C ownership-contract relabel (span is N/A in C
+# regardless of whether the repo uses span elsewhere). The same per-file rule gates
+# the owning-raw `new` arm: `= new …` only flags in a C++ file (in a C file `new` is a
+# legal identifier), while `= malloc/calloc(…)` flags in any header.
+is_cpp_path() {
+  case "$1" in
+    *.cc|*.cpp|*.cxx|*.c++|*.hpp|*.hh|*.hxx|*.h++) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 emit_api_ergonomics() {
   local repo="$1"
-  local hits has_span is_cpp
-  is_cpp=no
-  if repo_has_cpp "$repo"; then
-    is_cpp=yes
-  fi
-  # Does the repo already use span/string_view anywhere? If so, suppress the
-  # span suggestion (it has the vocabulary; absence elsewhere is noise).
+  local hits has_span
+  # Does the repo already use span/string_view anywhere? If so, suppress the span
+  # suggestion for C++ files (it has the vocabulary; absence elsewhere is noise).
+  # This NEVER suppresses the C-file ownership-contract relabel, which is span-
+  # independent (a C file cannot use std::span no matter what the C++ TUs do).
   has_span=no
   if rg -q --no-messages 'std::span|std::string_view|gsl::span|absl::Span' "$repo" 2>/dev/null; then
     has_span=yes
   fi
-  # On C++ repos with no span vocabulary, recommend std::span/string_view. On a
-  # pure-C repo ptr+len IS the idiom and span is impossible, so we relabel the
-  # same surface as an ownership-contract documentation gap (F1a / W2).
-  if [ "$is_cpp" = no ] || [ "$has_span" = no ]; then
-    # pointer+length parameter pair in a signature: `T *name, size_t len`
-    hits="$(rg_code '\*[A-Za-z_][A-Za-z0-9_]*\s*,\s*(size_t|std::size_t|unsigned|int|uint[0-9]+_t)\s+[A-Za-z_]*(len|size|count|n)[A-Za-z0-9_]*' "$repo" | strip_repo_prefix "$repo")"
-    if [ -n "$hits" ]; then
-      while IFS= read -r line; do
-        [ -n "$line" ] || continue
-        local anchor
-        anchor="$(printf '%s' "$line" | cut -d: -f1-2)"
-        if [ "$is_cpp" = yes ]; then
-          printf 'api-ergonomics\tpointer+length parameter pair with no std::span/string_view (misuse-prone surface)\t%s\n' "$anchor"
-        else
-          printf 'api-ergonomics\tpointer+length parameter pair (C: document the ptr+len ownership/bounds contract)\t%s\n' "$anchor"
-        fi
-      done <<EOF
+  # pointer+length parameter pair in a signature: `T *name, size_t len`. Scanned over
+  # the whole shipped C/C++ surface; the C++-vs-C label is chosen per hit by extension.
+  hits="$(rg_code '\*[A-Za-z_][A-Za-z0-9_]*\s*,\s*(size_t|std::size_t|unsigned|int|uint[0-9]+_t)\s+[A-Za-z_]*(len|size|count|n)[A-Za-z0-9_]*' "$repo" | strip_repo_prefix "$repo")"
+  if [ -n "$hits" ]; then
+    while IFS= read -r line; do
+      [ -n "$line" ] || continue
+      local anchor path
+      anchor="$(printf '%s' "$line" | cut -d: -f1-2)"
+      path="$(printf '%s' "$anchor" | cut -d: -f1)"
+      if is_cpp_path "$path"; then
+        # C++ file: recommend std::span/string_view — unless the repo already uses it.
+        [ "$has_span" = yes ] && continue
+        printf 'api-ergonomics\tpointer+length parameter pair with no std::span/string_view (misuse-prone surface)\t%s\n' "$anchor"
+      else
+        # C file (.c/.h): ptr+len IS the idiom and span is N/A — relabel as the W2
+        # ownership-contract documentation gap (per-file, even on a mixed repo).
+        printf 'api-ergonomics\tpointer+length parameter pair (C: document the ptr+len ownership/bounds contract)\t%s\n' "$anchor"
+      fi
+    done <<EOF
 $hits
 EOF
-    fi
   fi
-  # owning raw new/malloc inside a header (ownership crosses the boundary). The
-  # `new` arm only applies on C++ repos; on C we keep the malloc/calloc arm.
+  # owning raw new/malloc inside a header (ownership crosses the boundary). We scan
+  # headers with the `new`-INCLUSIVE pattern but only KEEP a `new` hit when it lands
+  # in a C++ header (.hpp/.hh/.hxx/.h++); a `.h` C header keeps only malloc/calloc, so
+  # a C var named `new` (`x->new = …`) is never read as a C++ new-expression (R1-mixed).
   local owner_pat
-  if [ "$is_cpp" = yes ]; then
-    owner_pat='(=|return)\s*(::)?(new\b|malloc\s*\(|calloc\s*\()'
-  else
-    owner_pat='(=|return)\s*(malloc\s*\(|calloc\s*\()'
-  fi
+  owner_pat='(=|return)\s*(::)?(new\b|malloc\s*\(|calloc\s*\()'
   local hdr_files
   hdr_files="$(rg -l --no-messages \
       --glob '*.{h,hh,hpp,hxx,h++}' \
@@ -353,8 +387,16 @@ EOF
   if [ -n "$hits" ]; then
     while IFS= read -r line; do
       [ -n "$line" ] || continue
-      local anchor
+      local anchor path
       anchor="$(printf '%s' "$line" | cut -d: -f1-2)"
+      path="$(printf '%s' "$anchor" | cut -d: -f1)"
+      # A `new`-only hit in a C header is a C identifier, not a C++ new-expression:
+      # keep it only when the line carries malloc/calloc OR the file is a C++ header.
+      if ! is_cpp_path "$path"; then
+        if ! printf '%s' "$line" | grep -qE '(=|return)[[:space:]]*(malloc|calloc)[[:space:]]*\('; then
+          continue
+        fi
+      fi
       printf 'api-ergonomics\towning raw new/malloc in a header (ownership crosses boundary; owner-annotated/RAII candidate)\t%s\n' "$anchor"
     done <<EOF
 $hits
@@ -918,6 +960,94 @@ SRC
   if printf '%s\n' "$out_cpp" | grep -q 'C: document the ptr+len'; then
     printf 'cpp_backlog self-test: FAIL (C ownership-contract relabel leaked onto a C++ repo, F1a)\n'
     printf '%s\n%s\n' '--- backlog ---' "$out_cpp"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # R1-mixed (per-FILE C++ gating): on a MIXED C/C++ repo the std::span advice is
+  # chosen PER FILE — a ptr+len pair in a C++ TU gets span advice, the SAME shape in
+  # a `.c`/`.h` file gets the W2 C ownership-contract relabel (zephyr 9413 .c span FPs).
+  # -------------------------------------------------------------------------
+  local mixedtmp
+  mixedtmp="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp' '$cpptmp' '$mixedtmp'" EXIT
+  mkdir -p "$mixedtmp/src" "$mixedtmp/arch"
+  cat >"$mixedtmp/CMakeLists.txt" <<'CM'
+cmake_minimum_required(VERSION 3.16)
+project(mixed C CXX)
+CM
+  # A real C++ TU with a ptr+len pair -> span advice (the file makes the repo C++).
+  cat >"$mixedtmp/src/view.cpp" <<'SRC'
+#include <cstddef>
+int sum_cpp(const char *buf, std::size_t len) { return (int)(buf[0] + len); }
+SRC
+  # A pure-C source with a ptr+len pair -> C ownership-contract relabel (NOT span).
+  cat >"$mixedtmp/arch/cache.c" <<'SRC'
+#include <stddef.h>
+int sum_c(const char *buf, size_t len) { return (int)(buf[0] + len); }
+SRC
+  # A pure-C header with a ptr+len pair -> C ownership-contract relabel (NOT span).
+  cat >"$mixedtmp/arch/mmu.h" <<'SRC'
+#include <stddef.h>
+int map_region(unsigned char *base, size_t count);
+SRC
+  local out_mixed
+  out_mixed="$(run_backlog "$mixedtmp" no)"
+  # R1-mixed.1: the C++ TU ptr+len pair gets std::span advice (no over-correction).
+  if ! printf '%s\n' "$out_mixed" | grep -qE 'pointer\+length parameter pair with no std::span/string_view.*\| src/view\.cpp:[0-9]+'; then
+    printf 'cpp_backlog self-test: FAIL (R1-mixed: C++ TU ptr+len did not get std::span advice)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_mixed"
+    exit 1
+  fi
+  # R1-mixed.2: the C-file ptr+len pairs get the C ownership relabel, NOT span.
+  if ! printf '%s\n' "$out_mixed" | grep -qE 'C: document the ptr\+len ownership/bounds contract.*\| arch/cache\.c:[0-9]+'; then
+    printf 'cpp_backlog self-test: FAIL (R1-mixed: C-file ptr+len did not get the C ownership relabel)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_mixed"
+    exit 1
+  fi
+  # R1-mixed.3: NO C-file (.c/.h) line may carry the std::span advice (the FP class).
+  if printf '%s\n' "$out_mixed" | grep -qE 'no std::span/string_view.*\| arch/(cache\.c|mmu\.h):'; then
+    printf 'cpp_backlog self-test: FAIL (R1-mixed: std::span advice leaked onto a .c/.h file on a mixed repo)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_mixed"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # R10: bare deps/, OSS-Fuzz fuzz/, and autosetup/jimsh0.c vendored trees are
+  # excluded from the backlog lanes; a real shipped src/ hit in the same repo survives.
+  # -------------------------------------------------------------------------
+  local exclbltmp
+  exclbltmp="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp' '$cpptmp' '$mixedtmp' '$exclbltmp'" EXIT
+  mkdir -p "$exclbltmp/src" "$exclbltmp/deps/hiredis" "$exclbltmp/fuzz" "$exclbltmp/autosetup"
+  cat >"$exclbltmp/src/core.c" <<'SRC'
+#include <string.h>
+void core(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$exclbltmp/deps/hiredis/net.c" <<'SRC'
+#include <string.h>
+void vend(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$exclbltmp/fuzz/decompress.c" <<'SRC'
+#include <string.h>
+void fz(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$exclbltmp/autosetup/jimsh0.c" <<'SRC'
+#include <string.h>
+void jim(char *d, const char *s) { strcpy(d, s); }
+SRC
+  local out_exclbl
+  out_exclbl="$(run_backlog "$exclbltmp" no)"
+  if printf '%s\n' "$out_exclbl" | grep -qE 'deps/|fuzz/decompress|jimsh0\.c'; then
+    printf 'cpp_backlog self-test: FAIL (R10: a deps/fuzz/jimsh0 path leaked into the backlog)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_exclbl"
+    exit 1
+  fi
+  if ! printf '%s\n' "$out_exclbl" | grep -qE 'src/core\.c:[0-9]+'; then
+    printf 'cpp_backlog self-test: FAIL (R10 over-correction: real shipped src/core.c hit dropped)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_exclbl"
     exit 1
   fi
 

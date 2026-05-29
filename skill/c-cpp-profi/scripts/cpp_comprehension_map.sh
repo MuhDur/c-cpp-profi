@@ -68,6 +68,20 @@ rg_available() {
 #  - vendored target-libc headers under `*/win32/include/` (tinycc mingw headers).
 # Ordinary public `include/` is NOT excluded — that is the real API surface; only
 # the `single_include/` mirror and the `win32/include/` vendored variant are.
+#
+# R10: also drops vendored *runtime* deps + generated amalgam/aux trees the base
+# `_deps/`/`third_party/`/`vendor/` set missed, so the L1 language breakdown, the
+# exported-API list, and the module map reflect the project's OWN shipped code, not
+# its bundled libraries: bare `deps/` (redis's exported-API top was all xxhash/lua
+# from `deps/`), `dependencies/`, the `singleheader/` generated amalgam (simdjson),
+# and `autosetup/` + the `jimsh0.c` bootstrap amalgam (sqlite's 431 capped symbol-
+# hints). NOTE: `fuzz/`/`fuzzing/` are deliberately NOT excluded here — unlike the
+# other three scripts the comprehension map WANTS the `LLVMFuzzerTestOneInput` fuzz
+# harness as a real L2 entry point (sqlite dbfuzz2/ossfuzz, the self-test `fuzz/t.c`),
+# so suppressing `fuzz/` would drop a legitimate entry. NOTE also: the comprehension
+# map does NOT apply the vendored-FRAMEWORK self-exclusion (no `!**/catch2/**`) — that
+# is its strength (it correctly scanned Catch2's `src/catch2/` when 3/4 gates went
+# blind), so R11 needs no change here.
 R3PLUS_GLOBS=(
   --glob '!**/ut-coverage/**'
   --glob '!**/ut-stubs/**'
@@ -77,6 +91,11 @@ R3PLUS_GLOBS=(
   --glob '!**/*test_inc.h'
   --glob '!**/single_include/**'
   --glob '!**/win32/include/**'
+  --glob '!**/deps/**'
+  --glob '!**/dependencies/**'
+  --glob '!**/singleheader/**'
+  --glob '!**/autosetup/**'
+  --glob '!**/jimsh0.c'
 )
 
 rg_code() {
@@ -221,7 +240,15 @@ emit_build() {
       --glob '!**/.git/**' "$repo" 2>/dev/null | strip_repo_path "$repo" \
       | LC_ALL=C sort || true)"
   if [ -n "$files" ]; then
-    rel="$(printf '%s\n' "$files" | head -n1)"
+    # N-cmphang-2: take the first (LC_ALL=C-sorted) line via parameter expansion,
+    # NOT `printf … | head -n1`. On a large repo `$files` holds thousands of paths
+    # (zephyr: ~3500 CMakeLists/.mk); `head` closes the pipe after line 1 while
+    # `printf` keeps writing → SIGPIPE (exit 141) → under `set -euo pipefail` the
+    # failed command-substitution aborts the WHOLE gate, dropping all of L2 (zephyr
+    # emitted only the L1 header). `${files%%$'\n'*}` strips from the first newline
+    # onward with no pipe, so there is nothing to SIGPIPE. Same robustness class as
+    # F2 `-ffast-math` and N-cmphang `-std=$(call…)`.
+    rel="${files%%$'\n'*}"
     printf 'build\tcompile_commands.json present (per-TU flag database)\t%s\n' "$rel"
   else
     printf 'build\tcompile_commands.json absent (index tools blind; generate it for L2)\tno-compile-commands\n'
@@ -249,7 +276,15 @@ emit_build_system() {
       --glob '!**/.git/**' --glob '!**/build/**' --glob '!**/_deps/**' \
       "$repo" 2>/dev/null | strip_repo_path "$repo" | LC_ALL=C sort || true)"
   if [ -n "$files" ]; then
-    rel="$(printf '%s\n' "$files" | head -n1)"
+    # N-cmphang-2: take the first (LC_ALL=C-sorted) line via parameter expansion,
+    # NOT `printf … | head -n1`. On a large repo `$files` holds thousands of paths
+    # (zephyr: ~3500 CMakeLists/.mk); `head` closes the pipe after line 1 while
+    # `printf` keeps writing → SIGPIPE (exit 141) → under `set -euo pipefail` the
+    # failed command-substitution aborts the WHOLE gate, dropping all of L2 (zephyr
+    # emitted only the L1 header). `${files%%$'\n'*}` strips from the first newline
+    # onward with no pipe, so there is nothing to SIGPIPE. Same robustness class as
+    # F2 `-ffast-math` and N-cmphang `-std=$(call…)`.
+    rel="${files%%$'\n'*}"
     printf 'build\tbuild system detected: %s\t%s\n' "$kind" "$rel"
   fi
   return 0
@@ -1092,6 +1127,26 @@ const char *util_name(void);         /* duplicate of the include/ decl */
 #endif
 SRC
 
+  # N-cmphang-2 FIX fixture: a LARGE build-file list. `emit_build`/`emit_build_system`
+  # take the first (LC_ALL=C-sorted) match of a build-system glob. On a big repo the
+  # CMake match list is huge (zephyr: ~5050 CMakeLists.txt/*.cmake, ~250 KB of paths),
+  # and the old `printf … | head -n1` SIGPIPEd (exit 141, deterministically) the moment
+  # `head` closed the pipe while `printf` kept writing → `set -euo pipefail` aborted the
+  # WHOLE gate, dropping all of L2. To reproduce that the build-file list must far
+  # exceed the OS pipe buffer (~64 KB), so we generate ~3000 `*.cmake` files (~150 KB of
+  # paths, well over the buffer). With `${files%%$'\n'*}` there is no pipe to SIGPIPE;
+  # the run must reach exit 0 and emit full L2. (Tiny files, cheap to create, pruned by
+  # the trap with the rest of $tmp.) NB: cmake is the FIRST build-system probe, matching
+  # zephyr's actual trigger (its CMake list SIGPIPEd, not its 3-file *.mk list).
+  local d i
+  for d in $(seq 1 30); do
+    mkdir -p "$tmp/many_cmake/sub_$d"
+    for i in $(seq 1 100); do
+      printf 'set(SRCS src.c)\n' \
+        >"$tmp/many_cmake/sub_$d/module_${d}_${i}.cmake"
+    done
+  done
+
   local out1 out2 run_rc
   # Capture the exit code: N-cmphang regressed by aborting (exit 1) mid-run, so the
   # self-test must assert a clean exit, not just inspect the (partial) output. `|| rc`
@@ -1114,6 +1169,16 @@ SRC
       exit 1
     fi
   done
+  # N-cmphang-2: the run already reached exit 0 + full L2 above DESPITE the ~3000-file
+  # `*.cmake` list (>150 KB of paths) that SIGPIPEd the old `printf … | head -n1` path
+  # in emit_build_system. Assert cmake is still detected, anchored to the LC_ALL=C-first
+  # match `CMakeLists.txt` — proving emit_build_system took the first line of the huge
+  # list without aborting (the exit-0 + full-L2 checks above already lock it end-to-end).
+  if ! printf '%s\n' "$out1" | grep -qE 'build system detected: cmake \| CMakeLists\.txt'; then
+    printf 'cpp_comprehension_map self-test: FAIL (N-cmphang-2: cmake build system lost on a large *.cmake list)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
 
   # Assertion 1: the CMake build system is detected, anchored to CMakeLists.txt.
   if ! printf '%s\n' "$out1" | grep -q 'build system detected: cmake | CMakeLists.txt'; then

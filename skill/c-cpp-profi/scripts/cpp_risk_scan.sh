@@ -41,10 +41,34 @@ EXCLUDE_GLOBS=(
   --glob '!**/extra/**'
   --glob '!**/docs/**'
   --glob '!**/doc/**'
-  --glob '!**/utest.h'
-  --glob '!**/unity*'
-  --glob '!**/catch.hpp'
-  --glob '!**/catch2/**'
+  # R10: vendored *runtime* deps + generated amalgam/aux trees that the
+  # `_deps/`/`third_party/`/`vendor/` set missed (kept identical to the sibling
+  # scripts so anchors line up): bare `deps/` (redis bundles hiredis/lua/jemalloc;
+  # 2297/6599 of redis's risk hits lived there), `dependencies/` (simdjson bench
+  # deps), the `singleheader/` generated amalgam (simdjson — alongside the existing
+  # `single_include/`), `autosetup/` + the `jimsh0.c` bootstrap Jim-Tcl amalgam
+  # (sqlite — 138 vendored risk hits), and OSS-Fuzz `fuzz/`/`fuzzing/` harness dirs
+  # (libjpeg `fuzz/*.cc` decoders flipped the C++ signal and added codec noise). The
+  # backlog test-fuzz lane still finds harnesses via its own explicit `**/fuzz/**`.
+  --glob '!**/deps/**'
+  --glob '!**/dependencies/**'
+  --glob '!**/singleheader/**'
+  --glob '!**/fuzz/**'
+  --glob '!**/fuzzing/**'
+  --glob '!**/autosetup/**'
+  --glob '!**/jimsh0.c'
+  # R11: vendored-framework excludes anchored to VENDORED LOCATIONS only — the bare
+  # `!**/catch2/**`/`!**/catch.hpp`/`!**/unity*`/`!**/utest.h`/`!**/gtest|gmock`
+  # globs excluded the framework's OWN shipped source when the repo IS that framework
+  # (Catch2's `src/catch2/`, 289 files, were never risk-scanned → falsely-empty
+  # new/delete + cast lanes while 8 reinterpret_cast + ~48 alloc/cast sites sat
+  # unscanned). Anchored to a vendored parent they drop only embedded copies.
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/unity*'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/utest.h'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/catch.hpp'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/catch2/**'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/gtest/**'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/gmock/**'
   # Suffix-named test/bench files (Google/Abseil style co-locate tests next to
   # sources, e.g. leveldb db_test.cc, re2 parse_test.cc) and flat-root harnesses
   # (lua ltests.*) that no dir-glob catches (R3).
@@ -81,6 +105,16 @@ EXCLUDE_GLOBS=(
 # The file-extension glob applied to every scan/file-list pass. Kept next to the
 # exclusion set so the shipped surface is defined in one place.
 SRC_GLOB='*.{c,cc,cpp,cxx,h,hh,hpp,hxx}'
+
+# R1-mixed: the C++-ONLY extension glob. The raw new/delete category is a C++
+# construct, so it must scan ONLY C++ translation units / C++-only headers — never
+# `.c`/`.h`, where `new`/`delete` are legal C identifiers (`struct k_thread *new =
+# …;`, `delete = (value==NULL);`). On a MIXED C/C++ repo (zephyr: 8849 .c + 50 .cpp)
+# the repo-level `HAS_CPP=yes` gate opened the lane repo-wide and it fired on the
+# 99.4%-C portion → 35/40 new/delete hits were FPs on C vars. Scoping the lane to
+# this glob keeps the 5 genuine `.cpp` hits and drops the C-file FPs. `.h` is
+# excluded on purpose: a C header is not a C++ TU (a `.hpp`/`.hh`/`.hxx` is).
+CPP_SRC_GLOB='*.{cc,cpp,cxx,c++,hpp,hh,hxx,h++}'
 
 # C++ signal: does the repo SHIP real C++ code? A repo counts as C++ only when it
 # carries an actual C++ translation unit (.cc/.cpp/.cxx/.c++) OR a C++-only header
@@ -157,17 +191,20 @@ function strip(s,   out, i, c, nx, n) {
   return out
 }'
 
-# run_check PATTERN with whole-file comment/string filtering. Args: LABEL PATTERN.
+# run_check PATTERN with whole-file comment/string filtering. Args: LABEL PATTERN [GLOB].
 # 1) rg -l finds candidate files (fast, on the shipped surface);
 # 2) the whole-file stripper rewrites each to "<cleaned>\t<path>:<line>:<orig>";
 # 3) rg re-applies PATTERN to the cleaned field; 4) cut recovers original rows.
-# File list is LC_ALL=C sorted so two runs byte-match (determinism).
+# File list is LC_ALL=C sorted so two runs byte-match (determinism). The optional
+# 3rd arg overrides the file-extension glob (default $SRC_GLOB) — used by the C++-
+# only new/delete category to restrict its surface to C++ TUs/headers (R1-mixed).
 run_check() {
   local label="$1"
   local pattern="$2"
+  local glob="${3:-$SRC_GLOB}"
   local files out
   printf '\n[%s]\n' "$label"
-  files="$(rg -l --glob "$SRC_GLOB" "${EXCLUDE_GLOBS[@]}" \
+  files="$(rg -l --glob "$glob" "${EXCLUDE_GLOBS[@]}" \
             "$pattern" "${targets[@]}" 2>/dev/null | LC_ALL=C sort || true)"
   if [ -z "$files" ]; then
     printf 'no matches\n'
@@ -200,7 +237,7 @@ run_scan() {
   printf '        examples/, extras/, docs/, third_party/, vendor/, extern/, vendored test\n'
   printf '        frameworks, and suffix-named tests (*_test.*, *test*.cc, ltests.*).\n'
   printf '[scope] C++ signal: %s (raw new/delete category %s)\n' \
-    "$HAS_CPP" "$([ "$HAS_CPP" = yes ] && printf enabled || printf 'suppressed (pure-C)')"
+    "$HAS_CPP" "$([ "$HAS_CPP" = yes ] && printf 'enabled, scanned over C++ TUs/headers only (.cc/.cpp/.cxx/.hpp/.hh/.hxx)' || printf 'suppressed (pure-C)')"
 
   # Unsafe string/format APIs: require the function name as a word immediately
   # followed by `(` so we match real CALLS, not prose or identifier substrings
@@ -210,8 +247,14 @@ run_scan() {
     '\b(strcpy|strcat|stpcpy|sprintf|vsprintf|gets|scanf|sscanf|fscanf|vscanf|vsscanf|strncpy|strncat)\s*\('
   run_check 'raw allocation function calls' '\b(malloc|calloc|realloc|free)\s*\('
   if [ "$HAS_CPP" = yes ]; then
+    # R1-mixed: PER-FILE gating. The lane scans ONLY C++ TUs/headers ($CPP_SRC_GLOB),
+    # never `.c`/`.h`, so on a mixed C/C++ repo the English-word `new`/`delete` C
+    # identifiers do not flag — only real C++ new/delete expressions in `.cc`/`.cpp`/
+    # `.cxx`/`.hpp`/… do. (Repo-wide `HAS_CPP=yes` still decides whether the lane runs
+    # at all; the per-file glob decides WHICH files it reads.)
     run_check 'raw C++ new/delete expressions' \
-      '(^|[^[:alnum:]_])(::)?new[[:space:]]+|(^|[^[:alnum:]_])delete(\[\])?[[:space:]]+'
+      '(^|[^[:alnum:]_])(::)?new[[:space:]]+|(^|[^[:alnum:]_])delete(\[\])?[[:space:]]+' \
+      "$CPP_SRC_GLOB"
   else
     printf '\n[raw C++ new/delete expressions]\n'
     printf 'skipped: no C++ signal (pure-C repo; new/delete are not C constructs)\n'
@@ -377,15 +420,64 @@ SRC
 #include <string.h>
 static void w32(char *d, const char *s) { strcpy(d, s); }
 SRC
+  # R10 additions to the excl fixture: a bare `deps/` vendored runtime dep, an
+  # OSS-Fuzz `fuzz/` harness, an `autosetup/jimsh0.c` bootstrap amalgam, and an
+  # embedded vendored framework copy under `tests/vendor/catch2/` — all must be
+  # excluded; the real shipped `fsw/real.c` strcpy must SURVIVE.
+  mkdir -p "$tmp/excl/deps/hiredis" "$tmp/excl/fuzz" "$tmp/excl/autosetup" \
+           "$tmp/excl/tests/vendor/catch2"
+  cat >"$tmp/excl/deps/hiredis/net.c" <<'SRC'
+#include <string.h>
+void vend(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$tmp/excl/fuzz/decompress.cc" <<'SRC'
+#include <cstring>
+void fz(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$tmp/excl/autosetup/jimsh0.c" <<'SRC'
+#include <string.h>
+void jim(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$tmp/excl/tests/vendor/catch2/catch_amalgamated.cpp" <<'SRC'
+#include <cstring>
+void emb(char *d, const char *s) { strcpy(d, s); }
+SRC
+
+  # --- Fixture 6 (R1-mixed): a MIXED C/C++ repo. The repo-level C++ signal is yes
+  # (it ships a real engine.cc), but the C files use `new`/`delete` as legal C
+  # IDENTIFIERS. The new/delete category must scan ONLY the C++ TU (engine.cc) — the
+  # C-file `struct k_thread *new = …;` / `delete = …;` must NOT flag (zephyr 35 FPs).
+  mkdir -p "$tmp/mixed/src" "$tmp/mixed/arch"
+  cat >"$tmp/mixed/src/engine.cc" <<'SRC'
+struct Node { Node() {} };
+void build() { Node *p = new Node(); delete p; }
+SRC
+  cat >"$tmp/mixed/arch/sched.c" <<'SRC'
+struct k_thread { int id; };
+int run(struct k_thread *old) {
+    struct k_thread *new = old;      /* C var named `new` — NOT a C++ new-expr */
+    int delete = (old == 0);         /* C var named `delete` — NOT C++ delete */
+    if (new != old) return 1;
+    return delete ? 0 : 2;
+}
+SRC
+  cat >"$tmp/mixed/arch/util.h" <<'SRC'
+struct buf { int len; };
+static inline int bnew(struct buf *b) {
+    int new = b->len;                /* C var named `new` in a .h header */
+    return new + 1;
+}
+SRC
 
   # Run with RELATIVE targets (cd into the fixture root) so the report carries no
   # absolute path — risk-scan echoes the path it is handed verbatim by design.
-  local purec_out cpp_out casts_out excl_out exit_ok
+  local purec_out cpp_out casts_out excl_out mixed_out exit_ok
   cd "$tmp" || { printf 'cpp_risk_scan self-test: FAIL (cd to tmp)\n'; exit 1; }
   targets=("purec"); purec_out="$(run_scan)"; exit_ok=$?
   targets=("cpp");   cpp_out="$(run_scan)"
   targets=("casts"); casts_out="$(run_scan)"
   targets=("excl");  excl_out="$(run_scan)"
+  targets=("mixed"); mixed_out="$(run_scan)"
 
   # R1: pure-C repo with CXX_STANDARD + test-only .cpp must report C++ signal: no
   if ! printf '%s\n' "$purec_out" | grep -qF 'C++ signal: no'; then
@@ -463,9 +555,41 @@ SRC
     printf 'cpp_risk_scan self-test: FAIL (R3+ over-correction: real shipped fsw/ hit was dropped)\n'
     printf '%s\n%s\n' '--- excl ---' "$excl_out"; exit 1
   fi
+  # R10: bare deps/, OSS-Fuzz fuzz/, autosetup/jimsh0.c, and an embedded vendored
+  # tests/vendor/catch2/ copy must all be excluded; fsw/real.c still survives (above).
+  if printf '%s\n' "$excl_out" | grep -qE 'deps/|fuzz/|jimsh0\.c|tests/vendor/catch2/'; then
+    printf 'cpp_risk_scan self-test: FAIL (R10: a deps/fuzz/jimsh0/embedded-catch2 path leaked)\n'
+    printf '%s\n%s\n' '--- excl ---' "$excl_out"; exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # R1-mixed (per-FILE C++ gating): on a MIXED C/C++ repo the new/delete category
+  # scans ONLY C++ TUs/headers — a C var named new/delete must NOT flag.
+  # -------------------------------------------------------------------------
+  # R1-mixed.0: the repo is detected as C++ (it ships engine.cc) and the lane runs.
+  if ! printf '%s\n' "$mixed_out" | grep -qF 'C++ signal: yes'; then
+    printf 'cpp_risk_scan self-test: FAIL (R1-mixed: mixed repo not detected as C++)\n'
+    printf '%s\n%s\n' '--- mixed ---' "$mixed_out"; exit 1
+  fi
+  # R1-mixed.1: the GENUINE C++ new/delete in engine.cc MUST still flag (no over-correction).
+  if ! printf '%s\n' "$mixed_out" | grep -qE 'src/engine\.cc:[0-9]+:.*new Node'; then
+    printf 'cpp_risk_scan self-test: FAIL (R1-mixed over-correction: real .cc new-expression dropped)\n'
+    printf '%s\n%s\n' '--- mixed ---' "$mixed_out"; exit 1
+  fi
+  # R1-mixed.2: the C-file `new`/`delete` IDENTIFIERS (arch/sched.c, arch/util.h) must
+  # NOT flag as C++ new/delete expressions (zephyr's 35 .c/.h FPs).
+  if printf '%s\n' "$mixed_out" | grep -qE '^arch/sched\.c:[0-9]+:|^arch/util\.h:[0-9]+:'; then
+    printf 'cpp_risk_scan self-test: FAIL (R1-mixed: C-file new/delete identifier flagged as a C++ new/delete expr)\n'
+    printf '%s\n%s\n' '--- mixed ---' "$mixed_out"; exit 1
+  fi
+  # R1-mixed.3: the new/delete category banner reflects the per-file C++-only scope.
+  if ! printf '%s\n' "$mixed_out" | grep -qF 'scanned over C++ TUs/headers only'; then
+    printf 'cpp_risk_scan self-test: FAIL (R1-mixed: scope banner does not state per-file C++ scope)\n'
+    printf '%s\n%s\n' '--- mixed ---' "$mixed_out"; exit 1
+  fi
 
   # No absolute path may leak.
-  if printf '%s\n' "$purec_out" "$cpp_out" "$casts_out" "$excl_out" | grep -qF "$tmp"; then
+  if printf '%s\n' "$purec_out" "$cpp_out" "$casts_out" "$excl_out" "$mixed_out" | grep -qF "$tmp"; then
     printf 'cpp_risk_scan self-test: FAIL (absolute path leaked into output)\n'; exit 1
   fi
   # F4 holds: exit 0 on a successful run.

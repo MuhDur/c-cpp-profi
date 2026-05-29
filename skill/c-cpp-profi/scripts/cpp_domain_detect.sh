@@ -94,12 +94,46 @@ EXCLUDE_GLOBS=(
   --glob '!**/extras/**'
   --glob '!**/extra/**'
   --glob '!**/runners/**'
-  --glob '!**/unity*'
-  --glob '!**/utest.h'
-  --glob '!**/catch.hpp'
-  --glob '!**/catch2/**'
-  --glob '!**/gtest/**'
-  --glob '!**/gmock/**'
+  # R10: vendored *runtime* dependencies and generated amalgam/aux trees that the
+  # `_deps/`/`third_party/`/`vendor/` set missed: the bare `deps/` convention
+  # (redis/git/php bundle libs there — hiredis/lua/jemalloc), `dependencies/`
+  # (simdjson's benchmark deps), the `singleheader/` generated amalgam (simdjson,
+  # alongside the existing `single_include/`), `autosetup/` build glue + its
+  # `jimsh0.c` bootstrap Jim-Tcl amalgam (sqlite), and OSS-Fuzz `fuzz/`/`fuzzing/`
+  # harness dirs whose `*.cc`/`*.cpp` decoders otherwise flip the C++ signal and add
+  # codec noise (libjpeg). The backlog test-fuzz lane still finds harnesses via its
+  # OWN explicit `**/fuzz/**` glob, so coverage detection is unaffected.
+  --glob '!**/deps/**'
+  --glob '!**/dependencies/**'
+  --glob '!**/singleheader/**'
+  --glob '!**/fuzz/**'
+  --glob '!**/fuzzing/**'
+  --glob '!**/autosetup/**'
+  --glob '!**/jimsh0.c'
+  # R13/R10: data tables are NOT code. Even though `txt` is no longer in the build
+  # glob, drop data-table files outright so a renamed/relocated table (or the literal
+  # `CMakeLists.txt` glob) can never count `UnicodeData.txt`/`CaseFolding.txt` "LETTER
+  # SHA" rows, `*.tables`, or binary `*.dat` as a code signal.
+  --glob '!**/*.tables'
+  --glob '!**/*.dat'
+  --glob '!**/Unicode*.txt'
+  --glob '!**/UnicodeData.txt'
+  --glob '!**/CaseFolding.txt'
+  # R11: vendored-framework excludes anchored to VENDORED LOCATIONS only. The bare
+  # `!**/catch2/**`/`!**/catch.hpp`/`!**/gtest/**`/`!**/gmock/**`/`!**/unity*`/
+  # `!**/utest.h` globs were meant to skip an EMBEDDED copy of a test framework that
+  # OTHER repos vendor — but they also excluded the framework's OWN shipped source
+  # when the repo IS that framework (Catch2's `src/catch2/`, 289 files, blinded 3/4
+  # gates → a wrong Compilers primary off CMake `Interpreter` glue). Anchoring each
+  # to a vendored parent (`third_party`/`vendor`/`extern`/`external`/`_deps`/`deps`/
+  # `test`/`tests`/`testing`) drops only embedded copies while leaving the
+  # framework's own `src/`/`include/` scannable.
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/unity*'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/utest.h'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/catch.hpp'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/catch2/**'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/gtest/**'
+  --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/gmock/**'
   --glob '!**/*_test.*'
   --glob '!**/*_tests.*'
   --glob '!**/*test*.c'
@@ -127,7 +161,7 @@ EXCLUDE_GLOBS=(
   --glob '!**/win32/include/**'
 )
 
-# Whole-file comment/string stripper (R2): emits "<cleaned>\t<path>:<line>:<orig>"
+# Whole-file comment/string stripper (R2 + R13): emits "<cleaned>\t<path>:<line>:<orig>"
 # for every line of the files passed as args, blanking C/C++ // /* */ comment
 # spans (block state tracked across lines from each file's start) and "..."/'...'
 # literal contents. The same helper used by the sibling scripts; a downstream rg
@@ -136,8 +170,19 @@ EXCLUDE_GLOBS=(
 # (the F1b leading-marker-only filter missed all three). Build/CI files (YAML/
 # CMake) carry their tokens in code, not C comments, so the strip is a near no-op
 # there and never removes a real toolchain signal.
+#
+# R13: in a NON-C file (Makefile/YAML/sh/CMake/etc.) a `#` begins a comment to
+# end-of-line and is blanked too — so a Makefile `@# SHA1: 774be8…` checksum
+# comment and a YAML `# note` no longer feed the signal greps (this, plus the
+# data-file skip, is what stops duktape's false Crypto primary). In a C/C++ file
+# `#` is a PREPROCESSOR directive (`#pragma omp`, `#define X_IMPLEMENTATION`,
+# `#include`) that carries real domain signal, so it is NEVER treated as a comment
+# there. The per-file `hashcomment` flag is set at FNR==1 from the extension.
 STRIP_COMMENTS_AWK='
-FNR == 1 { inblock = 0 }
+FNR == 1 {
+  inblock = 0
+  hashcomment = (FILENAME ~ /\.(c|cc|cpp|cxx|h|hh|hpp|hxx|cu|cuh|cl)$/) ? 0 : 1
+}
 {
   print strip($0) "\t" FILENAME ":" FNR ":" $0
 }
@@ -149,6 +194,7 @@ function strip(s,   out, i, c, nx, n) {
       if (c == "*" && nx == "/") { inblock = 0; i += 2; continue }
       i++; continue
     }
+    if (hashcomment && c == "#") break
     if (c == "/" && nx == "/") break
     if (c == "/" && nx == "*") { inblock = 1; i += 2; continue }
     if (c == "\"") {
@@ -168,11 +214,19 @@ function strip(s,   out, i, c, nx, n) {
 }'
 
 # Glob set for a mode: source/header always; build/config files added for 'all'.
+# R13/R10: `txt` is intentionally NOT in the build-file wildcard. The only `.txt`
+# that carries a toolchain signal is `CMakeLists.txt`, matched by its own literal
+# glob below; a bare `*.txt` wildcard instead pulled in DATA TABLES as "code"
+# matches (sqlite `ext/fts3/unicode/UnicodeData.txt`/`CaseFolding.txt`, duktape
+# `src-input/UnicodeData.txt`) — the "CYRILLIC LETTER SHA" rows that handed duktape
+# a false Crypto primary and sqlite spurious Filesystems/Crypto secondaries. Data
+# tables (`*.txt`/`*.tables`/`Unicode*.txt`/`*.dat`) are belt-and-suspenders dropped
+# in EXCLUDE_GLOBS too, so they never count even via the literal `CMakeLists.txt`.
 signal_globs() {
   local mode="${1:-all}"
   printf '%s\0' '*.{c,cc,cpp,cxx,h,hh,hpp,hxx,cu,cuh,cl}'
   if [ "$mode" = all ]; then
-    printf '%s\0' '*.{cmake,build,mk,txt,json,yml,yaml,ld,ini}' \
+    printf '%s\0' '*.{cmake,build,mk,json,yml,yaml,ld,ini}' \
                   'CMakeLists.txt' 'Makefile' 'GNUmakefile' \
                   'meson.build' 'Kconfig' 'Kbuild'
   fi
@@ -305,7 +359,7 @@ pack_regex() {
     networking)  printf '%s' '\bntohl\b|\bhtons\b|\bntohs\b|\bhtonl\b|parse_packet|RFC[0-9]|__attribute__.*packed|#pragma pack|\bsocket\b|\blistener\b|\bdialer\b|\bsockaddr|\bsetsockopt\b|\bgetsockopt\b|\bendpoint\b|\btransport\b|(?-i:\bconnect\b|\bbind\b|\baccept\b|\bsend\b|\brecv\b|\bsendto\b|\brecvfrom\b|\bpoll\b|\bepoll\b)' ;;
     compression) printf '%s' '\bdeflate\b|\binflate\b|\binflateBack\b|(?-i:\bLZ4_|\bLZ77\b|\bZSTD_)|\blz4\b|\bzstd\b|\bhuffman\b|\bcompress\b|\buncompress\b|\bdecompress\b|\bgzip\b|\bgzopen\b|\bcrc32\b|\badler32\b|literal.length|sliding.window' ;;
     compilers)   printf '%s' 'LLVMContext|llvm::|IRBuilder|emitOpcode|(?-i:\bopcode\b|\bOPCODE\b)|\bbytecode\b|interpreter|codegen|opt -verify' ;;
-    databases)   printf '%s' '\bfsync\b|fdatasync|write-ahead|\bWAL\b|\bMVCC\b|crash.consistency|page_checksum|\bpwrite\b|dm-flakey|\bALICE\b' ;;
+    databases)   printf '%s' '\bfsync\b|fdatasync|write-ahead|write.?ahead|\bWAL\b|\bMVCC\b|crash.consistency|page_checksum|page.?cache|\bpwrite\b|dm-flakey|\bALICE\b|\bsqlite3?\b|\bbtree\b|b-tree|\bpager\b|\bvdbe\b|opcode.*VDBE|\browid\b|(?-i:\bPRAGMA\b|\bPragma)|\bvacuum\b|\bredis\b|\bredisDb\b|\brobj\b|\bRDB\b|\bAOF\b|\brdbSave\b|\brdbAdd|\bkeyspace\b|dict.*entry|\btransaction\b|\bcommit\b|\brollback\b|\bcompaction\b|\bmemtable\b|\bsstable\b|\bmanifest\b|\bsnapshot\b|write.?batch' ;;
     audio)       printf '%s' 'audio_?callback|audio_?buffer|process_block|\bdenormal|\bxrun\b|\bjack_|kAudioUnit|\bVST3\b|\bASIO\b|\bCoreAudio\b|flush.to.zero|samples?_per_(buffer|frame)' ;;
     filesystems) printf '%s' '\bsuperblock\b|\binode\b|on-disk|\bmount\b|\bfsck\b|dm-flakey|\bFUA\b|crash.injection|barrier' ;;
     parser)      printf '%s' '\b(json|xml|yaml|toml|ini|csv|protobuf|msgpack|riff|fourcc)\b|\bhttp_?(parse|request|response)|[a-z0-9]+_parse\b|\bparse_[a-z]|\btokeniz|\blexer\b|\bgrammar\b|\b(json|xml|yaml|toml|http|url|base64|hex|utf8?|token|field|header|message)[a-z0-9]*_decode\b|\bdeserialize\b|\bphr_|\byy(parse|lex|_)|\bdr(wav|flac|mp3)_' ;;
@@ -751,9 +805,130 @@ void Framer::frame(FwOpcodeType opCode) {
 }
 SRC
 
+  # Fixture DB (R12): a storage engine whose identity is SQL/btree/pager/WAL/vdbe/
+  # rowid/PRAGMA + redis RDB/AOF/keyspace + LSM compaction/memtable/manifest. Before
+  # R12 the Databases pack knew only fsync/WAL/MVCC/pwrite, so sqlite mis-primaried
+  # Parser and redis Networking (DB ranked last). It must now select Databases PRIMARY.
+  # It ALSO carries one Parser-ish `json_parse` and one Net `socket` so the win is by
+  # the DB vocabulary mass, not by being the only pack present.
+  mkdir -p "$tmp/db/src"
+  cat >"$tmp/db/src/btree.c" <<'SRC'
+#include "btree.h"
+int sqlite3BtreeOpen(Pager *pPager, int rowid) {
+    /* btree pager + WAL + vdbe + rowid + write-ahead log */
+    return pPager->pageCache;
+}
+int sqlite3VdbeExec(void *p) { return 0; }       /* vdbe opcode dispatch */
+int rdbSaveRio(void *rdb) { return 0; }           /* redis RDB snapshot */
+int aofRewrite(void *aof) { return 0; }           /* redis AOF write-ahead */
+int compactMemtable(void *memtable) { return 0; } /* LSM compaction + memtable */
+int loadManifest(void *manifest) { return 0; }    /* LSM manifest + sstable */
+int doVacuum(void *db) { return 0; }              /* VACUUM */
+int beginTransaction(void *db) { return 0; }      /* transaction + commit + rollback */
+int json_parse(const char *s) { return 0; }       /* one Parser token (must lose) */
+int sock_open(void) { return socket(2, 1, 0); }   /* one Net token (must lose) */
+SRC
+  cat >"$tmp/db/src/pragma.c" <<'SRC'
+#include "pragma.h"
+/* SQL PRAGMA handler. PRAGMA is the SQL keyword (case-sensitive), NOT C #pragma. */
+int sqlite3Pragma(void *p) { return 0; }
+int keyspaceNotify(void *db) { return 0; }   /* redis keyspace */
+SRC
+
+  # Fixture DBPRAGMA (R12 over-correction guard): a C++ header that uses `#pragma
+  # once`/`#pragma clang` (the C PREPROCESSOR directive) MANY times but has ZERO real
+  # DB code. The bare-`pragma` token had matched every `#pragma`, handing a test
+  # framework (Catch2) a false Databases primary off 228 `#pragma`s. The case-sensitive
+  # `(?-i:PRAGMA|Pragma)` token must NOT match lowercase `#pragma`, so this repo must
+  # NOT be Databases-primary (it is a generic parser-ish lib instead).
+  mkdir -p "$tmp/pragmaonly"
+  cat >"$tmp/pragmaonly/widget.hpp" <<'SRC'
+#pragma once
+#pragma clang diagnostic push
+#pragma GCC diagnostic ignored "-Wfoo"
+#pragma once
+class Widget { public: int json_decode(const char *s); };
+int xml_parse(const char *s);
+int parse_token(const char *s);
+SRC
+
+  # Fixture DATA (R13): a JS-engine-like Compilers repo (opcode/bytecode/interpreter/
+  # codegen + lexer) that ALSO ships a Unicode DATA TABLE `UnicodeData.txt` full of
+  # "CYRILLIC LETTER SHA" rows and a `Makefile` with a `# SHA1: …` checksum comment.
+  # Before R13 the `\bsha\b` Crypto token matched the data table + Makefile comment and
+  # Crypto stole PRIMARY (the duktape failure). With the data-file skip + `#`-comment
+  # strip in non-C files, this must select Compilers/interpreters/VMs, NOT Crypto.
+  mkdir -p "$tmp/jsvm/src-input"
+  cat >"$tmp/jsvm/src-input/compiler.c" <<'SRC'
+#include "compiler.h"
+int interpreter_dispatch(int opcode, void *bytecode) {
+    return codegen(opcode, bytecode);
+}
+int codegen(int opcode, void *bytecode) { return emitOpcode(opcode); }
+int interpreter_step(void *vm) { return 0; }
+int bytecode_verify(void *vm) { return 0; }
+SRC
+  cat >"$tmp/jsvm/src-input/UnicodeData.txt" <<'SRC'
+0428;CYRILLIC CAPITAL LETTER SHA;Lu;0;L;;;;;N;;;;0448;
+0429;CYRILLIC CAPITAL LETTER SHCHA;Lu;0;L;;;;;N;;;;0449;
+0531;ARMENIAN CAPITAL LETTER SHA;Lu;0;L;;;;;N;;;;0561;
+SRC
+  cat >"$tmp/jsvm/Makefile" <<'MK'
+# SHA1: 774be8b65b9b3d2b8b8d md5 digest sha256 hmac nonce blake2 chacha
+all:
+	$(CC) -c compiler.c
+MK
+
+  # Fixture CATCH (R11): a vendored TEST FRAMEWORK that IS the audited repo — its own
+  # source lives under `src/catch2/` (the basename the old `!**/catch2/**` glob excluded
+  # everywhere). The anchored R11 glob excludes a vendored catch2 only under a vendored
+  # parent, so the framework's OWN `src/catch2/` MUST now be scanned (a real risk/code
+  # signal must appear from it). A SEPARATE embedded copy under `tests/vendor/catch2/`
+  # carries a DECOY token that must STILL be excluded.
+  mkdir -p "$tmp/catchfw/src/catch2" "$tmp/catchfw/tests/vendor/catch2"
+  cat >"$tmp/catchfw/src/catch2/catch_tostring.cpp" <<'SRC'
+#include "catch_tostring.hpp"
+/* the framework's own shipped source must be scannable */
+int xml_parse(const char *s) { return parse_token(s); }
+int parse_token(const char *s) { return 0; }
+int json_decode(const char *s) { return 0; }
+SRC
+  cat >"$tmp/catchfw/tests/vendor/catch2/embedded.cpp" <<'SRC'
+/* an EMBEDDED vendored copy under tests/vendor/ — must STILL be excluded */
+__global__ void decoy_kernel(void) { cudaMalloc(0, 0); }
+SRC
+
+  # Fixture DEPS (R10): a pure-C parser repo whose OWN `src/` is a small JSON parser,
+  # but which bundles a large vendored library under the bare `deps/` dir (the redis
+  # convention) plus a `singleheader/` amalgam and an `autosetup/jimsh0.c` bootstrap
+  # interpreter. Before R10 those vendored trees outvoted the real `src/` signal. The
+  # repo's primary must come from `src/` (Parser), and NO anchor may point into deps/,
+  # singleheader/, or autosetup/jimsh0.c.
+  mkdir -p "$tmp/depsrepo/src" "$tmp/depsrepo/deps/jimtcl" \
+           "$tmp/depsrepo/singleheader" "$tmp/depsrepo/autosetup"
+  cat >"$tmp/depsrepo/src/json.c" <<'SRC'
+#include "json.h"
+int json_parse(const char *buf, int len) { return parse_value(buf, len); }
+int parse_value(const char *buf, int len) { return tokenize_json(buf, len); }
+SRC
+  # Vendored bundle: a huge interpreter amalgam that would mis-primary Compilers/VMs.
+  cat >"$tmp/depsrepo/deps/jimtcl/jim.c" <<'SRC'
+int jim_opcode_interpreter_bytecode_codegen(void) { return 0; }
+int jim_opcode_two(void) { return 0; }
+int jim_interpreter_three(void) { return 0; }
+SRC
+  cat >"$tmp/depsrepo/singleheader/amalgam.h" <<'SRC'
+int opcode_bytecode_interpreter_codegen_amalgam(void) { return 0; }
+SRC
+  cat >"$tmp/depsrepo/autosetup/jimsh0.c" <<'SRC'
+/* bootstrap version of Jim Tcl */
+int jimsh_opcode_bytecode_interpreter(void) { return 0; }
+SRC
+
   local gpu_out kernel_out plain_out hpc_out parser_out generic_out comments_out
   local zlibish_out cfsish_out fprimeish_out
   local codec_out net_out cry_out fp2_out
+  local db_out pragmaonly_out data_out catch_out deps_out
   gpu_out="$(run_detect "$tmp/gpu" no)"
   kernel_out="$(run_detect "$tmp/kernel" no)"
   plain_out="$(run_detect "$tmp/plain" no)"
@@ -768,6 +943,11 @@ SRC
   net_out="$(run_detect "$tmp/net" no)"
   cry_out="$(run_detect "$tmp/cipher" no)"
   fp2_out="$(run_detect "$tmp/fprime2" no)"
+  db_out="$(run_detect "$tmp/db" no)"
+  pragmaonly_out="$(run_detect "$tmp/pragmaonly" no)"
+  data_out="$(run_detect "$tmp/jsvm" no)"
+  catch_out="$(run_detect "$tmp/catchfw" no)"
+  deps_out="$(run_detect "$tmp/depsrepo" no)"
 
   # Assertion 1: the CUDA fixture selects the GPU pack as primary, anchored to
   # the .cu file. Output format: "pack[<role>]: <label> | <anchor> (N code matches)".
@@ -799,7 +979,8 @@ SRC
   for out in "$gpu_out" "$kernel_out" "$plain_out" "$hpc_out" \
              "$parser_out" "$generic_out" "$comments_out" \
              "$zlibish_out" "$cfsish_out" "$fprimeish_out" \
-             "$codec_out" "$net_out" "$cry_out" "$fp2_out"; do
+             "$codec_out" "$net_out" "$cry_out" "$fp2_out" \
+             "$db_out" "$pragmaonly_out" "$data_out" "$catch_out" "$deps_out"; do
     if printf '%s\n' "$out" | grep -qF "$tmp"; then
       printf 'cpp_domain_detect self-test: FAIL (absolute path leaked into output)\n'
       printf '%s\n%s\n' '--- out ---' "$out"
@@ -888,6 +1069,89 @@ SRC
   if ! printf '%s\n' "$fp2_out" | grep -qE 'pack\[primary\]: Space / satellites \|'; then
     printf 'cpp_domain_detect self-test: FAIL (R9-vocab: F´ CCSDS/Framer/Tlm/APID fixture did not select Space)\n'
     printf '%s\n%s\n' '--- fprime2 ---' "$fp2_out"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # R12 assertions: the enriched Databases vocabulary wins PRIMARY on a storage
+  # engine (sqlite→Databases, redis→Databases, leveldb→Databases on the real repos).
+  # -------------------------------------------------------------------------
+  # R12.1: the storage-engine fixture selects Databases PRIMARY off the SQL/btree/
+  # pager/WAL/vdbe/rowid/PRAGMA + RDB/AOF/keyspace + LSM compaction/memtable vocab,
+  # beating the single incidental Parser/Net tokens it also carries.
+  if ! printf '%s\n' "$db_out" | grep -qE 'pack\[primary\]: Databases / storage engines \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (R12: storage-engine vocab fixture did not select Databases)\n'
+    printf '%s\n%s\n' '--- db ---' "$db_out"
+    exit 1
+  fi
+  # R12.2 (over-correction guard): the case-sensitive `(?-i:PRAGMA|Pragma)` token must
+  # NOT match the C PREPROCESSOR `#pragma once`/`#pragma clang` — a header full of
+  # `#pragma`s but no DB code must NOT be Databases-primary (the Catch2 false-DB case).
+  if printf '%s\n' "$pragmaonly_out" | grep -qE 'pack\[primary\]: Databases'; then
+    printf 'cpp_domain_detect self-test: FAIL (R12: lowercase #pragma matched the SQL PRAGMA token → false Databases primary)\n'
+    printf '%s\n%s\n' '--- pragmaonly ---' "$pragmaonly_out"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # R13 assertions: data-file skip + `#`-comment strip keep a Crypto data-table/
+  # build-comment from stealing PRIMARY from the real Compilers/VM domain (duktape).
+  # -------------------------------------------------------------------------
+  # R13.1: the JS-VM fixture selects Compilers/interpreters/VMs, NOT Crypto — the
+  # `\bsha\b` hits live only in the skipped `UnicodeData.txt` data table and a
+  # `#`-stripped `Makefile` checksum comment.
+  if ! printf '%s\n' "$data_out" | grep -qE 'pack\[primary\]: Compilers / interpreters / VMs \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (R13: JS-VM fixture did not select Compilers — data-table/Makefile SHA leaked)\n'
+    printf '%s\n%s\n' '--- jsvm ---' "$data_out"
+    exit 1
+  fi
+  # R13.2: the JS-VM fixture must NOT be Crypto-primary (the duktape failure mode).
+  if printf '%s\n' "$data_out" | grep -qE 'pack\[primary\]: Crypto'; then
+    printf 'cpp_domain_detect self-test: FAIL (R13: Crypto stole primary off UnicodeData.txt "LETTER SHA" / Makefile # SHA1)\n'
+    printf '%s\n%s\n' '--- jsvm ---' "$data_out"
+    exit 1
+  fi
+  # R13.3: no anchor may point into the skipped UnicodeData.txt data table.
+  if printf '%s\n' "$data_out" | grep -qE 'UnicodeData\.txt'; then
+    printf 'cpp_domain_detect self-test: FAIL (R13: UnicodeData.txt data table counted as a code signal)\n'
+    printf '%s\n%s\n' '--- jsvm ---' "$data_out"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # R11 assertions: vendored-framework globs anchored to vendored locations — the
+  # framework's OWN `src/catch2/` is scanned; an embedded copy under tests/ is not.
+  # -------------------------------------------------------------------------
+  # R11.1: the framework's own `src/catch2/` source IS now scanned — its tokens
+  # (xml_parse/parse_token/json_decode) make a real pack fire anchored to src/catch2/.
+  if ! printf '%s\n' "$catch_out" | grep -qE 'src/catch2/'; then
+    printf 'cpp_domain_detect self-test: FAIL (R11: framework own src/catch2/ self-excluded — never scanned)\n'
+    printf '%s\n%s\n' '--- catchfw ---' "$catch_out"
+    exit 1
+  fi
+  # R11.2: the EMBEDDED vendored copy under tests/vendor/catch2/ must STILL be excluded
+  # (its decoy `__global__`/cudaMalloc must NOT make the repo GPU-primary).
+  if printf '%s\n' "$catch_out" | grep -qE 'tests/vendor/catch2/|pack\[primary\]: GPU'; then
+    printf 'cpp_domain_detect self-test: FAIL (R11: embedded tests/vendor/catch2/ copy not excluded)\n'
+    printf '%s\n%s\n' '--- catchfw ---' "$catch_out"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # R10 assertions: bare deps/ + singleheader/ + autosetup/jimsh0.c vendored trees
+  # are excluded so the repo's OWN src/ decides the primary (sqlite/redis/simdjson).
+  # -------------------------------------------------------------------------
+  # R10.1: the deps-bundling repo selects Parser off its OWN src/ JSON parser, NOT
+  # Compilers/VMs off the vendored jim.c/jimsh0.c/amalgam interpreter bundle.
+  if ! printf '%s\n' "$deps_out" | grep -qE 'pack\[primary\]: Parser / text-format / serialization \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (R10: vendored deps/jimsh0/singleheader outvoted the real src/ primary)\n'
+    printf '%s\n%s\n' '--- depsrepo ---' "$deps_out"
+    exit 1
+  fi
+  # R10.2: NO anchor may point into deps/, singleheader/, or autosetup/jimsh0.c.
+  if printf '%s\n' "$deps_out" | grep -qE 'deps/|singleheader/|autosetup/|jimsh0\.c'; then
+    printf 'cpp_domain_detect self-test: FAIL (R10: a vendored deps/singleheader/autosetup/jimsh0 anchor leaked)\n'
+    printf '%s\n%s\n' '--- depsrepo ---' "$deps_out"
     exit 1
   fi
 

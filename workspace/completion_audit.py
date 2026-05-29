@@ -157,6 +157,10 @@ EVIDENCE_NEEDLES = {
         "Parser / text-format / serialization",
         "Generic library / data-structures / strings",
         "cpp_domain_detect.sh",
+        # R12: the enriched Databases-pack vocabulary must stay documented in both
+        # the seed pack and the signal table (sqlite/redis/leveldb classification).
+        "vdbe",
+        "compaction",
     ],
     "skill/c-cpp-profi/references/UNKNOWN-DOMAIN.md": [
         "trust boundary",
