@@ -35,6 +35,7 @@ REQUIRED_FILES = [
     "skill/c-cpp-profi/SKILL.md",
     "skill/c-cpp-profi/agents/openai.yaml",
     "skill/c-cpp-profi/references/C-CPP-EXPERT-CANON.md",
+    "skill/c-cpp-profi/references/CODE-TRANSFORM.md",
     "skill/c-cpp-profi/references/DOMAIN-AGNOSTIC-MASTERY.md",
     "skill/c-cpp-profi/references/INNOVATION-ENGINE.md",
     "skill/c-cpp-profi/references/REPO-COMPREHENSION.md",
@@ -142,6 +143,13 @@ EVIDENCE_NEEDLES = {
         "Adversarial Scoring",
         "Accretive vs Radical",
         "Mandatory Evidence Gates for Radical Change",
+    ],
+    "skill/c-cpp-profi/references/CODE-TRANSFORM.md": [
+        "port",
+        "modernize",
+        "re-architect",
+        "differential oracle",
+        "migration ledger",
     ],
     "skill/c-cpp-profi/references/REPO-COMPREHENSION.md": [
         "Build graph",

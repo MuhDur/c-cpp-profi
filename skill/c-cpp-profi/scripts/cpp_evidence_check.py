@@ -38,6 +38,9 @@ PROFILE_REQUIRED = {
     "refactor": [("refactor isomorphism",)],
     "native-ui": [("golden artifacts",)],
     "portability": [("portability",)],
+    "port": [("differential oracle",)],
+    "modernize": [("refactor isomorphism",), ("ABI/API",)],
+    "rearchitect": [("migration ledger",), ("tests",), ("ABI/API",)],
 }
 
 SCOPE_KEYS = {
@@ -163,6 +166,7 @@ def check_gates(
     require_analyzer_review: bool,
     require_performance_proof: bool,
     require_comprehension_proof: bool,
+    require_transform_proof: bool,
     errors: list[str],
 ) -> None:
     for gate_name, row in sorted(rows.items()):
@@ -236,6 +240,32 @@ def check_gates(
                         "gate comprehension: passed evidence missing strict proof fields: "
                         + ", ".join(missing)
                     )
+            if require_transform_proof and gate_name == "differential oracle":
+                requirements = {
+                    "origin-triple": ("origin-triple:" in evidence),
+                    "target-triple": ("target-triple:" in evidence),
+                    "emulator-or-hardware": (
+                        "emulator:" in evidence or "hardware:" in evidence
+                    ),
+                    "corpus": ("corpus:" in evidence),
+                }
+                missing = [name for name, ok in requirements.items() if not ok]
+                if missing:
+                    errors.append(
+                        "gate differential oracle: passed evidence missing strict proof fields: "
+                        + ", ".join(missing)
+                    )
+            if require_transform_proof and gate_name == "migration ledger":
+                requirements = {
+                    "caller-census": ("caller-census:" in evidence),
+                    "ledger": ("ledger:" in evidence),
+                }
+                missing = [name for name, ok in requirements.items() if not ok]
+                if missing:
+                    errors.append(
+                        "gate migration ledger: passed evidence missing strict proof fields: "
+                        + ", ".join(missing)
+                    )
 
     for group in required_gate_groups(profiles):
         matching_rows = [rows.get(normalize(gate)) for gate in group]
@@ -256,6 +286,7 @@ def check_report(
     require_analyzer_review: bool,
     require_performance_proof: bool,
     require_comprehension_proof: bool,
+    require_transform_proof: bool,
 ) -> list[str]:
     errors: list[str] = []
     if "# C/C++ Gate Report" not in text:
@@ -277,6 +308,7 @@ def check_report(
         require_analyzer_review,
         require_performance_proof,
         require_comprehension_proof,
+        require_transform_proof,
         errors,
     )
     return errors
@@ -329,6 +361,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
             "module-map, callgraph (or touched-path-callgraph), and intent"
         ),
     )
+    parser.add_argument(
+        "--require-transform-proof",
+        action="store_true",
+        help=(
+            "require passed differential-oracle evidence to include origin-triple, "
+            "target-triple, emulator/hardware, and corpus; and passed migration-ledger "
+            "evidence to include caller-census and ledger"
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="emit JSON result")
     return parser.parse_args(argv)
 
@@ -345,6 +386,7 @@ def main(argv: list[str]) -> int:
         args.require_analyzer_review,
         args.require_performance_proof,
         args.require_comprehension_proof,
+        args.require_transform_proof,
     )
 
     if args.json:
@@ -356,6 +398,7 @@ def main(argv: list[str]) -> int:
                     "require_analyzer_review": args.require_analyzer_review,
                     "require_comprehension_proof": args.require_comprehension_proof,
                     "require_performance_proof": args.require_performance_proof,
+                    "require_transform_proof": args.require_transform_proof,
                     "require_warning_clean": args.require_warning_clean,
                     "errors": errors,
                 },

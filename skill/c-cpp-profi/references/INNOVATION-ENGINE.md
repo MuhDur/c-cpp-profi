@@ -21,10 +21,10 @@ No problem-evidence means no idea. No behavior oracle means no radical change.
 > **Tooling status (loop-tracked).** `cpp_inventory.sh`, `cpp_risk_scan.sh`, `cpp_backlog.sh`,
 > `cpp_idea_check.py`, and
 > `cpp_evidence_check.py`
-> (profiles `basic/parser/memory/public-abi/concurrency/performance/refactor/native-ui/portability/security/docs-scripts/idea/comprehension`,
-> the last with `--require-comprehension-proof` and backed by [REPO-COMPREHENSION.md](REPO-COMPREHENSION.md))
-> exist today. The remaining proposal-specific tooling named below — the
-> `port`/`modernize`/`rearchitect` profiles plus `--derive-profiles`/`--strict-numeric` —
+> (profiles `basic/parser/memory/public-abi/concurrency/performance/refactor/native-ui/portability/security/docs-scripts/idea/comprehension/port/modernize/rearchitect`,
+> the `comprehension` profile with `--require-comprehension-proof` and backed by [REPO-COMPREHENSION.md](REPO-COMPREHENSION.md),
+> the `port`/`modernize`/`rearchitect` profiles with `--require-transform-proof` and backed by [CODE-TRANSFORM.md](CODE-TRANSFORM.md))
+> exist today. The remaining proposal-specific tooling named below — `--derive-profiles`/`--strict-numeric` —
 > is the *specification* this engine is built against; it is implemented by the skill's own improvement loop
 > (the `idea-wizard` and `mcp-server-design` passes). Until a named tool exists, perform its step **manually**
 > against the Idea Card below and record the result honestly; never claim a gate you did not actually run.
@@ -131,10 +131,10 @@ Never commit the first idea. Compete them, steelman, refute, then score.
 
 No radical change lands without **all four**. These are checked by the implementation profiles, not by promises.
 
-1. **Behavior oracle** — golden outputs, corpus replay, differential test against the reference/origin, or recorded traces. For a `port`, this is a *differential oracle* naming origin triple, target triple, emulator/hardware path, and corpus size (`--require-differential-oracle` verifies the named substructure, not a bare grep).
+1. **Behavior oracle** — golden outputs, corpus replay, differential test against the reference/origin, or recorded traces. For a `port`, this is a *differential oracle* naming origin triple, target triple, emulator/hardware path, and corpus size (`--profile port --require-transform-proof` verifies the named substructure, not a bare grep). See [CODE-TRANSFORM.md](CODE-TRANSFORM.md).
 2. **Baseline measurement** — captured before the change with command, inputs, CPU, compiler, flags, commit. A perf claim must pass `cpp_perf_proof.py` / `--strict-numeric`: real `hyperfine`/Google-Benchmark/`perf stat` JSON, before-and-after both parse, after beats before by more than `k*stddev`, same command/input in both. A regression export must FAIL; a within-noise export must FAIL.
 3. **ABI/API check** — `cpp_abi_snapshot.sh` before/after; no unintended symbol/layout delta on any public boundary. A `modernize` carries a per-transform isomorphism field plus the ABI snapshot; a `rearchitect` carries a rearchitecture ledger plus tests plus ABI.
-4. **Reversible one-lever commit** — one lever per commit; the change reverts cleanly. A `rearchitect`/`port` carries a migration ledger with a per-commit caller census (`--require-migration-ledger` verifies it).
+4. **Reversible one-lever commit** — one lever per commit; the change reverts cleanly. A `rearchitect`/`port` carries a migration ledger with a per-commit caller census (`--profile rearchitect --require-transform-proof` verifies it). See [CODE-TRANSFORM.md](CODE-TRANSFORM.md).
 
 ### Profiles that enforce this
 

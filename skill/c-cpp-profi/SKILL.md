@@ -76,6 +76,9 @@ Native C/C++ extras are mandatory when relevant: no UB-for-speed contracts, no `
 | Parser/input handling | Read [TESTING-FUZZING.md](references/TESTING-FUZZING.md), then add fuzz and regression coverage |
 | Build system | Read [BUILD-PORTABILITY.md](references/BUILD-PORTABILITY.md), preserve existing presets and developer workflows |
 | Refactor/simplify | Read [REFACTOR-ISOMORPHISM.md](references/REFACTOR-ISOMORPHISM.md), then prove behavior, ABI, layout, and artifacts before editing |
+| Port (cross compiler/std/platform/arch or C/C++ ↔ Rust) | Read [CODE-TRANSFORM.md](references/CODE-TRANSFORM.md), then build a differential oracle (origin triple, target triple, emulator/hardware, corpus) and gate `--profile port --require-transform-proof` |
+| Modernize (raise standard, `clang-tidy modernize-*`, replace deprecated API) | Read [CODE-TRANSFORM.md](references/CODE-TRANSFORM.md), then carry a per-transform refactor isomorphism row plus an ABI/API check and gate `--profile modernize --require-transform-proof` |
+| Re-architect (new layering/data structure/ownership) | Read [CODE-TRANSFORM.md](references/CODE-TRANSFORM.md), then keep a migration ledger with per-commit caller census plus tests plus ABI/API and gate `--profile rearchitect --require-transform-proof` |
 | Review/audit | Use the multi-pass audit loop in [QUALITY-GATES.md](references/QUALITY-GATES.md), then lead with findings, file:line evidence, severity, proof, and gate gaps |
 | Propose what to build / improve / rethink | Read [INNOVATION-ENGINE.md](references/INNOVATION-ENGINE.md), comprehend first, enumerate the accretive backlog plus radical bets, then land each behind its idea-evidence packet |
 | Native UI/pixels | Read [NATIVE-UI-GOLDENS.md](references/NATIVE-UI-GOLDENS.md), then capture and compare rendered artifacts across target viewports/devices |
@@ -99,6 +102,7 @@ Load only the relevant file:
 | Performance methodology | [PERFORMANCE.md](references/PERFORMANCE.md) |
 | Build systems, ABI, portability | [BUILD-PORTABILITY.md](references/BUILD-PORTABILITY.md) |
 | Behavior-preserving C/C++ refactors | [REFACTOR-ISOMORPHISM.md](references/REFACTOR-ISOMORPHISM.md) |
+| Behavior- or target-changing transforms: port, modernize, re-architect | [CODE-TRANSFORM.md](references/CODE-TRANSFORM.md) |
 | Native UI, rendering, screenshots, pixels | [NATIVE-UI-GOLDENS.md](references/NATIVE-UI-GOLDENS.md) |
 | Sanitizer/fuzz templates | [TOOLCHAIN-TEMPLATES.md](references/TOOLCHAIN-TEMPLATES.md) |
 | Hermes/Codex/Claude operating mode | [AGENT-OPERATING-MODE.md](references/AGENT-OPERATING-MODE.md) |

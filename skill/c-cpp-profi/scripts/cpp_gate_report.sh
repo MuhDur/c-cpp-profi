@@ -70,6 +70,8 @@ cat <<REPORT
 | portability | not applicable |  |  |
 | ABI/API | not applicable |  |  |
 | refactor isomorphism | not applicable |  |  |
+| differential oracle | not applicable |  | include origin-triple:, target-triple:, emulator:/hardware:, corpus: |
+| migration ledger | not applicable |  | include caller-census:, ledger: |
 | golden artifacts | not applicable |  |  |
 | idea card | not applicable |  | include idea-card: validated by cpp_idea_check.py; kind: <accretive\|radical>; score: <n> |
 | comprehension | not applicable |  | include entry-point:, module-map:, callgraph:, intent: |
