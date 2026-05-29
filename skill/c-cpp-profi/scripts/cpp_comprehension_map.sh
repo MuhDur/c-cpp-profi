@@ -457,12 +457,48 @@ emit_exported_api() {
       "$repo" 2>/dev/null | LC_ALL=C sort -u || true)"
   [ -n "$all" ] || return 0
 
-  # Walk each header file, strip comments, emit "<file>:<line>:<name>" for each
-  # non-static function declaration. xargs passes the files; FILENAME gives the
-  # path (stripped to repo-relative afterward).
+  # Walk each header file, strip comments, JOIN multi-line declarations into one
+  # logical statement (terminated by `;`, `{`, or `}` at the top level), then emit
+  # "<rank>:<file>:<line>:<name>" for each function declaration. <rank> is 0 for a
+  # likely-public decl (header under include/**, or a leading/trailing export
+  # macro), 1 otherwise — so the cap upstream shows public API first (R4.4). xargs
+  # passes the files; FILENAME gives the path (stripped to repo-relative after).
+  #
+  # The extractor handles the macro/paren-wrapped declaration idioms serious C
+  # libraries use (R4): a paren-wrapped name `<ret> ( <name> ) ( ... )` (Lua's
+  # `LUA_API int (lua_absindex)(...)`), a leading export-macro prefix
+  # `<EXPORT_MACRO> <ret> <name>(...)` (libuv `UV_EXTERN`, `LUA_API`, `*_API`,
+  # `*_EXPORT`, `*_PUBLIC`), a macro-wrapped return type `MACRO(<ret>) <name>(...)`
+  # (cJSON `CJSON_PUBLIC(cJSON *) cJSON_Parse(...)`), and a trailing macro suffix
+  # `<ret> <name>( ... ) PRIVILEGED_FUNCTION;` (FreeRTOS, possibly multi-line). It
+  # also EXCLUDES non-functions: `MBEDTLS_PRIVATE(field)` struct-field markers,
+  # reserved/asm `__\w+__` tokens (`__volatile__`), and ALL-UPPERCASE/underscore
+  # macro-shaped "names" (`OP`, `NAME`, `XSIMD_RVV_TYPE`, `CBRT2`) — real public C
+  # API names are lowercase/mixedCase.
   printf '%s\n' "$all" \
-    | xargs -d '\n' -r awk '
-        FNR == 1 { inblock = 0 }    # reset block-comment state per file
+    | xargs -d '\n' -r awk -v repo="$repo" '
+        # Per-file reset. is_include: header is part of the PUBLIC surface — a
+        # top-level `include/` header or a top-level header (no dir) — ranked first.
+        # Per-arch / vendor BSP headers (under portable/, ports/, arch/, or a
+        # NESTED include/ like portable/.../include/) are NOT the public API and
+        # stay rank-1 so they do not crowd the cap (FreeRTOS card weakness #5).
+        # is_cpp: a C++ header by extension (.hpp/.hh/.hxx) OR (later) a .h seen to
+        # carry class/namespace/template — so a C++ `static` MEMBER function is NOT
+        # dropped like a C file-scope `static` (R4.3, leveldb DB::Open). cpp_seen
+        # latches once class/namespace is observed while walking the file.
+        FNR == 1 {
+          inblock = 0; stmt = ""; startline = 0; cpp_seen = 0
+          rel = FILENAME
+          sub(/^\.\//, "", rel)
+          pfx = repo "/"
+          if (substr(rel, 1, length(pfx)) == pfx) rel = substr(rel, length(pfx) + 1)
+          # Public-include: relative path begins with `include/`, or is a top-level
+          # header (no slash). Vendored/per-arch trees are excluded.
+          is_include = 0
+          if (rel ~ /^include\// || rel !~ /\//) is_include = 1
+          if (rel ~ /(^|\/)(portable|ports|port|arch|vendor|extras)\//) is_include = 0
+          is_cpp = (FILENAME ~ /\.(hpp|hh|hxx)$/) ? 1 : 0
+        }
         {
           line = $0
           out = ""
@@ -482,28 +518,80 @@ emit_exported_api() {
             out = out substr(line, i, 1)
             i++
           }
-          c = out
-          sub(/^[ \t]+/, "", c)              # left-trim
+          # Collapse whitespace runs so the joined logical statement is uniform.
+          gsub(/[ \t]+/, " ", out)
+          tout = out; sub(/^ /, "", tout); sub(/ $/, "", tout)
+          # Latch C++-ness for a .h header the moment a class/namespace/template
+          # appears (so a later `static` member decl is treated as C++ API).
+          if (!is_cpp && tout ~ /(^|[^A-Za-z0-9_])(class|namespace|template)([^A-Za-z0-9_]|$)/) {
+            cpp_seen = 1
+          }
+          if (tout == "") next
+          # Preprocessor lines are atomic: they neither start nor extend a C decl.
+          # Reset any in-progress accumulation so a `#define` body cannot fuse onto
+          # a following decl.
+          if (tout ~ /^#/) { stmt = ""; startline = 0; next }
+          # Accumulate into a logical statement; remember its FIRST line as the
+          # anchor (the return-type / function-name line).
+          if (stmt == "") startline = FNR
+          stmt = (stmt == "" ? tout : stmt " " tout)
+          # A logical statement terminates at the first `;`/`{`/`}` (a decl ends
+          # with `;`; a definition opens `{`; a stray `}` closes a scope). Until
+          # then keep accumulating continuation lines (multi-line decls, FreeRTOS).
+          if (stmt !~ /[;{}]/) next
+          # Cut at the first terminator; the cut text is the candidate declaration.
+          tpos = 0; slen = length(stmt)
+          for (j = 1; j <= slen; j++) {
+            ch1 = substr(stmt, j, 1)
+            if (ch1 == ";" || ch1 == "{" || ch1 == "}") { tpos = j; break }
+          }
+          c = substr(stmt, 1, tpos - 1)
+          declline = startline
+          stmt = ""; startline = 0          # statement consumed; reset accumulator
+          sub(/^ +/, "", c); sub(/ +$/, "", c)
           if (c == "") next
-          # Skip preprocessor, braces, and obvious non-declarations.
-          if (c ~ /^#/) next
+          eff_cpp = (is_cpp || cpp_seen)
+          # Skip obvious non-declarations.
           if (c ~ /^[}{]/) next
-          # static (internal linkage) / typedef (incl. fn-pointer typedefs):
-          # start-anchored keyword followed by a non-identifier char (portable
-          # word-boundary; avoids gawk-only \b).
-          if (c ~ /^static([^A-Za-z0-9_]|$)/)  next
+          # typedef (incl. fn-pointer typedefs `typedef int (*cb)(...)`): not API.
           if (c ~ /^typedef([^A-Za-z0-9_]|$)/) next
-          if (c ~ /^extern[ \t]+"C"/) next    # `extern "C" {` linkage block opener
+          if (c ~ /^extern "C"/) next         # `extern "C" {` linkage block opener
           # Aggregate/type definitions, not function declarations.
           if (c ~ /^(struct|union|enum|class|namespace|using)([^A-Za-z0-9_]|$)/) next
           # Control keywords / statements that can precede a "(".
           if (c ~ /^(if|for|while|switch|do|else|case|return|sizeof|catch)([^A-Za-z0-9_]|$)/) next
           if (c ~ /^\(/) next                 # leading "(" => expr / fn-ptr cast
-          # Macro-wrapped declaration idiom: a return type wrapped in an
-          # ALL-CAPS export macro, e.g. cJSON `CJSON_PUBLIC(cJSON *) cJSON_Parse(`.
-          # The real function name is the identifier AFTER the macro call`s close
-          # paren. Detect a leading `UPPER_MACRO( ... )` and re-base `c` past it so
-          # the generic name-extraction below lands on the function, not the macro.
+          # `static`: C file-scope internal linkage is NOT API and is dropped — but
+          # in a C++ header a `static` MEMBER function (leveldb DB::Open
+          # `static Status Open(...)`, the headline entry) IS public API (R4.3). In
+          # a C++ header strip the keyword so name-extraction lands on the member;
+          # in a C header drop the decl.
+          if (c ~ /^static([^A-Za-z0-9_]|$)/) {
+            if (!eff_cpp) next
+            sub(/^static[ \t]+/, "", c)
+          }
+          # Other C++ member specifiers that can precede a member-fn decl.
+          if (eff_cpp) {
+            sub(/^(virtual|explicit|constexpr|inline|friend)([ \t]+(virtual|explicit|constexpr|inline|friend))*[ \t]+/, "", c)
+          }
+          # Leading export-macro prefix: `UV_EXTERN int uv_run(...)`,
+          # `LUA_API int (lua_absindex)(...)`, `LEVELDB_EXPORT Status DestroyDB(...)`
+          # (R4.1). Strip a known/shaped export macro so the return type + name
+          # follow. The macro is ALL-CAPS, an exact known name or a known export
+          # suffix, and must be followed by a TYPE token (letter), NOT by `(` (that
+          # is the macro-WRAPPED case below) — so a `MACRO(args)` call is not eaten.
+          had_export = 0
+          if (match(c, /^[A-Z][A-Za-z0-9_]*[ \t]+[A-Za-z_]/)) {
+            mtok = substr(c, RSTART, RLENGTH)
+            sub(/[ \t]+[A-Za-z_]$/, "", mtok)
+            if (mtok == "UV_EXTERN" || mtok == "LUA_API" || mtok == "LUALIB_API" || \
+                mtok == "MA_API" || mtok ~ /_API$/ || mtok ~ /_EXPORT$/ || \
+                mtok ~ /_PUBLIC$/ || mtok ~ /_EXTERN$/) {
+              sub(/^[A-Z][A-Za-z0-9_]*[ \t]+/, "", c); had_export = 1
+            }
+          }
+          # Macro-wrapped return type: `CJSON_PUBLIC(cJSON *) cJSON_Parse(...)`. The
+          # function name is the identifier AFTER the macro call`s close paren.
           macro_wrapped = 0
           # NB: `close` is a gawk built-in — use `closepos` for the index variable.
           if (match(c, /^[A-Z][A-Z0-9_]*[ \t]*\(/)) {
@@ -517,9 +605,22 @@ emit_exported_api() {
             # otherwise (e.g. `MACRO(x);`) leave `c` as-is (it will be rejected).
             if (closepos > 0) {
               tail = substr(c, closepos + 1)
-              if (tail ~ /^[ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*\(/) { c = tail; macro_wrapped = 1 }
+              if (tail ~ /^[ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*\(/) { c = tail; macro_wrapped = 1; had_export = 1 }
             }
             sub(/^[ \t]+/, "", c)
+          }
+          # Paren-wrapped name: `<ret> ( <name> ) ( <args> )` — Lua dodges macro
+          # expansion this way (`int (lua_absindex)(...)`) (R4.1). Detect a
+          # `(<identifier>)` group whose CLOSE paren is immediately followed by
+          # another `(` (the arg list) and rewrite it to `<ret> <name> (` so the
+          # generic extractor below lands on <name> rather than the return type.
+          if (match(c, /\([ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*\)[ \t]*\(/)) {
+            grp = substr(c, RSTART, RLENGTH)
+            gpos = RSTART
+            if (match(grp, /[A-Za-z_][A-Za-z0-9_]*/)) {
+              inner = substr(grp, RSTART, RLENGTH)
+              c = substr(c, 1, gpos - 1) " " inner " ("
+            }
           }
           paren = index(c, "(")
           if (paren == 0) next
@@ -528,16 +629,24 @@ emit_exported_api() {
           if (!match(head, /[A-Za-z_][A-Za-z0-9_]*[ \t]*$/)) next
           tok = substr(head, RSTART, RLENGTH)
           gsub(/[ \t]+/, "", tok)
-          if (tok == "" || tok == "main" || tok == "__attribute__") next
+          if (tok == "" || tok == "main") next
+          # Reserved/asm tokens (`__volatile__`, `__attribute__`, `__asm__`),
+          # double-underscore RESERVED-namespace internals (`__ieee754_rem_pio2`,
+          # `__kernel_rem_pio2` — fdlibm internals, not public), and ALL-UPPERCASE/
+          # underscore MACRO-shaped "names" (`MBEDTLS_PRIVATE` field markers,
+          # `OP`/`NAME`/`XSIMD_RVV_TYPE`/`CBRT2` macro params/bodies) are NOT public
+          # C API — real names are lowercase or mixedCase (R4.2).
+          if (tok ~ /^__/) next               # leading `__`: reserved / asm token
+          if (tok ~ /^[A-Z0-9_]+$/) next      # ALL-CAPS / ALL-UPPER+underscore
           # Require a return-type-ish prefix before the name (so a bare "NAME(" —
           # a macro invocation or call — is rejected). The prefix must carry a
           # word/pointer token.
           pre = substr(head, 1, RSTART - 1)
           sub(/[ \t]+$/, "", pre)
           # A bare "NAME(" with no preceding return type is a macro call/invocation,
-          # NOT a declaration — UNLESS we rebased past a macro wrapper (cJSON), where
-          # the macro WAS the return type and an empty prefix is expected.
-          if (!macro_wrapped) {
+          # NOT a declaration — UNLESS we rebased past a macro wrapper (cJSON) or
+          # stripped an export macro (the macro stood in for / preceded the type).
+          if (!macro_wrapped && !had_export) {
             if (pre == "") next
             if (pre !~ /[A-Za-z_*]/) next
           }
@@ -547,12 +656,35 @@ emit_exported_api() {
           # is rejected here — this kills `__test_num++; printf`, `x = MACRO(...)`,
           # and `struct __attribute__ ((__packed__)) name`-class lines.
           if (head !~ /^[A-Za-z_][A-Za-z0-9_ \t*:<>&~]*$/) next
-          printf "%s:%d:%s\n", FILENAME, FNR, tok
+          # Rank 0 = likely-public (include/** header OR an export macro present);
+          # rank 1 = the rest (internal/per-arch). The cap upstream shows 0 first
+          # so a repo whose internal `uv__*`/`epoll_*`/`db_impl` symbols outnumber
+          # the public API still surfaces the public API (R4.4).
+          rank = (is_include || had_export) ? 0 : 1
+          printf "%d\t%s\t%d\t%s\n", rank, FILENAME, declline, tok
         }
       ' 2>/dev/null \
-    | strip_repo_prefix "$repo" \
-    | awk -F: 'NF>=3 { printf "exported_api\t%s()\t%s:%s\n", $3, $1, $2 }'
+    | strip_repo_api_prefix "$repo" \
+    | LC_ALL=C sort -t"$(printf '\t')" -k1,1n -k4,4 -k2,2 -k3,3n -u \
+    | awk -F"$(printf '\t')" 'NF>=4 { printf "exported_api\t%s\t%s()\t%s:%d\n", $1, $4, $2, $3 }'
   return 0
+}
+
+# Strip the repo prefix from the FILENAME field (column 2) of the rank-tagged
+# "rank<TAB>file<TAB>line<TAB>name" rows emitted by the exported-API awk. The
+# generic strip_repo_prefix keys on the FIRST ":"; here the path is column 2 of a
+# tab record, so do a tab-field-aware strip. Args: REPO (rows on stdin).
+strip_repo_api_prefix() {
+  local repo="$1"
+  local prefix="$repo/"
+  awk -F'\t' -v OFS='\t' -v prefix="$prefix" '
+    NF>=4 {
+      path = $2
+      sub(/^\.\//, "", path)
+      if (substr(path, 1, length(prefix)) == prefix) path = substr(path, length(prefix) + 1)
+      $2 = path
+      print
+    }'
 }
 
 # L2 module map: top-level source directories with per-dir file counts. -------
@@ -615,6 +747,63 @@ cap_section() {
 }
 CAP_LIST=40
 
+# Rank-preserving, per-file round-robin cap for the exported-API list (R4.4).
+# Input rows are 4-field "exported_api<TAB>rank<TAB>key<TAB>anchor", ALREADY sorted
+# rank-first, then by name, then by file (so likely-public include/**/export-macro
+# decls lead). We must NOT collapse back to a flat alphabetical cap — that is what
+# buried the public API behind internal `uv__*`/`epoll_*`/`db_impl`/per-arch
+# symbols, AND lets a single mega-header (FreeRTOS `mpu_prototypes.h`'s ~280
+# MPU_-wrappers, libuv `os390-syscalls.h`) monopolize all 40 slots and crowd out
+# the canonical `task.h`/`queue.h`/`uv.h` surface. So within each rank we round-
+# robin ACROSS source files: take the 1st (alphabetical) decl of every file, then
+# the 2nd of every file, ... until the cap fills. Lower rank is fully emitted
+# before any higher rank. Ties broken by (rank, file, name) so two runs byte-match.
+# The rank column is dropped on the way out (downstream sees normal 3-field rows);
+# a "... (+N more; capped)" footer is appended when rows were truncated.
+cap_exported_api() {
+  local cap="$1"
+  awk -F'\t' -v cap="$cap" '
+    # Bucket rows by (rank, file), preserving the incoming per-file name order.
+    # Track, per rank, the ordered list of its files (first-seen order, which is
+    # deterministic since the input was stably sorted rank/name/file).
+    NF>=4 {
+      total++
+      rank = $2 + 0
+      split($4, ap, ":"); file = ap[1]
+      gk = rank SUBSEP file
+      if (!(gk in seen)) {
+        seen[gk] = 1
+        if (!(rank in maxrank_seen)) { maxrank_seen[rank] = 1; ranks[++nranks] = rank }
+        files[rank, ++nfiles[rank]] = file
+      }
+      grp[gk, ++cnt[gk]] = $1 "\t" $3 "\t" $4
+    }
+    END {
+      # Emit lower ranks first (rank 0 = likely-public, fully before rank 1). Sort
+      # the seen ranks ascending (typically just {0,1}).
+      for (a = 1; a <= nranks; a++)
+        for (b = a + 1; b <= nranks; b++)
+          if (ranks[b] < ranks[a]) { t = ranks[a]; ranks[a] = ranks[b]; ranks[b] = t }
+      shown = 0
+      for (r = 1; r <= nranks && shown < cap; r++) {
+        rank = ranks[r]
+        # max per-file depth within this rank
+        maxd = 0
+        for (i = 1; i <= nfiles[rank]; i++) { gk = rank SUBSEP files[rank, i]; if (cnt[gk] > maxd) maxd = cnt[gk] }
+        # round-robin: depth-th decl of every file in this rank, then depth+1, ...
+        for (depth = 1; depth <= maxd && shown < cap; depth++) {
+          for (i = 1; i <= nfiles[rank] && shown < cap; i++) {
+            gk = rank SUBSEP files[rank, i]
+            if (depth <= cnt[gk]) { print grp[gk, depth]; shown++ }
+          }
+        }
+      }
+      if (total > shown)
+        printf "exported_api\t... (+%d more; capped)\tcapped\n", total - shown
+    }'
+  return 0
+}
+
 # ---------------------------------------------------------------------------
 # Map assembly: gather rows, dedupe build/entry rows, sort deterministically.
 # Module rows are already unique per top-level dir. Entry-point symbol hints and
@@ -631,9 +820,10 @@ build_map() {
       emit_entrypoints "$repo" | awk 'NF' \
         | cap_section entrypoint '^exported-symbol hint' ;;
     exported_api)
-      # The whole exported-API list is one KIND; cap all of it (key matches '.').
+      # Rank-preserving cap: rows arrive rank-first (public API leads); cap without
+      # re-sorting so the public surface is never buried behind internals (R4.4).
       emit_exported_api "$repo" | awk 'NF' \
-        | cap_section exported_api '.' ;;
+        | cap_exported_api "$CAP_LIST" ;;
     module)
       emit_modules "$repo" | awk 'NF' | LC_ALL=C sort -u ;;
   esac
@@ -787,6 +977,15 @@ int util_run(int n);                 /* exported API */
 const char *util_name(void);         /* exported API */
 static int util_helper(int n);       /* internal linkage: not exported API */
 LIBUTIL_API(int) util_open(const char *path);  /* macro-WRAPPED exported API (cJSON-style) */
+/* R4.1 macro/paren-wrapped declaration idioms: */
+LUA_API int   (util_absindex) (int idx);        /* paren-wrapped name (Lua idiom) */
+UV_EXTERN int util_run_mode(int mode);           /* leading export MACRO prefix (libuv) */
+UTIL_API const char *util_strerror(int e);       /* *_API export prefix */
+int util_create( int a,
+                 int b ) UTIL_PRIVILEGED;         /* multi-line + trailing macro suffix (FreeRTOS) */
+/* R4.2 macro noise / reserved tokens that must NOT be surfaced as API: */
+int marker UTIL_PRIVATE(field);                  /* struct-field name-mangler, not a function */
+#define UTIL_OP(x) __asm__ __volatile__("nop")   /* macro body w/ asm token (preprocessor: ignored) */
 #endif
 SRC
   # A vendored-style single-TU lib whose main() lives behind a *_MAIN self-test
@@ -799,6 +998,22 @@ int util_run(int n) { return n + 1; }
 int main(void) {
     return util_run(0);
 }
+#endif
+SRC
+  # A C++ public header (R4.3): a `static` MEMBER function in a class is public
+  # API (leveldb `DB::Open`) and must NOT be dropped like a C file-scope `static`.
+  # A bare C-style file-scope `static` (in a .h with no class) still IS dropped —
+  # but here the file carries a class, so the latch treats statics as members.
+  cat >"$tmp/include/db.hpp" <<'SRC'
+#ifndef DB_HPP
+#define DB_HPP
+namespace fake {
+class Database {
+ public:
+  static Status DbOpen(const char *name);   /* C++ static MEMBER fn: public API */
+  Status Put(const char *k, const char *v); /* ordinary member */
+};
+}  // namespace fake
 #endif
 SRC
   # A header carrying many distinct visibility/EXPORT-macro hint lines so the
@@ -925,6 +1140,72 @@ SRC
     printf '%s\n%s\n' '--- map ---' "$out1"
     exit 1
   fi
+
+  # -------------------------------------------------------------------------
+  # R4 assertions: macro/paren-wrapped declaration idioms, macro-noise/reserved
+  # token exclusion, C++ static member functions, and public-first ranking.
+  # -------------------------------------------------------------------------
+  # R4.1a: a paren-wrapped name `LUA_API int (util_absindex)(...)` (the Lua idiom)
+  # surfaces as `util_absindex`, NOT `int()` (the return type).
+  if ! printf '%s\n' "$out1" | grep -qE '^util_absindex\(\) \| include/util\.h:[0-9]+'; then
+    printf 'cpp_comprehension_map self-test: FAIL (R4.1: paren-wrapped name util_absindex not surfaced — Lua idiom)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  if printf '%s\n' "$out1" | grep -qE '^int\(\) \| include/util\.h:'; then
+    printf 'cpp_comprehension_map self-test: FAIL (R4.1: return type `int()` leaked instead of the function name)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # R4.1b: a leading export-MACRO prefix `UV_EXTERN int util_run_mode(...)` (libuv)
+  # surfaces by the real name, not the macro/return type.
+  if ! printf '%s\n' "$out1" | grep -qE '^util_run_mode\(\) \| include/util\.h:[0-9]+'; then
+    printf 'cpp_comprehension_map self-test: FAIL (R4.1: export-macro-prefixed util_run_mode not surfaced — libuv UV_EXTERN idiom)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # R4.1b2: a `*_API` export prefix `UTIL_API const char *util_strerror(...)`.
+  if ! printf '%s\n' "$out1" | grep -qE '^util_strerror\(\) \| include/util\.h:[0-9]+'; then
+    printf 'cpp_comprehension_map self-test: FAIL (R4.1: *_API-prefixed util_strerror not surfaced)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # R4.1c: a multi-line declaration with a trailing macro suffix
+  # `int util_create( ...\n... ) UTIL_PRIVILEGED;` (FreeRTOS PRIVILEGED_FUNCTION)
+  # surfaces by name; the trailing macro does not derail extraction.
+  if ! printf '%s\n' "$out1" | grep -qE '^util_create\(\) \| include/util\.h:[0-9]+'; then
+    printf 'cpp_comprehension_map self-test: FAIL (R4.1: multi-line + trailing-macro util_create not surfaced — FreeRTOS idiom)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # R4.2a: a `UTIL_PRIVATE(field)` struct-field name-mangler (mbedtls MBEDTLS_PRIVATE)
+  # is NOT a function and must NOT be surfaced as exported API.
+  if printf '%s\n' "$out1" | grep -qE '^UTIL_PRIVATE\(\) \|'; then
+    printf 'cpp_comprehension_map self-test: FAIL (R4.2: UTIL_PRIVATE field marker leaked as exported API — MBEDTLS_PRIVATE case)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # R4.2b: reserved/asm tokens (`__volatile__`) and ALL-CAPS macro-shaped names
+  # (`OP`/`NAME`/`UTIL_OP`) are not API and must not appear.
+  if printf '%s\n' "$out1" | grep -qE '^(__volatile__|UTIL_OP|OP|NAME)\(\) \|'; then
+    printf 'cpp_comprehension_map self-test: FAIL (R4.2: reserved/asm or ALL-CAPS macro token leaked as exported API)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # R4.3: a C++ `static` MEMBER function in a public C++ header (leveldb DB::Open)
+  # is public API and must be surfaced; the C `static` filter must not drop it.
+  if ! printf '%s\n' "$out1" | grep -qE '^DbOpen\(\) \| include/db\.hpp:[0-9]+'; then
+    printf 'cpp_comprehension_map self-test: FAIL (R4.3: C++ static member DbOpen dropped — leveldb DB::Open case)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # R4.3b: an ordinary C++ member function still surfaces (no over-correction).
+  if ! printf '%s\n' "$out1" | grep -qE '^Put\(\) \| include/db\.hpp:[0-9]+'; then
+    printf 'cpp_comprehension_map self-test: FAIL (R4.3: ordinary C++ member Put not surfaced)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+
   # F5.2: a doc-comment `int main()` inside a /* */ block in include/util.h must
   # NOT be reported as a program entry.
   if printf '%s\n' "$out1" | grep -qE 'main\(\).*\| include/util\.h:'; then
