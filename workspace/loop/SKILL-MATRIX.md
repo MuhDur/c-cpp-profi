@@ -40,7 +40,7 @@ Priority = recommended order for *remaining* passes (1 = next).
 | 17 | rust-unsafe-code-exorcist | C3,C6 | unsafe/FFI/SIMD boundary classification & hardening |
 | ✓ | legacy-to-rust-porting | C2 | **APPLIED (iter 4)** — CODE-TRANSFORM.md (port/modernize/rearchitect) + 3 profiles + `--require-transform-proof` + worked example. C2 5→9. |
 | 19 | library-updater | C2 | Dependency modernization / standard-version migration |
-| 20 | readme-writing | C5 | Professional README/handoff generation |
+| ✓ | readme-writing | C5 | **APPLIED (iter 5)** — DOCUMENTATION.md authoring reference + cpp_docs_check.py linter + worked example. C5 2→7. |
 | 21 | documentation-website-for-software-project | C5 | Full docs-site generation methodology |
 | 22 | changelog-md-workmanship | C5 | Release-history / changelog rigor |
 | 23 | de-slopify | C5 | Strip AI-slop from generated docs; authentic prose |

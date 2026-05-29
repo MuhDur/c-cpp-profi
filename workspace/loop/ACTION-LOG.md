@@ -198,4 +198,36 @@ FAIL(exit 1) missing caller-census; perf+comprehension proofs unregressed; examp
 
 **Next:** iteration 5 → `/repeatedly-apply-skill readme-writing` (C5 documentation: DOCUMENTATION.md + de-slopify cross-link). C5 is the most-neglected dim at 2/8.
 
-**Commits:** `cc94020`, `0989487` (passes) + this artifact-update commit.
+**Commits:** `cc94020`, `0989487` (passes) + `c5f79fe` (artifact update).
+
+---
+
+## Iteration 5 — 2026-05-29 — `/repeatedly-apply-skill readme-writing` → C5 documentation
+
+**Read:** all loop artifacts; DOCUMENTATION.md mission; cpp_idea_check.py (to mirror the new docs checker).
+
+**Did (2 serial subagent passes, orchestrator-verified + committed each):**
+- **Pass 1** (`e853ba3`): `references/DOCUMENTATION.md` — authoring procedures for README, architecture/design
+  doc, Doxygen/header API contracts (per-symbol ownership/lifetime/thread-safety/error/preconditions), changelog
+  (Keep-a-Changelog + SemVer; ABI break ⇒ MAJOR + SONAME bump), docs-site pipeline, slop-free-prose (de-slopify
+  cross-link), docs-as-tests rule + completion standard. Wired Task Router + Reference Map + Handoff + validators.
+- **Pass 2** (`40b5d31`): `scripts/cpp_docs_check.py` (slop-token + README-section + API-contract-field +
+  changelog-shape linter; `--kind` auto-detect; `--self-test`) + `examples/documentation.md` (libgeohash doc set;
+  passes all 3 kinds; Evidence Packet). Wired into both validators + SKILL.md.
+
+**Independently verified:** docs-check self-test PASS; example passes `--kind readme/api/changelog` (exit 0);
+a slop+missing-section doc FAILs (exit 1, 5 errors); example slop-free; contract PASS references=18 examples=8;
+completion audit PASS (both modes).
+
+**Found / weak spots observed (feed next loop):**
+- The docs checker validates structure/slop/contract fields but does NOT compile doc snippets (docs-as-tests is
+  a rule, not yet auto-run). Would need a compile harness.
+- No empirical proof an agent produces good docs on a real repo (Q2).
+
+**Rubric movement:** 63 → **68/100** (C5 2→7; the most-neglected dim, now methodology + example + linter).
+
+**Convergence:** 2 passes (quality target met — C5 taught + exampled + enforced).
+
+**Next:** iteration 6 → `/repeatedly-apply-skill operationalizing-expertise` (C6 domain-agnostic depth: UNKNOWN-DOMAIN.md derivation recipe + more packs + example). Resolves the dangling reference.
+
+**Commits:** `e853ba3`, `40b5d31` (passes) + this artifact-update commit.
