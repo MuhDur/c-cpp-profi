@@ -18,10 +18,11 @@ No problem-evidence means no idea. No behavior oracle means no radical change.
 | 3 | Score and select adversarially | accretive score + radical expected-value, portfolio rule |
 | 4 | Land behind the matching implementation profile | `cpp_evidence_check.py --profile {port,modernize,rearchitect,...}` |
 
-> **Tooling status (loop-tracked).** `cpp_inventory.sh`, `cpp_risk_scan.sh`, `cpp_idea_check.py`, and
+> **Tooling status (loop-tracked).** `cpp_inventory.sh`, `cpp_risk_scan.sh`, `cpp_backlog.sh`,
+> `cpp_idea_check.py`, and
 > `cpp_evidence_check.py`
 > (profiles `basic/parser/memory/public-abi/concurrency/performance/refactor/native-ui/portability/security/docs-scripts/idea`)
-> exist today. The remaining proposal-specific tooling named below — `cpp_backlog.sh` and the
+> exist today. The remaining proposal-specific tooling named below — the
 > `comprehension`/`port`/`modernize`/`rearchitect` profiles plus `--derive-profiles`/`--strict-numeric` —
 > is the *specification* this engine is built against; it is implemented by the skill's own improvement loop
 > (the `idea-wizard` and `mcp-server-design` passes). Until a named tool exists, perform its step **manually**

@@ -110,6 +110,7 @@ All scripts are read-only unless the script text explicitly says otherwise.
 bash skill/c-cpp-profi/scripts/cpp_inventory.sh .
 bash skill/c-cpp-profi/scripts/cpp_gate_plan.sh .
 bash skill/c-cpp-profi/scripts/cpp_risk_scan.sh .
+bash skill/c-cpp-profi/scripts/cpp_backlog.sh .
 bash skill/c-cpp-profi/scripts/cpp_gate_report.sh .
 python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <filled-gate-report.md> --profile basic --require-warning-clean --require-analyzer-review
 python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <filled-gate-report.md> --profile performance --require-performance-proof
@@ -121,7 +122,7 @@ python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi
 
 Use the inventory script at the start of non-trivial work, the gate plan before changing build/test commands, the risk scan before review or after touching memory/input/concurrency code, the ABI snapshot helper when public libraries or plugin boundaries are touched, the pixel diff helper when rendered image artifacts are touched, and the gate report script before handoff. Prefer running `cpp_risk_scan.sh` on changed files or touched directories; whole-repo scans on mature C/C++ projects are intentionally noisy triage, not a defect list.
 After filling a gate report, run `cpp_evidence_check.py` with the applicable risk profiles (`parser`, `memory`, `public-abi`, `concurrency`, `performance`, `refactor`, `native-ui`, `portability`, or `security`) before claiming the work is complete. Use `--require-warning-clean` when compile success must mean warning-clean, and `--require-analyzer-review` whenever static-analysis output is part of the gate; static tools can exit `0` while printing findings.
-When proposing what to build, validate every Idea Card with `cpp_idea_check.py` before it earns an edit; it rejects blank or placeholder fields, a problem-evidence that reads as a feeling instead of a measurable anchor, and a `kind: radical` card missing its behavior oracle or reversible one-lever floor. Then enforce the matching gate row with `cpp_evidence_check.py --profile idea`.
+When proposing what to build, first run `cpp_backlog.sh <repo>` to enumerate a deduplicated, reproducible capability-gap backlog (hardening, API ergonomics, portability, test/fuzz coverage) where every row carries a `file:line` or inventory-key evidence anchor, then validate every Idea Card with `cpp_idea_check.py` before it earns an edit; it rejects blank or placeholder fields, a problem-evidence that reads as a feeling instead of a measurable anchor, and a `kind: radical` card missing its behavior oracle or reversible one-lever floor. Then enforce the matching gate row with `cpp_evidence_check.py --profile idea`.
 
 ## Examples
 

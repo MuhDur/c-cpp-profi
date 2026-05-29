@@ -41,6 +41,7 @@ REQUIRED_FILES = [
     "skill/c-cpp-profi/references/QUALITY-GATES.md",
     "skill/c-cpp-profi/references/TESTING-FUZZING.md",
     "skill/c-cpp-profi/references/NATIVE-UI-GOLDENS.md",
+    "skill/c-cpp-profi/scripts/cpp_backlog.sh",
     "skill/c-cpp-profi/scripts/cpp_evidence_check.py",
     "skill/c-cpp-profi/scripts/cpp_idea_check.py",
     "skill/c-cpp-profi/examples/idea-generation.md",
