@@ -55,7 +55,7 @@ Do not free-associate. Derive the backlog mechanically so ideas are grounded, no
 3. Every emitted row must carry a derived-from-evidence pointer (the risk-scan `file:line` or the inventory key that produced it). A row with no anchor is a bug in the backlog, not a candidate.
 4. Backlog is reproducible: two runs on the same tree byte-match. Falsification test for the engine itself: inject a known gap (delete a fuzz harness, add a `strcpy`) and the matching row must appear; remove it and the row must disappear.
 
-For a domain with no pack, derive one with `references/domains/UNKNOWN-DOMAIN.md`: infer trust boundary (who supplies bytes/pointers/privilege), failure-cost class (crash vs corruption vs silent-wrong vs safety-of-life), determinism/timing/ABI surface, and map each to the gate ladder. Produce a filled ad-hoc pack with detection signals, gates, oracles, refusal conditions, and an honest "risks I cannot yet gate" list.
+For a domain with no pack, derive one with `references/UNKNOWN-DOMAIN.md`: infer trust boundary (who supplies bytes/pointers/privilege), failure-cost class (crash vs corruption vs silent-wrong vs safety-of-life), determinism/timing/ABI surface, and map each to the gate ladder. Produce a filled ad-hoc pack with detection signals, gates, oracles, refusal conditions, and an honest "risks I cannot yet gate" list.
 
 ## Idea Card
 

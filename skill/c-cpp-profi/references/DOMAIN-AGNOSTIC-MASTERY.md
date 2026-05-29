@@ -127,6 +127,38 @@ Worked unknown-domain example (industrial motion control, never briefed). Signal
 - Toolchain: protocol fuzzer (libFuzzer/AFL++) at the parse boundary + ASan/UBSan, test servers/fixtures, Wireshark/pcap.
 - Failure modes: heap overflow from unchecked length field, integer overflow in `len*count` allocation, infinite loop on crafted nesting, use-after-free on connection teardown, parser desync from a single malformed packet.
 
+### Compilers / interpreters / VMs
+- Authorities: ISO C/C++ standards (the source language contract); the target ISA/ABI; the IR specification (LLVM LangRef, the bytecode/opcode spec); CSmith/Csmith-style random-program literature; "Finding and Understanding Bugs in C Compilers" (Yang et al.).
+- Invariants: **preserve, never invent, undefined behavior** — a correct compiler may exploit source UB but must not introduce UB or miscompile defined programs; every IR transform/pass preserves observable semantics (the IR's own invariants: dominance, SSA def-before-use, type consistency, no use-after-free of values); the frontend rejects ill-formed input rather than crashing; deterministic codegen for the same input + flags.
+- Oracle: differential testing — same program compiled at `-O0` vs `-O2`, or against a second compiler, must agree on output (CSmith/Csmith + a checksum reference); spec conformance suites; a reference interpreter for a VM/bytecode backend; golden IR/assembly snapshots for known inputs.
+- Constraints: optimization must be observably semantics-preserving; UB in the *compiler itself* is as fatal as a miscompile; IR verifier must pass after every pass; ABI/calling-convention conformance with the platform; fuzzing the frontend must not be confused with fuzzing the runtime.
+- Toolchain: CSmith/Csmith + a reduction tool (C-Reduce/creduce), the IR verifier (`opt -verify`/equivalent), AFL++/libFuzzer on the lexer/parser/frontend, differential harness across optimization levels and compilers, sanitizers on the compiler build itself.
+- Failure modes: miscompilation (defined program -> wrong output), a pass that drops or reorders a side effect, an IR-invariant violation a later pass trips over, a frontend crash/hang on adversarial source, UB introduced by an "optimization", nondeterministic codegen breaking reproducible builds.
+
+### Databases / storage engines
+- Authorities: ARIES (write-ahead logging) literature; the SQL/transaction-isolation standard; "Torn Writes"/crash-consistency literature; SQLite's testing methodology (`test/dbfuzz2.c`, the durability tests); fsync/`fdatasync` and `O_DSYNC` semantics; ALICE (Application-Level Intelligent Crash Explorer).
+- Invariants: **crash consistency** — after any crash at any point, recovery reaches a consistent state (atomicity of the durable unit); WAL ordering — log record durable *before* the page it describes; `fsync`/`fdatasync` is acknowledged before reporting a commit durable (and the directory entry is fsynced too); MVCC snapshot isolation — readers never see a half-written transaction; page/block checksums catch torn or bit-rotted writes.
+- Oracle: ALICE / `dm-flakey` / device-mapper fault injection replaying every crash point and asserting recoverable + correct; a reference single-threaded model of the transaction semantics for differential MVCC testing; SQL logic-test corpora; checksum verification of every persisted page.
+- Constraints: durability requires a real `fsync` reaching stable media (not just the page cache); write ordering survives reordering by the OS/drive (barriers/FUA); on-disk format is a frozen, versioned ABI — old data must still open; isolation level is a contract, not a default.
+- Toolchain: `dm-flakey`/device-mapper crash injection, ALICE, `strace -e trace=fsync,fdatasync,write` to prove ordering, page-checksum verifier, a fuzzer on the recovery/WAL-replay path, TSan/ASan on the buffer-pool and lock manager.
+- Failure modes: lost commit because `fsync` was elided or the dir entry was not synced, torn page on power loss with no checksum to detect it, WAL replayed out of order corrupting a page, MVCC reader observing a partially committed transaction, on-disk format bumped without a migration path, double-free across a transaction-abort error path.
+
+### Audio / DSP / real-time media
+- Authorities: the audio API contract (CoreAudio/JACK/ASIO/ALSA callback rules); "Time Waits for Nothing" (Ross Bencina, real-time audio programming); IEEE 754 denormal/flush-to-zero behavior; the DAW/plugin spec (VST3/AU/CLAP threading rules).
+- Invariants: **the audio callback is hard-real-time** — no `malloc`/`free`, no locks that can block, no syscalls, no unbounded loops, no exceptions, no priority inversion inside it (use lock-free single-producer/single-consumer ring buffers to cross the thread boundary); sample-accurate timing (events land on the exact frame); flush denormals to zero (or add DC) so they do not stall the FPU; bounded, deterministic per-buffer work.
+- Oracle: known-input/known-output golden buffers compared at a defined tolerance (not bitwise — FP); an offline reference DSP implementation for differential testing; xrun (buffer underrun/overrun) counters as a real-time-correctness signal; impulse/sweep responses compared against the reference.
+- Constraints: the callback's worst-case execution time must fit the buffer period; any cross-thread communication is lock-free and wait-free on the audio side; denormals/NaN/Inf handled explicitly; no allocation or logging on the real-time path; ring-buffer capacity covers worst-case jitter.
+- Toolchain: an xrun detector / callback-duration profiler, a real-time-safety checker (no malloc/lock in the callback — e.g. a `LD_PRELOAD` malloc trap or RT-audio linter), the offline reference + golden-buffer differential, TSan on the producer/consumer boundary (off the RT path).
+- Failure modes: `malloc`/lock/syscall in the callback causing an xrun (audible glitch), priority inversion stalling the audio thread, a denormal storm spiking CPU, a non-lock-free queue tearing a sample, off-by-one in the ring buffer dropping or duplicating frames, sample-clock drift accumulating timing error.
+
+### Filesystems / block storage
+- Authorities: the on-disk format spec; POSIX `fsync`/rename-atomicity guarantees; the kernel VFS contract (if in-kernel — see also Kernel / drivers); fsck/repair literature; crash-consistency and "All File Systems Are Not Created Equal" (Pillai et al.); CRC/checksum-on-metadata practice (ext4/btrfs/ZFS).
+- Invariants: **power-fail atomicity** — a metadata operation either fully happens or not at all across a power cut (journaling/CoW/log-structured); `rename` over an existing file is atomic; on-disk format is versioned and backward/forward-compatible per its policy; every read of on-disk structure validates magic/version/checksum/bounds before trusting any length or offset field (the mount path parses fully untrusted bytes); fsck can detect and repair every inconsistency the format permits.
+- Oracle: fsck as a consistency oracle run after injected crashes; crash injection (`dm-flakey`, qemu power-cut, CrashMonkey/ALICE) replaying every barrier point and asserting mountable + consistent; a fuzzer on the **mount/parse path** feeding crafted images (the classic CVE surface); golden on-disk images across format versions.
+- Constraints: durability/ordering needs real barriers/FUA reaching media; the mount path treats the entire image as attacker-controlled (a malicious USB stick); format-version compatibility is a frozen ABI; metadata checksums must cover what an attacker could otherwise forge.
+- Toolchain: a mount-path image fuzzer (AFL++/libFuzzer over the superblock/inode parser) + ASan/UBSan, `dm-flakey`/CrashMonkey crash injection, the fsck/repair tool as oracle, a format-version golden-image corpus, KASAN if in-kernel.
+- Failure modes: out-of-bounds read/write from an unchecked length/offset in a crafted image (mount-path CVE), unrecoverable corruption after a power cut because a barrier was missing, an fsck that "repairs" by deleting user data, a format-version bump that bricks old images, integer overflow computing a block offset, a torn metadata write with no checksum to catch it.
+
 ### Pack-to-gate mapping (which generic gate becomes mandatory or forbidden)
 
 | Pack | Mandatory gate(s) | Forbidden / re-shaped |
@@ -138,12 +170,17 @@ Worked unknown-domain example (industrial motion control, never briefed). Signal
 | HPC / SIMD | scalar-vs-SIMD differential fuzz, FP tolerance proof | bitwise-equality oracle forbidden; `-ffast-math` requires explicit contract |
 | Crypto | KAT vectors, ctgrind/dudect constant-time, zeroization check | secret-dependent branch/index forbidden; `memcmp` on tags forbidden |
 | Networking | parse-boundary fuzz + ASan/UBSan, RFC conformance transcript, packet-of-death corpus | casting raw buffers to packed structs forbidden; trusting wire length forbidden |
+| Compilers / interpreters / VMs | differential vs `-O0`/second compiler (CSmith + checksum), IR verifier after each pass, frontend fuzz | introducing UB in the compiler forbidden; eyeball "looks optimized" forbidden |
+| Databases / storage engines | crash-injection (`dm-flakey`/ALICE) + recovery oracle, fsync-ordering trace, page-checksum verify | reporting commit before `fsync` durable forbidden; un-versioned on-disk format change forbidden |
+| Audio / DSP / real-time media | xrun/callback-duration check, real-time-safety (no malloc/lock in callback), golden-buffer differential | `malloc`/lock/syscall in the audio callback forbidden; bitwise-equality FP oracle forbidden |
+| Filesystems / block storage | mount-path image fuzz + ASan/UBSan, crash-injection + fsck oracle, format-version golden images | trusting on-disk length/offset before validation forbidden; missing barrier on the durability path forbidden |
 
 ## Pack-Selection Procedure (detect the domain from repo signals)
 
-Run the inventory first, then match signals. A repo may match several packs — load all that apply and union their gates (the strictest constraint wins).
+Run the inventory first, then match signals. A repo may match several packs — load all that apply and union their gates (the strictest constraint wins). `cpp_domain_detect.sh` mechanizes this table: it runs the signal greps below over a repo and prints every matched pack with the `file:line`/anchor that matched, or `unknown-domain: build a pack from references/UNKNOWN-DOMAIN.md` when none match.
 
 ```bash
+bash skill/c-cpp-profi/scripts/cpp_domain_detect.sh .   # mechanical pack selection; prints matched pack(s) + anchor
 bash skill/c-cpp-profi/scripts/cpp_inventory.sh .
 git ls-files | grep -Ei 'misra|cFE|fprime|Fw/|rtems|zephyr|FreeRTOS|cuda|\.cu$|sycl|\.cl$' || true
 grep -RInE '__user|copy_(to|from)_user|MODULE_LICENSE|EXPORT_SYMBOL' --include=*.c . | head || true
@@ -151,6 +188,10 @@ grep -RInE '__global__|__device__|cudaMalloc|sycl::|#pragma omp' . | head || tru
 grep -RInE '-ffast-math|_mm_|vld1|svptrue|Eigen/|highway' . | head || true
 grep -RInE 'constant.time|secret|EVP_|crypto_|explicit_bzero|memset_s' . | head || true
 grep -RInE 'recvfrom|parse_packet|ntohl|RFC[0-9]|struct .*__attribute__.*packed' . | head || true
+grep -RInE 'LLVMContext|llvm::|emitOpcode|opcode|bytecode|interpreter|codegen|\bIRBuilder\b' . | head || true
+grep -RInE 'fsync|fdatasync|write-ahead|\bWAL\b|MVCC|crash.consistency|page_checksum|pwrite' . | head || true
+grep -RInE 'ringbuffer|ring_buffer|audio_callback|process_block|denormal|xrun|jack_|kAudioUnit|VST3' . | head || true
+grep -RInE 'superblock|inode|on-disk|mount|fsck|dm-flakey|barrier|FUA|crash.injection' . | head || true
 ```
 
 | Signal | Pack |
@@ -162,11 +203,15 @@ grep -RInE 'recvfrom|parse_packet|ntohl|RFC[0-9]|struct .*__attribute__.*packed'
 | `-march`/intrinsics headers, Eigen/Highway/BLAS, `<cfenv>`, OpenMP, reduction loops, `-ffast-math` | HPC / SIMD / numerics |
 | constant-time comments, `EVP_`/`crypto_`, `explicit_bzero`, KAT/test-vector dirs, FIPS | Crypto |
 | `ntohl`/`htons`, packed wire structs, `RFC` references, protocol test fixtures, socket I/O | Networking / protocols |
-| None of the above match cleanly | Build a **Domain Pack** from the template before editing |
+| `llvm::`/`IRBuilder`/`LLVMContext`, opcode/`bytecode` dispatch `switch`, `interpreter`/`codegen`, gas/fuel counter, IR `-verify` | Compilers / interpreters / VMs |
+| `fsync`/`fdatasync`/`pwrite`, `WAL`/write-ahead, `MVCC`, page checksum, crash-consistency tests, `dm-flakey`/ALICE | Databases / storage engines |
+| ring buffer + `process_block`/`audio_callback`, `denormal`/flush-to-zero, `xrun`, JACK/CoreAudio/ASIO/VST3 | Audio / DSP / real-time media |
+| `superblock`/`inode`/on-disk struct, `mount`/`fsck`, `barrier`/FUA, crash-injection, format-version compat | Filesystems / block storage |
+| None of the above match cleanly | Build a **Domain Pack** on the spot with [UNKNOWN-DOMAIN.md](UNKNOWN-DOMAIN.md) before editing |
 
 Selection discipline:
 
-- If signals are ambiguous, ask the maintainer the template's Section 1 questions rather than guessing.
+- If signals are ambiguous or no pack matches, derive an ad-hoc pack with [UNKNOWN-DOMAIN.md](UNKNOWN-DOMAIN.md) and ask the maintainer the template's Section 1 questions rather than guessing.
 - A wrong pack is worse than no pack: it gates the wrong oracle. Confirm with a file:line, not a filename hunch.
 - When a project spans packs (e.g. a kernel crypto driver), the binding constraints stack: kernel context rules AND constant-time rules AND the cipher's KAT oracle all apply.
 - Record the selected pack(s) and the signals that selected them in the gate report so the choice is auditable.

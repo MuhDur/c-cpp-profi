@@ -33,6 +33,7 @@ REQUIRED_REFERENCES = [
     "TESTING-FUZZING.md",
     "TOOLCHAIN-MATRIX.md",
     "TOOLCHAIN-TEMPLATES.md",
+    "UNKNOWN-DOMAIN.md",
 ]
 
 REQUIRED_SCRIPTS = [
@@ -40,6 +41,7 @@ REQUIRED_SCRIPTS = [
     "cpp_backlog.sh",
     "cpp_comprehension_map.sh",
     "cpp_docs_check.py",
+    "cpp_domain_detect.sh",
     "cpp_evidence_check.py",
     "cpp_gate_plan.sh",
     "cpp_idea_check.py",
@@ -76,6 +78,7 @@ REQUIRED_SKILL_TEXT = [
     "c-cpp-profi",
     "C-CPP-EXPERT-CANON.md",
     "DOMAIN-AGNOSTIC-MASTERY.md",
+    "UNKNOWN-DOMAIN.md",
     "INNOVATION-ENGINE.md",
     "TOOLCHAIN-MATRIX.md",
     "QUALITY-GATES.md",

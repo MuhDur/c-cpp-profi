@@ -15,7 +15,7 @@ The goal is not "write clever C++." The goal is code a senior C/C++ maintainer w
 
 1. Read project instructions first: `AGENTS.md`, build docs, contribution docs, issue tracker state, and local style files.
 2. Inventory the project instead of guessing: run `bash skill/c-cpp-profi/scripts/cpp_inventory.sh <repo>` when available.
-3. Identify the boundary: executable, library, public header, ABI, embedded target, parser, allocator, UI/rendering, or build tooling. Then detect the **domain** from repo signals via [DOMAIN-AGNOSTIC-MASTERY.md](references/DOMAIN-AGNOSTIC-MASTERY.md) and load (or synthesize from the pack template) its domain pack before choosing gates.
+3. Identify the boundary: executable, library, public header, ABI, embedded target, parser, allocator, UI/rendering, or build tooling. Then detect the **domain** from repo signals: run `bash skill/c-cpp-profi/scripts/cpp_domain_detect.sh <repo>` to mechanically print the matched pack(s) and the `file:line` that selected each, cross-checking against [DOMAIN-AGNOSTIC-MASTERY.md](references/DOMAIN-AGNOSTIC-MASTERY.md). Load the matched seed pack(s); when the detector prints `unknown-domain`, derive an ad-hoc pack on the spot with [UNKNOWN-DOMAIN.md](references/UNKNOWN-DOMAIN.md) before choosing gates.
 4. Choose the gate set before editing. A small change still needs compile and focused tests; parser, memory, concurrency, or security changes need sanitizer and fuzz gates.
 5. Keep diffs small. In C/C++, broad cleanup can hide lifetime, ABI, and undefined-behavior changes.
 
@@ -92,6 +92,7 @@ Load only the relevant file:
 |---|---|
 | Enforcing expert workflow and elite-project patterns | [C-CPP-EXPERT-CANON.md](references/C-CPP-EXPERT-CANON.md) |
 | Any-domain transfer, domain packs, unknown-domain template | [DOMAIN-AGNOSTIC-MASTERY.md](references/DOMAIN-AGNOSTIC-MASTERY.md) |
+| On-the-spot pack derivation when no seed pack matches a domain | [UNKNOWN-DOMAIN.md](references/UNKNOWN-DOMAIN.md) |
 | Four-layer comprehension ladder, comprehension gate | [REPO-COMPREHENSION.md](references/REPO-COMPREHENSION.md) |
 | Idea generation, accretive backlog, radical bets, idea-evidence gate | [INNOVATION-ENGINE.md](references/INNOVATION-ENGINE.md) |
 | Tool families, commands, manpages, missing-tool handling | [TOOLCHAIN-MATRIX.md](references/TOOLCHAIN-MATRIX.md) |
@@ -116,6 +117,7 @@ All scripts are read-only unless the script text explicitly says otherwise.
 ```bash
 bash skill/c-cpp-profi/scripts/cpp_inventory.sh .
 bash skill/c-cpp-profi/scripts/cpp_comprehension_map.sh .
+bash skill/c-cpp-profi/scripts/cpp_domain_detect.sh .
 bash skill/c-cpp-profi/scripts/cpp_gate_plan.sh .
 bash skill/c-cpp-profi/scripts/cpp_risk_scan.sh .
 bash skill/c-cpp-profi/scripts/cpp_backlog.sh .
