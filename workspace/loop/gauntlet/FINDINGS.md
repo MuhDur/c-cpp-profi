@@ -27,6 +27,25 @@ the weakness, the fix, and status (open / folded-back commit).
 risk-scan endian/packing lane landed on the adjacent safe line and missed this. → motivates an aliasing/cast-width
 lane (future). Recorded as a real-world find the skill should detect.
 
+## Batch-2 synthesis (34 observations across 12 repos → 7 recurring REGRESSIONS of the iter-10/11 fixes)
+
+The regression-check proved the fixes hold on easy repos but break on harder ones (auxiliary C++ build targets,
+macro-wrapped APIs, suffix-named tests, multi-line comments). domainCorrect 3/12 fully-yes, fixes-held 10/12.
+This is the value of breadth: it found exactly where the fixes are incomplete.
+
+| ID | Freq | Regression | Fix | Status |
+|---|---|---|---|---|
+| R1 | mbedtls,libuv,FreeRTOS,(miniaudio) | `detect_cpp()` fires C++ on `CMAKE_CXX_STANDARD`/conditional `enable_language(CXX)`/a test-only `.cpp` with ZERO shipped C++ TUs → re-enables new/delete → FP explosion (FreeRTOS ~200) | require actual C++ source in shipped (non-test) dirs, not a build-var/test target | **FOLDED `<D>`** |
+| R2 | FTXUI,leveldb,FreeRTOS,lwip,re2 | comment filter drops only LEADING comment lines; trailing `//` + inline/multi-line `/* */` continuation leak | strip trailing `//`, inline `/* */`, track block-comment state | **FOLDED `<D>`** |
+| R3 | leveldb,re2,lua,miniaudio | exclusion is path-segment-only — misses `*_test.*`/`*test*.c*`, `testing/`, `extras/`, flat-root harness (`ltests.*`) | add suffix-name + `testing/`/`extras/`/`bench*` + harness-name exclusion | **FOLDED `<D>`** |
+| R4 | lua,mbedtls,libuv,FreeRTOS,leveldb,xsimd,miniaudio,FTXUI | comprehension exported-API breaks on macro/paren idioms (`LUA_API (name)`, `UV_EXTERN`, `MBEDTLS_PRIVATE`, `MA_API`, `PRIVILEGED_FUNCTION`); cap buried public API behind internal/`_`/UPPER tokens; C++ `static` member dropped | handle macro-wrapped decls; skip `_PRIVATE`/asm/macro-param; rank include/-path + macro-exported first | open → iter 13 Pass E |
+| R5 | miniaudio,FreeRTOS,lwip | domain-detect: `__device__` substring-matches a fn name (miniaudio→GPU); priority tiers have no count-floor (8 GPU matches beat 1446 Audio); generic wins primary by raw count over the real domain | word-bound tokens; count-floor / domain-over-generic tiebreak | **FOLDED `<D>`** (token-bound + floor) |
+| R6 | mbedtls,libsodium,lwip | backlog fuzz-coverage over-matches any `(const unsigned char*,size_t)` as parser; blind to OSS-Fuzz/CIFuzz (`.github/workflows/cifuzz.yml`); `test/` excluded so shipped fuzzer missed; nullbyte warning (mbedtls N4) | tighten parser-entry heuristic; detect cifuzz/oss-fuzz; `tr -d '\0'` on corpus read | partial (`<D>`) → iter 13 |
+| R7 | libsodium,libuv | risk-scan cast lane FPs (arithmetic `(sizeof…)` expr; single-pointer prototypes read as casts) | tighten the cast regex (require a value after the cast) | open → iter 13 |
+
+Real domain-detect win recorded: chibicc/lua now hit Compilers-VMs secondary; F8 (compiler vs parser signals) noted
+for a Compilers-pack token enrichment (AST/Node/tokenize/codegen) — iter 13.
+
 ## Fold-back protocol
 After each batch, the highest-frequency / highest-severity findings become a dedicated improvement pass
 (via /repeatedly-apply-skill on the most relevant sibling skill, or a direct scoped fix), each re-verified by the
