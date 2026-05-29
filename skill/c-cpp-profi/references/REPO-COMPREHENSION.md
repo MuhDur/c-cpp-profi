@@ -78,7 +78,7 @@ cscope -bR                                       # callers/callees, or clangd ca
 rg -n '\bparse_header\s*\(' .                    # callsite census for the touched symbol
 ```
 
-Fast path: the same `bash skill/c-cpp-profi/scripts/cpp_comprehension_map.sh <repo>` emits the L2 **entry-point list** (`main(`, `LLVMFuzzerTestOneInput`, exported-symbol hints, and public headers, each at a repo-relative `file:line` or path) and a coarse **module map** (top-level source dirs with per-dir file counts). The commands above remain the manual fallback for the touched-path callgraph, which the probe does not draw.
+Fast path: the same `bash skill/c-cpp-profi/scripts/cpp_comprehension_map.sh <repo>` emits the L2 **exported-API list** (non-static function declarations in public headers — the real entry points of a library, e.g. inih `ini_parse`, logc `log_*`, each at `file:line`), the L2 **entry-point list** (`main(`, `LLVMFuzzerTestOneInput`, exported-symbol hints, and public headers, each at a repo-relative `file:line` or path; a `main()` behind a `#if <NAME>_MAIN` self-test guard is labeled a *conditional test driver*, and doc-comment `main()` in headers is not counted), and a coarse **module map** (top-level source dirs with per-dir file counts). The long symbol-hint / exported-API lists are deduped and capped with a `... (+N more; capped)` footer so the output stays bounded. The commands above remain the manual fallback for the touched-path callgraph, which the probe does not draw.
 
 Artifact (cite anchors): an **entry-point list** (`file:line` each) + a **module map** (TU/dir -> responsibility, with the core types) + a **callgraph of the touched path** (`caller -> target -> callee`, each edge anchored). This is the falsifiable form of "I know the shape."
 
