@@ -51,6 +51,8 @@ nm -D --defined-only ./build/libfoo.so | head   # what this lib actually exports
 git ls-files | grep -Ei 'third_party|vendor|external|deps'   # vendored vs built
 ```
 
+Fast path: `bash skill/c-cpp-profi/scripts/cpp_comprehension_map.sh <repo>` produces the L1 build-graph map automatically — detected build system(s), `compile_commands.json` presence, a language breakdown, and the `-std=`/`CMAKE_CXX_STANDARD`/`c_std`/`cpp_std` hints found in build files, each line anchored to a repo-relative `file:line` or path. The commands above remain the manual fallback when you need the *real* per-TU command line (only `compile_commands.json` has that).
+
 Cross-link: this is the Universal Core **Build graph**, **Toolchain**, and **ABI** rows in [DOMAIN-AGNOSTIC-MASTERY.md](DOMAIN-AGNOSTIC-MASTERY.md); for ABI/visibility/link detail read [BUILD-PORTABILITY.md](BUILD-PORTABILITY.md).
 
 Artifact (cite anchors): the build graph plus a one-line **"what binary/lib am I changing"** statement — target triple, build system + preset, the exact compile command for the touched TU (from `compile_commands.json`), and whether the file is first-party or vendored.
@@ -75,6 +77,8 @@ ctags -R --c-kinds=+p --fields=+iaS .           # symbol index for editors
 cscope -bR                                       # callers/callees, or clangd callHierarchy
 rg -n '\bparse_header\s*\(' .                    # callsite census for the touched symbol
 ```
+
+Fast path: the same `bash skill/c-cpp-profi/scripts/cpp_comprehension_map.sh <repo>` emits the L2 **entry-point list** (`main(`, `LLVMFuzzerTestOneInput`, exported-symbol hints, and public headers, each at a repo-relative `file:line` or path) and a coarse **module map** (top-level source dirs with per-dir file counts). The commands above remain the manual fallback for the touched-path callgraph, which the probe does not draw.
 
 Artifact (cite anchors): an **entry-point list** (`file:line` each) + a **module map** (TU/dir -> responsibility, with the core types) + a **callgraph of the touched path** (`caller -> target -> callee`, each edge anchored). This is the falsifiable form of "I know the shape."
 

@@ -36,6 +36,7 @@ REQUIRED_REFERENCES = [
 REQUIRED_SCRIPTS = [
     "cpp_abi_snapshot.sh",
     "cpp_backlog.sh",
+    "cpp_comprehension_map.sh",
     "cpp_evidence_check.py",
     "cpp_gate_plan.sh",
     "cpp_idea_check.py",
