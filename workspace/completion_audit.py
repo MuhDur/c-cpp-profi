@@ -56,6 +56,7 @@ REQUIRED_FILES = [
     "skill/c-cpp-profi/examples/code-transform.md",
     "skill/c-cpp-profi/examples/documentation.md",
     "skill/c-cpp-profi/examples/domain-pack.md",
+    "skill/c-cpp-profi/examples/remediation.md",
 ]
 
 STALE_PHRASES = [

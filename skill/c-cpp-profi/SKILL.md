@@ -150,6 +150,7 @@ Use the examples as compact execution cards when a task matches a common C/C++ s
 - [Code transform](examples/code-transform.md): worked `port` + `modernize` + `re-architect` transforms with one combined Evidence Packet that passes `--profile port --profile modernize --profile rearchitect --require-transform-proof`.
 - [Documentation](examples/documentation.md): a worked README + architecture note + header API contract + Keep-a-Changelog ABI-break excerpt for a sample C library, slop-free and passing `cpp_docs_check.py` for each `--kind`.
 - [Domain pack](examples/domain-pack.md): derive an ad-hoc pack for an unbriefed domain (an infusion-pump dosing controller) end-to-end via `UNKNOWN-DOMAIN.md`, with an Evidence Packet passing `--profile comprehension --profile security --require-comprehension-proof`.
+- [Remediation](examples/remediation.md): a worked end-to-end fix — a heap-overflow crash closed with `REMEDIATION-RECIPES.md` Recipe 1 plus a behavior-preserving binary-size reduction under the Part B no-size-regression method, with one Evidence Packet passing `--profile memory --profile performance --require-performance-proof`.
 
 ## Assets
 
