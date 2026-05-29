@@ -48,6 +48,7 @@ REQUIRED_FILES = [
     "skill/c-cpp-profi/scripts/cpp_evidence_check.py",
     "skill/c-cpp-profi/scripts/cpp_idea_check.py",
     "skill/c-cpp-profi/examples/idea-generation.md",
+    "skill/c-cpp-profi/examples/code-transform.md",
 ]
 
 STALE_PHRASES = [

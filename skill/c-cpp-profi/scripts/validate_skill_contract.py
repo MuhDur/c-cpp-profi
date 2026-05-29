@@ -66,6 +66,7 @@ REQUIRED_EXAMPLES = [
     "parser-input.md",
     "native-ui-rendering.md",
     "idea-generation.md",
+    "code-transform.md",
 ]
 
 REQUIRED_SKILL_TEXT = [
@@ -81,6 +82,7 @@ REQUIRED_SKILL_TEXT = [
     "REPO-COMPREHENSION.md",
     "examples/c-library.md",
     "examples/idea-generation.md",
+    "examples/code-transform.md",
     "cpp_evidence_check.py",
     "cpp_idea_check.py",
     "validate_skill_contract.py",

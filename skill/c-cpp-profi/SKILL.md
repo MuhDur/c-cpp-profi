@@ -140,6 +140,7 @@ Use the examples as compact execution cards when a task matches a common C/C++ s
 - [Parser or untrusted input](examples/parser-input.md): harnesses, corpora, sanitizers, minimization, and crash regression.
 - [Native UI or rendering](examples/native-ui-rendering.md): screenshots, pixel/golden artifacts, DPI/font/color/platform matrices, and frame-time evidence.
 - [Idea generation](examples/idea-generation.md): accretive vs radical Idea Cards, adversarial scoring, and the idea-card evidence gate validated by `cpp_idea_check.py`.
+- [Code transform](examples/code-transform.md): worked `port` + `modernize` + `re-architect` transforms with one combined Evidence Packet that passes `--profile port --profile modernize --profile rearchitect --require-transform-proof`.
 
 ## Assets
 
