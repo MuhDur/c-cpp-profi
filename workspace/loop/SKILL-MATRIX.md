@@ -52,6 +52,14 @@ Priority = recommended order for *remaining* passes (1 = next).
 | 29 | system-performance-remediation | C3 | Whole-machine perf triage (build/CI environment health) |
 | 30 | agent-fungibility-philosophy | meta | Make the skill robust to interchangeable agents / swarms |
 
+## Iteration progress (against this backlog)
+
+- **Iter 1** (workflow `wr33jtwfj`, operationalizing-expertise + idea-wizard lenses): authored & **wired**
+  `references/DOMAIN-AGNOSTIC-MASTERY.md` (pri 1, C6) and `references/INNOVATION-ENGINE.md` (pri 2, C4).
+  Both pinned by the contract validator + completion audit (references=15). C6 10→12, C4 3→6.
+  Remaining for pri 1: per-domain pack depth + `references/domains/UNKNOWN-DOMAIN.md`. Remaining for pri 2:
+  the *enforcement tooling* (cpp_backlog.sh, cpp_idea_check.py, `--profile idea`) — the iter-2 idea-wizard pass.
+
 ## Out of scope (web/SaaS/infra/personal — no C/C++ transfer)
 
 ab-testing, admin-page-for-nextjs-sites, stripe/paypal/billing, supabase, vercel*, tanstack, ga4, seo-*,

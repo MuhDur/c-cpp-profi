@@ -15,7 +15,7 @@ The goal is not "write clever C++." The goal is code a senior C/C++ maintainer w
 
 1. Read project instructions first: `AGENTS.md`, build docs, contribution docs, issue tracker state, and local style files.
 2. Inventory the project instead of guessing: run `bash skill/c-cpp-profi/scripts/cpp_inventory.sh <repo>` when available.
-3. Identify the boundary: executable, library, public header, ABI, embedded target, parser, allocator, UI/rendering, or build tooling.
+3. Identify the boundary: executable, library, public header, ABI, embedded target, parser, allocator, UI/rendering, or build tooling. Then detect the **domain** from repo signals via [DOMAIN-AGNOSTIC-MASTERY.md](references/DOMAIN-AGNOSTIC-MASTERY.md) and load (or synthesize from the pack template) its domain pack before choosing gates.
 4. Choose the gate set before editing. A small change still needs compile and focused tests; parser, memory, concurrency, or security changes need sanitizer and fuzz gates.
 5. Keep diffs small. In C/C++, broad cleanup can hide lifetime, ABI, and undefined-behavior changes.
 
@@ -66,6 +66,7 @@ Native C/C++ extras are mandatory when relevant: no UB-for-speed contracts, no `
 
 | User asks for | Do this |
 |---|---|
+| Understand / onboard to any-domain repo | Read [DOMAIN-AGNOSTIC-MASTERY.md](references/DOMAIN-AGNOSTIC-MASTERY.md), detect the domain from repo signals, load or synthesize its pack, then gate against that pack's oracle |
 | Implement feature | Inventory -> design invariants -> edit -> compile -> tests -> relevant dynamic/static gates |
 | Fix crash | Reproduce first -> minimize input -> sanitizer/debugger -> regression test -> fix |
 | Security hardening | Threat model -> CERT/Core Guideline checks -> static analysis -> sanitizer/fuzz -> hardening flags |
@@ -76,6 +77,7 @@ Native C/C++ extras are mandatory when relevant: no UB-for-speed contracts, no `
 | Build system | Read [BUILD-PORTABILITY.md](references/BUILD-PORTABILITY.md), preserve existing presets and developer workflows |
 | Refactor/simplify | Read [REFACTOR-ISOMORPHISM.md](references/REFACTOR-ISOMORPHISM.md), then prove behavior, ABI, layout, and artifacts before editing |
 | Review/audit | Use the multi-pass audit loop in [QUALITY-GATES.md](references/QUALITY-GATES.md), then lead with findings, file:line evidence, severity, proof, and gate gaps |
+| Propose what to build / improve / rethink | Read [INNOVATION-ENGINE.md](references/INNOVATION-ENGINE.md), comprehend first, enumerate the accretive backlog plus radical bets, then land each behind its idea-evidence packet |
 | Native UI/pixels | Read [NATIVE-UI-GOLDENS.md](references/NATIVE-UI-GOLDENS.md), then capture and compare rendered artifacts across target viewports/devices |
 
 ## Reference Map
@@ -85,6 +87,8 @@ Load only the relevant file:
 | Need | Reference |
 |---|---|
 | Enforcing expert workflow and elite-project patterns | [C-CPP-EXPERT-CANON.md](references/C-CPP-EXPERT-CANON.md) |
+| Any-domain transfer, domain packs, unknown-domain template | [DOMAIN-AGNOSTIC-MASTERY.md](references/DOMAIN-AGNOSTIC-MASTERY.md) |
+| Idea generation, accretive backlog, radical bets, idea-evidence gate | [INNOVATION-ENGINE.md](references/INNOVATION-ENGINE.md) |
 | Tool families, commands, manpages, missing-tool handling | [TOOLCHAIN-MATRIX.md](references/TOOLCHAIN-MATRIX.md) |
 | Gate selection and commands | [QUALITY-GATES.md](references/QUALITY-GATES.md) |
 | Ownership, lifetimes, bounds, UB | [MEMORY-SAFETY.md](references/MEMORY-SAFETY.md) |

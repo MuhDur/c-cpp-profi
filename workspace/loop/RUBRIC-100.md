@@ -44,8 +44,19 @@ that is **materially incomplete** on innovation (C4), documentation methodology 
 structuring (C6), transform breadth (C2), and — most of all — **empirical proof (Q2)**. The route to 100 is
 the [SKILL-MATRIX](SKILL-MATRIX.md) backlog plus the 50-repo gauntlet, re-rated adversarially each iteration.
 
+## Adversarial baseline correction (iteration 0b)
+
+The iteration-0 self-estimate of 58 was optimistic. Workflow `wr33jtwfj` ran **8 independent graders, each
+tasked to refute** its dimension's score by reading actual files. Result: **41/100** — adopted as the true
+baseline per the honesty contract (prefer the skeptical, evidence-backed view; the score may drop).
+Per-dim: C1 7/15, C2 5/12, C3 10/15, C4 2/12, C5 2/8, C6 6/18, Q1 5.5/8, Q2 3.5/12.
+Most damning notes: C4 "idea generation essentially absent"; Q2 "zero outcome lift, /tmp-only, circular
+self-score, no blind-agent trial"; C1 "no mental-model-first phase"; C6 "domains are two cells in one table."
+
 ## Re-rating log
 (append one row per iteration: dim deltas + the evidence that justified them)
 | Iter | Date | Composite | Deltas | Evidence |
 |---|---|---:|---|---|
-| 0 | 2026-05-29 | 58 | baseline | this file |
+| 0 | 2026-05-29 | 58 | self-estimate (optimistic) | RUBRIC baseline read |
+| 0b | 2026-05-29 | **41** | adversarial re-grade corrects optimism | workflow `wr33jtwfj`, 8 refuting graders |
+| 1 | 2026-05-29 | **51** | C6 6→12, C4 2→6 | wired DOMAIN-AGNOSTIC-MASTERY.md + INNOVATION-ENGINE.md into SKILL.md (Task Router, Reference Map, First Pass domain-detect) + both validators; `validate_skill_contract` PASS refs=15, `completion_audit` PASS. C4 capped at 6 because its enforcement tooling (cpp_backlog.sh, cpp_idea_check.py, --profile idea) is documented-but-not-built (honestly annotated as planned). |
