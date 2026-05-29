@@ -10,6 +10,23 @@ the weakness, the fix, and status (open / folded-back commit).
 | W2 | cJSON | `cpp_backlog.sh` `api-ergonomics` lane proposes span/view on a **C** library where ptr+len is the idiom (noise) | gate that lane behind a C++ signal; for C, relabel as "document ptr+len ownership contract" | open |
 | W3 | cJSON | risk-scan hits reported without allocation/bounds context invite false positives (strcpy@461 is bounded) | card protocol: every risk hit gets a one-line triage verdict; cross-link REMEDIATION-RECIPES "is the alloc sized?" | open (process, partly a doc fix) |
 
+## Batch-1 synthesis (66 observations across 12 repos → 7 recurring findings)
+
+| ID | Freq | Weakness | Fix | Status |
+|---|---|---|---|---|
+| F1 | ~11/12 | risk-scan & backlog match inside **comments/string-literals** and as **substrings** (English `new`/`delete`/`system`/`gets`/`sprintf` in prose flagged as code); C++-only categories (new/delete, span) fire on **pure-C** repos | strip comments+strings before matching; word-boundary/expression tokens not substrings; gate C++ categories behind a C++ file signal | open |
+| F2 | ~10/12 | `cpp_domain_detect.sh`: (a) **no parser/text-format pack** (tinyxml2/inih/jsmn/picohttpparser/dr_libs→unknown) & no generic-C-library/data-structures pack; (b) misclassifies off ONE incidental token incl. comments/test-fixtures (`__packed__`→Networking, "coordinate system"→…); (c) **BUG: HPC pattern starts `-ffast-math` → `rg` parses `-f` as a flag → HPC pack never matches** (cglm w/ 297 `_mm_` → unknown) | use `rg -e`; add parser + generic-C packs; exclude tests/docs/vendored; rank by code-match count; ignore comment/doc matches | open |
+| F3 | ~9/12 | backlog: C++ `span` advice on C libs; **blind to `.github/workflows`** (reports "no CI matrix" when GH Actions matrix exists — inih/jsmn/picohttpparser/littlefs/utf8h); flags the **shipped fuzz harness** + test files as "no fuzz coverage"; flags the **existing** portable accessor as the problem (littlefs) | gate span behind C++; detect `.github/workflows`; recognize shipped harnesses + exclude tests; header-only caveat | open |
+| F4 | tinyxml2 | `cpp_risk_scan.sh` **exits 1 on success** (trailing `rg` no-match) — a `$?`-checking caller sees failure | ensure final exit 0 on successful triage | open |
+| F5 | ~6/12 | comprehension-map: omits **exported C API** (inih `ini_parse`, logc `log_*`); counts doc-comment / `#ifdef *_MAIN` `main()` as real entry; 1511 unranked symbol-hints on cglm (no dedup/cap) | surface non-static public-header functions; skip `#ifdef *_MAIN`; strip comments; dedup+cap | open |
+| F6 | ~5/12 | inventory/backlog blind to `.github/workflows/` for CI/portability matrix (subsumed by F3) | scan `.github/workflows/` | open |
+| F7 | littlefs,utf8h | whole-repo scans mix non-shipped test/bench/vendored harnesses with library code, inflating the risk surface | exclude `tests/`, `test/`, `bench*/`, `third_party/`, vendored single-file frameworks | open |
+
+**Genuine missed defect (not a false positive — a real bug the tool SHOULD have caught):** klib `knetfile.c:173`
+`*((unsigned long*)hp->h_addr)` — 8-byte read of a 4-byte `in_addr` on LP64 (strict-aliasing + over-read). The
+risk-scan endian/packing lane landed on the adjacent safe line and missed this. → motivates an aliasing/cast-width
+lane (future). Recorded as a real-world find the skill should detect.
+
 ## Fold-back protocol
 After each batch, the highest-frequency / highest-severity findings become a dedicated improvement pass
 (via /repeatedly-apply-skill on the most relevant sibling skill, or a direct scoped fix), each re-verified by the
