@@ -409,4 +409,32 @@ classifications). The skill is now genuinely better *because of* the empirical t
 
 **Next:** iteration 11 → fold-back C (comprehension F5) + batch-2 (uncovered packs) + a 2nd (git-revert) outcome-lift.
 
-**Commits:** `6d80431` (integrate), `dca0f16` (fold-back A), `07bad20` (fold-back B) + this artifact-update commit.
+**Commits:** `6d80431` (integrate), `dca0f16` (fold-back A), `07bad20` (fold-back B), `2e43b1a` (re-rate).
+
+---
+
+## Iteration 11 — 2026-05-29 — fold-back C (F5) + launch batch-2
+
+**Re-grounded:** context compacted at iteration start; read AGENTS.md (RULE 1 no-delete; no bulk codemods;
+beads-only tracking; ubs-before-commit; push on session end) + STATE before proceeding.
+
+**Did:**
+- **Fold-back C** (`2337a3b`) — closed F5 (the last batch-1 finding). `cpp_comprehension_map.sh`: new "L2
+  exported API" section (non-static decls in public headers — inih `ini_parse*`, logc `log_*`, cJSON
+  `CJSON_PUBLIC`-wrapped); `#ifdef *_MAIN` drivers labeled conditional (sds) + doc-comment `main()` dropped;
+  dedup+cap symbol output (cglm 1534→78 lines + footer). Fixed a module-anchor non-determinism + gawk `\b`/`close`
+  portability bugs. Extended --self-test with F5 assertions. **All 7 batch-1 findings now folded back.**
+- **Launched batch-2** (`wkkej6djl`): 12 uncovered-pack repos (mbedtls, libsodium, lua, chibicc, leveldb, libuv,
+  re2, ftxui, xsimd, freertos_kernel, lwip, miniaudio) — read-only-gate cards + a REGRESSION CHECK that the
+  iter-10/11 fixes hold on FRESH repos (correct domain classification, low false-positive rate, exported-API surfaced).
+
+**Independently verified:** inih→`ini_parse*`, logc→`log_*`, cglm bounded (78 lines + cap footer), sds main
+labeled conditional; self-test PASS; contract PASS refs=20 examples=10 assets=11; audit PASS.
+
+**Rubric movement:** 84.5 → **85.5/100** (C1 12→13 from F5; comprehension now materially useful for library repos).
+
+**Next:** iteration 12 → integrate batch-2 (regression result = empirical proof the fixes generalize), fold any
+new findings, a 2nd outcome-lift in a different domain, and targeted single-capability trials (C2 modernize/port,
+C4 idea backlog, C5 doc-gen) on real repos to lift the still-flat design caps.
+
+**Commits:** `2337a3b` (fold-back C) + this artifact-update commit.
