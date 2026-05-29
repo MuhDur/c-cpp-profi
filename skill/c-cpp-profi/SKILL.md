@@ -82,6 +82,7 @@ Native C/C++ extras are mandatory when relevant: no UB-for-speed contracts, no `
 | Review/audit | Use the multi-pass audit loop in [QUALITY-GATES.md](references/QUALITY-GATES.md), then lead with findings, file:line evidence, severity, proof, and gate gaps |
 | Propose what to build / improve / rethink | Read [INNOVATION-ENGINE.md](references/INNOVATION-ENGINE.md), comprehend first, enumerate the accretive backlog plus radical bets, then land each behind its idea-evidence packet |
 | Native UI/pixels | Read [NATIVE-UI-GOLDENS.md](references/NATIVE-UI-GOLDENS.md), then capture and compare rendered artifacts across target viewports/devices |
+| Document / write README / API docs / changelog / docs site | Read [DOCUMENTATION.md](references/DOCUMENTATION.md), then author from inventory facts so the README usage snippet compiles, every public symbol carries an ownership/thread-safety/error contract, the changelog records ABI status, and the slop pass is clean |
 
 ## Reference Map
 
@@ -104,6 +105,7 @@ Load only the relevant file:
 | Behavior-preserving C/C++ refactors | [REFACTOR-ISOMORPHISM.md](references/REFACTOR-ISOMORPHISM.md) |
 | Behavior- or target-changing transforms: port, modernize, re-architect | [CODE-TRANSFORM.md](references/CODE-TRANSFORM.md) |
 | Native UI, rendering, screenshots, pixels | [NATIVE-UI-GOLDENS.md](references/NATIVE-UI-GOLDENS.md) |
+| README, architecture/API docs, changelog, docs site, slop-free prose, docs-as-tests | [DOCUMENTATION.md](references/DOCUMENTATION.md) |
 | Sanitizer/fuzz templates | [TOOLCHAIN-TEMPLATES.md](references/TOOLCHAIN-TEMPLATES.md) |
 | Hermes/Codex/Claude operating mode | [AGENT-OPERATING-MODE.md](references/AGENT-OPERATING-MODE.md) |
 
@@ -152,4 +154,4 @@ Reusable templates live under `assets/`. Copy them into a target repo only after
 
 ## Handoff Contract
 
-Every final answer after C/C++ edits must state: changed files, exact gates run, gates not run and why, sanitizer/fuzz/perf evidence when relevant, ABI/API impact, residual risks, and follow-up issues created.
+Every final answer after C/C++ edits must state: changed files, exact gates run, gates not run and why, sanitizer/fuzz/perf evidence when relevant, ABI/API impact, residual risks, and follow-up issues created. When the change touches a public API, README, or release, also record the documentation evidence from [DOCUMENTATION.md](references/DOCUMENTATION.md): which usage snippet compiled, the contract-complete header result, the changelog ABI status, and the slop-pass result.

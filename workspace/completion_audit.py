@@ -36,6 +36,7 @@ REQUIRED_FILES = [
     "skill/c-cpp-profi/agents/openai.yaml",
     "skill/c-cpp-profi/references/C-CPP-EXPERT-CANON.md",
     "skill/c-cpp-profi/references/CODE-TRANSFORM.md",
+    "skill/c-cpp-profi/references/DOCUMENTATION.md",
     "skill/c-cpp-profi/references/DOMAIN-AGNOSTIC-MASTERY.md",
     "skill/c-cpp-profi/references/INNOVATION-ENGINE.md",
     "skill/c-cpp-profi/references/REPO-COMPREHENSION.md",
@@ -151,6 +152,15 @@ EVIDENCE_NEEDLES = {
         "re-architect",
         "differential oracle",
         "migration ledger",
+    ],
+    "skill/c-cpp-profi/references/DOCUMENTATION.md": [
+        "README",
+        "Architecture",
+        "API Docs",
+        "Changelog",
+        "slop",
+        "docs-as-test",
+        "Completion Standard",
     ],
     "skill/c-cpp-profi/references/REPO-COMPREHENSION.md": [
         "Build graph",
