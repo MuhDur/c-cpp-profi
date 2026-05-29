@@ -46,6 +46,23 @@ This is the value of breadth: it found exactly where the fixes are incomplete.
 Real domain-detect win recorded: chibicc/lua now hit Compilers-VMs secondary; F8 (compiler vs parser signals) noted
 for a Compilers-pack token enrichment (AST/Node/tokenize/codegen) — iter 13.
 
+## Batch-3 synthesis (22 observations across 12 repos; iter-12/13 fixes held 12/12)
+
+Good news first: the SPACE pack fired correctly as PRIMARY on **NASA cFE** (24,806 matches — real flight software,
+the brief's headline domain) and secondary on F´; lz4/nlohmann/fmt/wren/tinycc/blake2/cFE all PRODUCTIVE; the
+R1–R5 fixes held on all 12. New issues cluster into:
+
+| ID | Freq/sev | Finding | Fix | Status |
+|---|---|---|---|---|
+| N-cmphang | nlohmann (CRITICAL) | `cpp_comprehension_map.sh` `grep -oE '-std=…'` exits 1 on a `-std=$(call…)` Makefile; under `set -euo pipefail` the whole gate aborts and drops all L2 (same brittleness class as F2's `-ffast-math`) | `|| true` on the std-hint substitution | **FOLDED `<F>`** |
+| R8 | zlib, fprime (HIGH) | case-insensitive domain matching: cFS `OS_[A-Z]` matches zlib `OS_CODE` → SPACE wins PRIMARY on a compression lib; `\bopcode\b` matches fprime `FwOpcodeType` → Compilers over Space | case-sensitive matching for distinctive uppercase API tokens (`OS_`, `CFE_`) and `opcode` | **FOLDED `<F>`** |
+| R7 | nng 68%, tinycc, pcre2, cFE, fprime, libsodium, libuv (HIGH freq) | cast-lane reads single-pointer prototype params `foo(Type *)` and `sizeof(T*)` as C-style casts | require a value/expr after `(T*)`; don't match decl param lists / sizeof | **FOLDED `<F>`** |
+| R3+ | cFE `ut-coverage/`/`ut-stubs/` (77% of hits), fprime CamelCase `STest/`/`FppTestProject/`, pcre2 `*test_inc.h`, tinycc `win32/include/`, nlohmann `single_include/` (generated amalgam) | exclusion misses these conventions | add `ut-coverage/`, `ut-stubs/`, CamelCase `*Test*/`, `*test_inc.h`, vendored `*/include/` target-libc, generated `single_include/` | **FOLDED `<F>`** |
+| R9-vocab | nng (Net 9 vs Parser), blake2 (Crypto 10 vs HPC), lz4 (no compression pack), fprime (Space blind to F´/CCSDS/Tlm/APID), zlib (no compression pack) | domain packs lack key vocabulary → wrong primary | enrich Networking (socket/listener/dialer/send/recv), Crypto (hash/digest/cipher/blake/sha), Space (CCSDS/Framer/Tlm/APID/FwOpcode), add a Compression/codec pack; narrow Parser `*_decode` | open → iter 16 |
+| R1± | rapidjson (false-neg), wren (false-pos) | header-only C++ libs (templates in .h, .cpp only in test) read as pure-C (suppresses new/delete); extern-C `.hpp` shim read as C++ | content-probe `.h` for `template<`/`namespace`/`class`/`reinterpret_cast`; ignore pure extern-C shims | open → iter 16 |
+| R4+ | zlib (ZEXTERN, no underscore), pcre2 (`.h.in`/`.h.generic` generated) | export-macro allowlist + public-header glob miss these idioms | add `Z*EXTERN`/no-underscore macros; treat `*.h.in`/`*.h.generic` as public headers | open → iter 16 |
+| R6 | nlohmann (78 false "no fuzz"), lz4, libsodium | backlog blind to shipped libFuzzer harnesses + OSS-Fuzz/CIFuzz | (still open) detect cifuzz.yml / oss-fuzz + better harness mapping | open → iter 16 |
+
 ## Fold-back protocol
 After each batch, the highest-frequency / highest-severity findings become a dedicated improvement pass
 (via /repeatedly-apply-skill on the most relevant sibling skill, or a direct scoped fix), each re-verified by the

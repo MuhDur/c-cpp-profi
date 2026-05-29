@@ -4,11 +4,11 @@
 |--:|---|---|---|---|---|
 | 1 | cJSON | parser/JSON | inventory, domain-detect, comprehension, risk-scan, backlog, **fuzz+ASan outcome-lift** | PRODUCTIVE | [cJSON.md](cJSON.md) |
 
-**Done: 25 / 50.** Batch-1 (12, F1–F7 folded back) + **Batch-2 COMPLETE (12/12, 0 failures):** mbedtls,
-libsodium, lua, chibicc, leveldb, libuv, re2, ftxui, xsimd, freertos_kernel, lwip, miniaudio. Batch-2
-regression-checked the fixes → 34 findings → 7 recurring regressions (R1–R7). domainCorrect 3/12 fully-yes
-(libsodium, re2, xsimd), fixes-held 10/12. R1/R2/R3/R5 folded back (Pass D); R4/R6/R7 → iter 13.
-Batch-3 (→50) + 2nd outcome-lift + C2/C4/C5 trials pending.
+**Done: 37 / 50.** Batch-1 (12, F1–F7 folded back) + Batch-2 (12, R1–R5 folded back, R4 folded iter-13) +
+**Batch-3 COMPLETE (12/12, 0 failures):** zlib, lz4, nlohmann/json, rapidjson, fmt, nasa/fprime, nasa/cFE, pcre2,
+wren, tinycc, nng, BLAKE2. iter-12/13 fixes held 12/12; **SPACE pack fired correctly as PRIMARY on NASA cFE**
+(24,806 matches — real flight software) + secondary on F´. domainCorrect 4/12 fully-yes; 22 findings →
+N-cmphang/R8/R7/R3+ (folded iter-15), R9-vocab/R1±/R4+/R6 (→ iter 16). Batch-4 (→50) pending.
 
 Findings surfaced so far → [../FINDINGS.md](../FINDINGS.md) (W1–W3 from cJSON; more from batch-1).
 Outcome-lift evidence → [../OUTCOME-LIFT.md](../OUTCOME-LIFT.md).
