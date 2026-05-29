@@ -31,7 +31,16 @@ Every loop iteration MUST:
 4. **RE-RATE** honestly against RUBRIC-100 with *evidence* (commands run, files changed, what was proven vs. asserted).
 5. **WRITE** the updated artifacts: append to ACTION-LOG, update RUBRIC scores + STATE gap queue, update SKILL-MATRIX `applied?`.
 6. **COMMIT** the iteration (skill changes + artifact updates) so progress is auditable and rollback-safe.
-7. **SCHEDULE** the next iteration (the `/loop` wakeup) unless the stop condition is met.
+7. **PUBLISH** (added 2026-05-29, per user instruction — "push your progress to github and update readme"):
+   - **Push every iteration.** After committing, push the chain to `origin`: `git pull --rebase` →
+     `br sync --flush-only` + commit `.beads/` if it changed → `git push` → confirm `git status` shows up to date.
+     Work is not durable until `git push` succeeds (AGENTS.md "Landing the Plane"). Never leave commits stranded.
+   - **Refresh `README.md` when the skill materially changes** (a re-rate that moves the composite, a new
+     reference/script, a finished gauntlet batch). Use `/readme-writing` to update + `/de-slopify` to clean;
+     keep the honest 0-100 rubric, the gauntlet progress (N/50), the badge, and the exact Contributions policy.
+     The README's headline number must always match `RUBRIC-100.md`. A docs-only refresh need not run every
+     iteration, but never let the README's rating drift from the real one.
+8. **SCHEDULE** the next iteration (the `/loop` wakeup) unless the stop condition is met.
 
 ## Honesty contract (non-negotiable)
 

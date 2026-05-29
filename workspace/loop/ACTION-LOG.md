@@ -476,4 +476,30 @@ the regressions — a second find→fix→verify cycle on real code.
 **Next:** iteration 13 → fold-back E (R4 comprehension) + R6/R7/F8 + a 2nd outcome-lift in a new domain + targeted
 C2/C4/C5 real-repo trials + batch-3.
 
-**Commits:** `77cf81c` (integrate), `477dacb` (fold-back D) + this artifact-update commit.
+**Commits:** `77cf81c` (integrate), `477dacb` (fold-back D), `51cc719` (re-rate).
+
+---
+
+## Iteration 13 — 2026-05-29 — fold-back E (R4) + README refresh + push + bake publish into the loop
+
+**Did:**
+- **Fold-back E** (`8e83618`) — fixed R4 (top remaining regression): `cpp_comprehension_map.sh` exported-API
+  extraction for macro/paren-wrapped idioms (LUA_API/UV_EXTERN/MA_API/`MBEDTLS_PRIVATE` exclusion/
+  `PRIVILEGED_FUNCTION` suffix/CJSON_PUBLIC), keeps C++ static members (leveldb `DB::Open`), ranks public/
+  include decls first. Verified: libuv 0/40→40/40 public, mbedtls 0 PRIVATE markers, lua 0 `int()`, xsimd macro
+  junk gone, easy repos preserved. C1 13→14. **All high-frequency batch-1+batch-2 findings (F1–F7, R1–R5) folded back.**
+- **User instruction mid-iteration**: push to GitHub + update README via /readme-writing + /de-slopify + bake
+  both into the loop. Done:
+  - **README refresh** (`ca14b2a`): replaced the stale 12/12 rating with the honest 0-100 rubric (87.5/100,
+    per-dim) + an Empirical-gauntlet section (25/50, cJSON outcome-lift, two find→fix→verify cycles) + updated
+    Artifact Map / Use It / Limitations. /de-slopify scan clean (0 em-dashes, 0 LLM tells).
+  - **Baked into the loop**: LOOP-PROTOCOL step 7 (PUBLISH — push every iteration + refresh README when the
+    composite moves) + STATE conventions. README headline number must equal RUBRIC-100.
+  - **Pushed** the full local chain to `origin/master` (was 34 ahead).
+
+**Rubric movement:** 86.5 → **87.5/100** (C1 13→14 from R4).
+
+**Next:** iteration 14 → R6/R7/F8 (lower-frequency findings) + a 2nd outcome-lift in a new domain + targeted
+C2/C4/C5 real-repo trials + batch-3 (→ ~37/50). Push + README-refresh now run every iteration.
+
+**Commits:** `8e83618` (fold-back E), `ca14b2a` (README + re-rate) + this loop-integration commit + push.

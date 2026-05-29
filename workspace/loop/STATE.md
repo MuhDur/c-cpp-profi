@@ -1,10 +1,12 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **86.5 / 100** (iteration 12, 2026-05-29). Trail: …→ 77 (design ceiling)
-  → 79.5 → 84.5 → 85.5 → 86.5 (batch-2 + regression fold-back D).
+- **Honest composite (RUBRIC-100):** **87.5 / 100** (iteration 13, 2026-05-29). Trail: …→ 77 (design ceiling)
+  → 79.5 → 84.5 → 85.5 → 86.5 → 87.5 (R4 fold-back E → C1 14; README refreshed; pushed to origin).
 - **Target:** 100 / 100 with the empirical Q2 layer closed (see LOOP-PROTOCOL stop condition)
 - **Phase:** ▶ EMPIRICAL (Q2): 50-repo gauntlet IN PROGRESS (**25/50 carded**).
+- **Per-iteration now also (user instruction):** push to `origin` after committing; refresh `README.md` via
+  /readme-writing + /de-slopify whenever the composite moves or the skill materially changes (see LOOP-PROTOCOL step 7).
 - **Last iteration (12):** integrated batch-2 (12 repos → 25/50; 34 findings → regressions R1–R7) and **folded
   R1/R2/R3/R5 back** (`477dacb`), re-verified on real repos: detect_cpp FP explosions gone (FreeRTOS 201→0,
   mbedtls 27→0, miniaudio 97→0); whole-file comment/string stripper; suffix-test exclusion; domain reclassified
@@ -80,4 +82,7 @@ the ledger/cards each iteration. Subsequent iterations (10+) process more repo b
 ## Conventions
 - Loop artifacts live in `workspace/loop/`. Skill content lives in `skill/c-cpp-profi/`.
 - Commit each iteration (skill + artifacts together). Keep the git history the audit trail.
+- **Push to `origin` each iteration** (`git pull --rebase` → push → confirm up to date); refresh `README.md`
+  (/readme-writing + /de-slopify) when the composite moves or the skill materially changes. README headline
+  number must equal RUBRIC-100. Per user instruction 2026-05-29.
 - Never inflate. The score can drop. Evidence or it didn't happen.
