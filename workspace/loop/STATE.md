@@ -1,14 +1,13 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **89.0 / 100** (iteration 17, 2026-05-29; ↓0.5 — honest down-rate).
-  Per-dim: C1 14 · C2 9 · C3 14 · C4 10 · C5 7 · C6 **16** · Q1 7.5 · Q2 **11.5**.
+- **Honest composite (RUBRIC-100):** **90.0 / 100** (iteration 18, 2026-05-29).
+  Per-dim: C1 14 · C2 9 · C3 14 · C4 10 · C5 7 · C6 **17** · Q1 7.5 · Q2 11.5.
 - **Target:** 100 / 100 with the empirical Q2 layer closed (see LOOP-PROTOCOL stop condition)
-- **Phase:** ▶ EMPIRICAL (Q2): **50-repo gauntlet COMPLETE (50/50, 0 clone failures)**. SPACE pack validated on NASA cFE/F´.
-- **Last iteration (17):** integrated batch-4 (13 hardest repos → 50/50). **Honest net drop 89.5→89.0**: Q2 11→11.5
-  (full breadth + 2 outcome-lifts + 4 fold-back cycles) but C6 17→16 (full-50 evidence: domain primary ≈80% accurate
-  — mis-ranks DBs sqlite/redis, Catch2, SIMD-heavy codecs — not the near-perfect 17 the easy batches implied).
-  New findings R10–R13/N-cmphang-2/R1-mixed/R6 → iter-18 fold-back G (will restore C6 toward 17-18).
+- **Phase:** ▶ EMPIRICAL (Q2): **50-repo gauntlet COMPLETE**; now folding findings back + targeted cap-lift trials.
+- **Last iteration (18):** fold-back G (`6ea99ee`) fixed the batch-4 cluster (R10/R11/R12/R13/N-cmphang-2/R1-mixed)
+  across all 4 scripts → sqlite/redis→Databases, duktape→Compilers, Catch2 self-scan, zephyr comprehension exit 0,
+  span FPs 9436→23. **C6 restored 16→17, honestly earned across the full 50** (primary ≈88%). Composite back to 90.0.
 - **Per-iteration now also (user instruction):** push to `origin` after committing; refresh `README.md` via
   /readme-writing + /de-slopify whenever the composite moves or the skill materially changes (see LOOP-PROTOCOL step 7).
 - **Last iteration (12):** integrated batch-2 (12 repos → 25/50; 34 findings → regressions R1–R7) and **folded
@@ -33,7 +32,21 @@ C4 10→12 (a real idea-generation trial) · C5 7→8 (real doc-gen) · C6 17→
 | 1 | Q2 empirical | 3.5 | 12 | **running-the-gauntlet** — (a) a durable OUTCOME-LIFT harness (git-revert-of-known-fix / seeded-fault) proving the skill drives real defect detection+fix on ≥2 repos; (b) the **50-repo × ≤20-reason gauntlet** with preserved negatives, findings folded back. | **▶ ACTIVE (iter 9+)** |
 | ✓ | all 7 design dims (C1–C6, Q1) | 73.5 | 88 | iters 1–8, each converged + independently verified | done |
 
-## Immediate next action (iteration 18) — fold-back G (batch-4 cluster) + targeted C2/C4/C5 trials
+## Immediate next action (iteration 19) — targeted C2/C4/C5 real-repo trials (lift the flat caps)
+
+Fold-back G is DONE (C6 restored to 17). Now the flat design caps (C2 9, C4 10, C5 7) only move with REAL evidence
+on cloned repos. Run one focused trial per capability (a Workflow fan-out of 3 is ideal), each producing a filled
+Evidence Packet / artifact committed under `workspace/loop/trials/`:
+- **C2 (transform)**: on a small cloned C++ repo (e.g. tinyxml2 or fmt), run a real `clang-tidy -checks=modernize-*`
+  pass on a copy → capture before/after diff, confirm it still compiles (`-fsyntax-only`), note the isomorphism +
+  ABI (no symbol/layout change) → fill the `modernize` Evidence Packet (cpp_evidence_check --profile modernize). C2 9→~10.
+- **C4 (ideas)**: on a cloned repo, run `cpp_backlog.sh` to derive the accretive backlog, then author ≥2 real Idea
+  Cards (1 accretive + 1 radical) that pass `cpp_idea_check.py`, scored adversarially. C4 10→~11.
+- **C5 (docs)**: generate a real README + one Doxygen API-contract block for a cloned C library (e.g. inih/logc)
+  and pass `cpp_docs_check.py --kind readme` + `--kind api`. C5 7→8.
+Document each trial honestly (incl. anything the gate couldn't prove). Re-rate the lifted caps with the artifacts as evidence.
+
+## (history) Iteration 18 plan — fold-back G (batch-4 cluster)
 
 The 50 repos are still cloned at `/tmp/cpp-gauntlet/` — re-verify fixes on them.
 1. **Fold-back G** (restores C6 16→~18 + firms C3) across the four scripts, re-verified on the real repos:

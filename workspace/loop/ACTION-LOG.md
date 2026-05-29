@@ -613,4 +613,30 @@ push to the low-to-mid 90s with real evidence and state where self-certification
 
 **Next:** iteration 18 → fold-back G (R10/R11/R12/R13/N-cmphang-2/R1-mixed → restores C6 toward 17-18) + targeted C2/C4/C5 trials.
 
-**Commits:** `<this integrate+re-rate commit>` + push.
+**Commits:** `24c8bc2` (integrate + re-rate + push).
+
+---
+
+## Iteration 18 — 2026-05-29 — fold-back G (batch-4 cluster) → C6 restored 16→17 (composite 90.0)
+
+**Did:**
+- **Fold-back G** (`6ea99ee`) — fixed the batch-4 cluster across all 4 scripts + DOMAIN-AGNOSTIC-MASTERY.md:
+  R10 (vendored/generated-dir + data-file exclusion: deps/, dependencies/, singleheader/, fuzz/, jimsh0.c, *.txt
+  tables), R11 (Catch2 self-exclusion → its 289-file src now scanned), R12 (DB pack vocab: sqlite3/btree/pager/
+  WAL/vdbe/PRAGMA/redis/RDB/AOF/compaction/memtable → sqlite & redis → Databases, leveldb stays), R13 (`#`-comment
+  strip → duktape → Compilers not Crypto), N-cmphang-2 (comprehension SIGPIPE → zephyr exits 0), R1-mixed (PER-FILE
+  C++ gating → zephyr span FPs 9436→23, new/delete 40→5, 0 on .c/.h, real .cpp still flags).
+
+**Independently verified on the real repos:** 4/4 self-tests PASS; sqlite/redis→Databases, duktape→Compilers,
+leveldb→Databases; 7-repo regression-guard (cFE/zlib/nginx/tinyxml2/cglm/blake2/quickjs) unchanged; zephyr
+comprehension exit 0 (1026 lines); contract PASS refs=20 examples=10 assets=11; audit PASS. (R1-mixed + R11 also
+locked by extended self-test fixtures.)
+
+**Rubric movement:** 89.0 → **90.0/100**. **C6 restored 16→17 — now honestly earned across the full 50** (domain
+primary accuracy ≈88% after the major-DB/test-fw misses fixed + the mixed/vendored FP floods removed). Not 18:
+libpng→HPC (codec vocab/count-tier), library-shapes (jsmn/rapidjson/klib/sds/lua), R6/cast-volume/export-precision remain.
+
+**Next:** iteration 19 → targeted C2/C4/C5 real-repo trials (a clang-tidy modernize pass; a real backlog+Idea-Card;
+a real README/API-doc) to lift the flat design caps with committed evidence under `workspace/loop/trials/`.
+
+**Commits:** `6ea99ee` (fold-back G) + this re-rate commit + push.
