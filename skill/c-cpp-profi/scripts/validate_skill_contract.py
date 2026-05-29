@@ -36,6 +36,7 @@ REQUIRED_SCRIPTS = [
     "cpp_abi_snapshot.sh",
     "cpp_evidence_check.py",
     "cpp_gate_plan.sh",
+    "cpp_idea_check.py",
     "cpp_gate_report.sh",
     "cpp_inventory.sh",
     "cpp_pixel_diff.py",
@@ -60,6 +61,7 @@ REQUIRED_EXAMPLES = [
     "embedded-c.md",
     "parser-input.md",
     "native-ui-rendering.md",
+    "idea-generation.md",
 ]
 
 REQUIRED_SKILL_TEXT = [
@@ -72,7 +74,9 @@ REQUIRED_SKILL_TEXT = [
     "CONCURRENCY-DEADLOCKS.md",
     "REFACTOR-ISOMORPHISM.md",
     "examples/c-library.md",
+    "examples/idea-generation.md",
     "cpp_evidence_check.py",
+    "cpp_idea_check.py",
     "validate_skill_contract.py",
 ]
 

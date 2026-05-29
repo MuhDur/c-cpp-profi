@@ -27,6 +27,7 @@ BASELINE_REQUIRED = [
 PROFILE_REQUIRED = {
     "basic": BASELINE_REQUIRED,
     "docs-scripts": [("inventory",)],
+    "idea": [("idea card",)],
     "memory": [("static analysis",), ("ASan+UBSan",)],
     "parser": [("static analysis",), ("ASan+UBSan",), ("fuzz/corpus",)],
     "security": [("static analysis",), ("ASan+UBSan",)],

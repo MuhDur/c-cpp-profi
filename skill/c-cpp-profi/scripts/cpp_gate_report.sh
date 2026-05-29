@@ -71,6 +71,7 @@ cat <<REPORT
 | ABI/API | not applicable |  |  |
 | refactor isomorphism | not applicable |  |  |
 | golden artifacts | not applicable |  |  |
+| idea card | not applicable |  | include idea-card: validated by cpp_idea_check.py; kind: <accretive\|radical>; score: <n> |
 
 Use statuses: passed, failed, not run, not applicable.
 

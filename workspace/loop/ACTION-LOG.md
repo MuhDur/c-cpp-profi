@@ -86,4 +86,4 @@ references (domain-agnostic kernel + packs; innovation engine) for iteration 1 t
 UNKNOWN-DOMAIN.md) → idea-wizard (build C4 tooling) → codebase-archaeology (C1) → legacy-to-rust-porting (C2)
 → running-the-gauntlet (Q2 outcome lift) → readme-writing (C5) → ubs (C3 fix-recipes) → mcp-server-design (Q1).
 
-**Commit:** _(appended after commit)_
+**Commit:** `f1f8e6a`
