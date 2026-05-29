@@ -1,13 +1,15 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **90.0 / 100** (iteration 18, 2026-05-29).
-  Per-dim: C1 14 · C2 9 · C3 14 · C4 10 · C5 7 · C6 **17** · Q1 7.5 · Q2 11.5.
+- **Honest composite (RUBRIC-100):** **93.0 / 100** (iteration 20, 2026-05-29).
+  Per-dim: C1 14 · C2 **10** · C3 14 · C4 **11** · C5 **8** · C6 17 · Q1 7.5 · Q2 11.5.
 - **Target:** 100 / 100 with the empirical Q2 layer closed (see LOOP-PROTOCOL stop condition)
-- **Phase:** ▶ EMPIRICAL (Q2): **50-repo gauntlet COMPLETE**; now folding findings back + targeted cap-lift trials.
-- **Last iteration (18):** fold-back G (`6ea99ee`) fixed the batch-4 cluster (R10/R11/R12/R13/N-cmphang-2/R1-mixed)
-  across all 4 scripts → sqlite/redis→Databases, duktape→Compilers, Catch2 self-scan, zephyr comprehension exit 0,
-  span FPs 9436→23. **C6 restored 16→17, honestly earned across the full 50** (primary ≈88%). Composite back to 90.0.
+- **Phase:** ▶ EMPIRICAL — gauntlet complete + cap-lift trials done; now closing reachable gaps toward the high 90s.
+- **Last iteration (20):** the C2/C4/C5 real-repo trials (workflow `wi79lyedk`) each PASSED the skill's own checker
+  on a real repo (C2 modernize on tinyxml2 w/ byte-identical symbol-table ABI proof; C4 backlog + 2 Idea Cards on
+  cJSON; C5 README+API for inih + docs-as-test snippet ran). C2 9→10, C4 10→11, C5 7→8. Composite 90.0→93.0.
+- **Structural ceiling (honest):** Q1 8 ("validate output truth not shape") + Q2 12 (a BLIND agent) can't be fully
+  self-certified by an author-driven loop. The loop converges in the high 90s with real evidence, not a faked 100.
 - **Per-iteration now also (user instruction):** push to `origin` after committing; refresh `README.md` via
   /readme-writing + /de-slopify whenever the composite moves or the skill materially changes (see LOOP-PROTOCOL step 7).
 - **Last iteration (12):** integrated batch-2 (12 repos → 25/50; 34 findings → regressions R1–R7) and **folded
@@ -32,7 +34,24 @@ C4 10→12 (a real idea-generation trial) · C5 7→8 (real doc-gen) · C6 17→
 | 1 | Q2 empirical | 3.5 | 12 | **running-the-gauntlet** — (a) a durable OUTCOME-LIFT harness (git-revert-of-known-fix / seeded-fault) proving the skill drives real defect detection+fix on ≥2 repos; (b) the **50-repo × ≤20-reason gauntlet** with preserved negatives, findings folded back. | **▶ ACTIVE (iter 9+)** |
 | ✓ | all 7 design dims (C1–C6, Q1) | 73.5 | 88 | iters 1–8, each converged + independently verified | done |
 
-## Immediate next action (iteration 19) — targeted C2/C4/C5 real-repo trials (lift the flat caps)
+## Immediate next action (iteration 21) — close the reachable gaps toward the high 90s
+
+The C2/C4/C5 trials are DONE (93.0). Remaining reachable points (the structural ceiling Q1-8/Q2-12 aside):
+1. **C6 17→18** — fold-back the last gauntlet findings: R6 (fuzz-harness→API resolution + cifuzz/oss-fuzz
+   detection), cast-volume stratification (nginx/duktape — rank narrowing/width casts above pointer-retype),
+   export-precision (goto-labels, `PNG_EXPORT` name-as-2nd-arg macro, fn-ptr typedefs), and the codec/library-shape
+   vocab (libpng→Compression; jsmn/rapidjson/klib/sds/lua). Re-verify on the cloned repos.
+2. **C2 10→12** — real **port** trial (cross-target: build a small lib for aarch64 via qemu or a glibc→musl
+   differential oracle) + real **re-architect** trial (a bounded structural change with a migration ledger), each
+   passing `--profile port` / `--profile rearchitect`.
+3. **C3 14→15** — add an aliasing/cast-width risk lane (catch the real klib `knetfile.c:173` `*(unsigned long*)`
+   over-read the gauntlet found) + cast-volume ranking + a numeric perf-proof (`cpp_perf_proof`/`--strict-numeric`).
+4. **C1 14→15** — auto-draw the L3 touched-path callgraph in `cpp_comprehension_map.sh` (cscope/clangd) + cap refinement.
+5. **C4 11→12** — machine-enforce the portfolio rule (≥1 radical) in `cpp_idea_check`/a pass + LAND one idea
+   (implement the accretive cJSON_Utils fuzz harness + show its behavior oracle).
+6. A **3rd outcome-lift** (git-revert-of-CVE). Each step re-rated with evidence; Q1-8/Q2-12 documented as the structural cap.
+
+## (history) Iteration 19 plan — targeted C2/C4/C5 real-repo trials
 
 Fold-back G is DONE (C6 restored to 17). Now the flat design caps (C2 9, C4 10, C5 7) only move with REAL evidence
 on cloned repos. Run one focused trial per capability (a Workflow fan-out of 3 is ideal), each producing a filled

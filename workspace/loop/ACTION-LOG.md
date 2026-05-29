@@ -639,4 +639,37 @@ libpng→HPC (codec vocab/count-tier), library-shapes (jsmn/rapidjson/klib/sds/l
 **Next:** iteration 19 → targeted C2/C4/C5 real-repo trials (a clang-tidy modernize pass; a real backlog+Idea-Card;
 a real README/API-doc) to lift the flat design caps with committed evidence under `workspace/loop/trials/`.
 
-**Commits:** `6ea99ee` (fold-back G) + this re-rate commit + push.
+**Commits:** `6ea99ee` (fold-back G), `6e460f9` (re-rate + push).
+
+---
+
+## Iterations 19-20 — 2026-05-29 — targeted C2/C4/C5 real-repo trials → composite 93.0
+
+**Did:** launched workflow `wi79lyedk` (3 parallel cap-lift trials), each producing a committed artifact under
+`workspace/loop/trials/` that must pass the skill's OWN checker:
+- **C2** (`trials/C2-modernize.md`): real clang-tidy 20.1.8 modernize pass on a COPY of tinyxml2 — 108/108 fixes
+  (104 NULL→nullptr + 2 =default), compiles clean (`-fsyntax-only`, 0 warnings), ABI proven invariant by
+  byte-identical mangled+demangled symbol tables (512==512) + byte-identical header. Evidence Packet PASSES
+  `cpp_evidence_check --profile modernize`.
+- **C4** (`trials/C4-ideation.md`): real `cpp_backlog.sh` on cJSON (~47 anchored rows) + 2 adversarially-scored
+  Idea Cards (accretive cJSON_Utils fuzz harness anchored to the unbounded `strcat` at cJSON_Utils.c:245; radical
+  bump-arena allocator) → `cpp_idea_check` PASS (cards=2).
+- **C5** (`trials/C5-docs.md`): real README + Doxygen API-contract for inih → both `cpp_docs_check --kind readme`
+  and `--kind api` PASS slop-free, AND the README snippet **compiled+ran against the real ini.c producing the
+  documented output** (docs-as-test satisfied).
+
+**Independently re-verified** all three gates on the committed artifacts (idea-check PASS cards=2; docs readme+api
+exit 0; modernize exit 0 after a correct extraction; validators green).
+
+**Rubric movement:** 90.0 → **93.0/100**. C2 9→10 (real modernize w/ ABI proof; cap awaits port+rearchitect trials
++ dynamic test), C4 10→11 (engine works end-to-end; cap awaits machine-enforced portfolio rule + a landed idea),
+C5 7→8 (methodology + checker + validated doc + docs-as-test all demonstrated). Each cap-lift is EARNED — the
+artifact passed the skill's own gate on real code — not asserted. Honest limitations recorded per trial.
+
+**Structural ceiling restated:** Q1 8 (validate output truth, not shape) + Q2 12 (a genuinely blind agent) can't
+be fully self-certified here; the loop converges in the high 90s with real evidence, not a faked 100.
+
+**Next:** iteration 21 → close the reachable gaps (C6 18 via R6/cast-volume/export-precision/codec-vocab; C2 12 via
+port+rearchitect trials; C3 15 via aliasing lane; C1 15 via L3 callgraph; C4 12 via portfolio rule + a landed idea; a 3rd outcome-lift).
+
+**Commits:** this trials+re-rate commit + push.

@@ -88,6 +88,18 @@ self-score, no blind-agent trial"; C1 "no mental-model-first phase"; C6 "domains
 
 | 18 | 2026-05-29 | **90.0** | C6 16→17 | Fold-back G (`6ea99ee`) fixed the batch-4 cluster across all 4 scripts + DOMAIN-AGNOSTIC-MASTERY.md, re-verified on the real repos: R10 (vendored/generated-dir + data-file exclusion), R11 (Catch2 self-exclusion → its 289-file src now scanned), R12 (DB pack vocab → sqlite & redis → Databases, leveldb stays), R13 (`#`-comment strip → duktape → Compilers not Crypto), N-cmphang-2 (comprehension SIGPIPE → zephyr exits 0), R1-mixed (per-file C++ gating → zephyr span FPs 9436→23, 0 on .c/.h, real .cpp still flags). 7-repo regression-guard unchanged; 4/4 self-tests PASS. **C6 restored 16→17 — now honestly earned across the full 50** (primary accuracy ≈88% with the major-DB/test-fw misses fixed + mixed/vendored FP floods gone). Composite back to **90.0**. Not 18: libpng→HPC (codec vocab/count-tier), library-shapes (jsmn/rapidjson/klib/sds/lua), and R6/cast-volume/export-precision remain. |
 
+| 19-20 | 2026-05-29 | **93.0** | C2 9→10, C4 10→11, C5 7→8 | **Targeted C2/C4/C5 real-repo trials** (workflow `wi79lyedk`, 3 parallel), each producing a committed artifact under `workspace/loop/trials/` that passes the skill's OWN checker — independently re-verified: **C2** real clang-tidy modernize on tinyxml2 (108/108 fixes, compiles clean, byte-identical mangled+demangled symbol tables prove ABI invariance) → `--profile modernize` PASS; **C4** real `cpp_backlog.sh` on cJSON + 2 adversarially-scored Idea Cards (accretive fuzz-harness anchored to the unbounded `strcat` at cJSON_Utils.c:245; radical bump-arena) → `cpp_idea_check` PASS (cards=2); **C5** real README+Doxygen-API for inih → both `--kind readme`/`--kind api` PASS AND the README snippet **compiled+ran producing the documented output** (docs-as-test satisfied). Honest lifts: C2 9→10 (real modernize w/ ABI proof; cap awaits port+rearchitect trials + dynamic test), C4 10→11 (engine works end-to-end on real code; cap awaits machine-enforced portfolio rule + a landed idea), C5 7→8 (methodology+checker+validated doc+docs-as-test all demonstrated). Composite **90.0→93.0**. |
+
+## Approaching the structural ceiling
+
+At 93.0 the remaining points split into **reachable-with-work** and a **structural ceiling**:
+- Reachable: C1 14→15 (L3 callgraph auto-draw + cap refinement), C2 10→12 (real port + re-architect trials),
+  C3 14→15 (aliasing-cast lane + cast-volume ranking + numeric perf proof), C4 11→12 (machine-enforced portfolio
+  rule + a landed idea), C6 17→18 (R6/cast-volume/export-precision + codec/library-shape vocab). ≈ +6 → high 90s.
+- **Structural ceiling (~1-2 pts):** Q1 7.5→8 wants "validate command-output TRUTH, not just shape"; Q2 11.5→12
+  wants a genuinely BLIND agent (not the author). An author-driven loop cannot fully self-certify these — they are
+  honestly documented as the cap, not faked. The loop converges in the high 90s with real evidence.
+
 ## Design ceiling reached — pivot to the empirical layer (Q2)
 
 After iteration 8 the seven design dimensions (C1–C6, Q1) are as high as honest design work can take them:
