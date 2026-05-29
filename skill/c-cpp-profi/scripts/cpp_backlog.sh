@@ -48,19 +48,78 @@ rg_available() {
   command -v rg >/dev/null 2>&1
 }
 
+# Drop rg "file:line:content" rows whose content (left-trimmed) begins with a
+# doc/line-comment marker (* // /*), so prose like "coordinate system", "a new
+# frame", or "gets va_list" never reaches a lane (F1b). Pure stdin filter.
+drop_comment_lines() {
+  awk -F: '
+    {
+      p = index($0, ":")
+      if (p == 0) { print; next }
+      rest = substr($0, p + 1)
+      q = index(rest, ":")
+      if (q == 0) { print; next }
+      content = substr(rest, q + 1)
+      sub(/^[ \t]+/, "", content)
+      if (content ~ /^\*/)  next
+      if (content ~ /^\/\//) next
+      if (content ~ /^\/\*/) next
+      print
+    }'
+}
+
 rg_code() {
-  # rg over C/C++ sources, vendored/build trees excluded. Args: PATTERN REPO
+  # rg over SHIPPED C/C++ sources: vendored/build trees AND non-shipped dirs
+  # (tests/bench/examples/docs) excluded (F7), comment-only lines dropped (F1b).
+  # Args: PATTERN REPO
   rg -n --no-heading --no-messages \
     --glob '*.{c,cc,cpp,cxx,h,hh,hpp,hxx}' \
     --glob '!**/.git/**' \
     --glob '!**/build/**' \
     --glob '!**/_deps/**' \
     --glob '!**/third_party/**' \
+    --glob '!**/thirdparty/**' \
     --glob '!**/vendor/**' \
+    --glob '!**/extern/**' \
     --glob '!**/external/**' \
-    --glob '!**/test/gtest/**' \
-    --glob '!**/test/gmock/**' \
-    "$1" "$2" 2>/dev/null || true
+    --glob '!**/tests/**' \
+    --glob '!**/test/**' \
+    --glob '!**/bench/**' \
+    --glob '!**/benches/**' \
+    --glob '!**/benchmark/**' \
+    --glob '!**/benchmarks/**' \
+    --glob '!**/examples/**' \
+    --glob '!**/example/**' \
+    --glob '!**/docs/**' \
+    --glob '!**/doc/**' \
+    --glob '!**/utest.h' \
+    --glob '!**/unity*' \
+    --glob '!**/catch.hpp' \
+    --glob '!**/catch2/**' \
+    "$1" "$2" 2>/dev/null | drop_comment_lines || true
+}
+
+# C++ signal: the repo has real C++ sources, or a C++ standard/CXX language is
+# declared in the build. C++-only advice (std::span/string_view) is only emitted
+# when this is "yes"; on pure-C repos the same surface is relabeled as a ptr+len
+# ownership-contract gap instead (F1a).
+repo_has_cpp() {
+  local repo="$1"
+  if [ -n "$(rg --files --no-messages \
+        --glob '*.{cc,cpp,cxx,hpp,hh,hxx}' \
+        --glob '!**/.git/**' --glob '!**/build/**' --glob '!**/_deps/**' \
+        "$repo" 2>/dev/null)" ]; then
+    return 0
+  fi
+  if rg -q --no-messages \
+      --glob 'CMakeLists.txt' --glob '*.cmake' --glob 'CMakePresets.json' \
+      --glob 'meson.build' --glob 'Makefile' --glob '*.mk' \
+      --glob '!**/.git/**' \
+      '(-std=c\+\+|-std=gnu\+\+|CMAKE_CXX_STANDARD|CXX_STANDARD|cpp_std|languages?\s*\(.*CXX)' \
+      "$repo" 2>/dev/null; then
+    return 0
+  fi
+  return 1
 }
 
 # Count distinct (case-folded) matches of PATTERN under REPO across the CI/build
@@ -75,7 +134,9 @@ count_distinct() {
     globs+=(--glob "$g")
   done
   local n
-  n="$(rg -o --no-messages -i "$pattern" "${globs[@]}" '' "$repo" 2>/dev/null \
+  # --hidden so the dot-prefixed .github/workflows tree is searched (F3a/F6):
+  # rg skips hidden dirs by default, which made CI detection blind to GH Actions.
+  n="$(rg -o --hidden --no-messages -i "$pattern" "${globs[@]}" '' "$repo" 2>/dev/null \
         | tr 'A-Z' 'a-z' | LC_ALL=C sort -u | grep -c . || true)"
   [ -n "$n" ] || n=0
   printf '%s' "$n"
@@ -88,9 +149,18 @@ strip_repo_prefix() {
   local prefix="$repo/"
   awk -v prefix="$prefix" '
     {
-      # token is path:line:rest ; only the path part may carry the prefix
+      # token is path:line:rest (grep output) OR a bare path (rg -l --files).
       n = index($0, ":")
-      if (n == 0) { print; next }
+      if (n == 0) {
+        # bare path: strip ./ and the repo prefix, then print.
+        path = $0
+        sub(/^\.\//, "", path)
+        if (substr(path, 1, length(prefix)) == prefix) {
+          path = substr(path, length(prefix) + 1)
+        }
+        print path
+        next
+      }
       path = substr($0, 1, n - 1)
       rest = substr($0, n)
       # normalize ./ and the repo prefix
@@ -171,14 +241,21 @@ EOF
 # api-ergonomics: pointer+length signatures, owning raw alloc in headers ------
 emit_api_ergonomics() {
   local repo="$1"
-  local hits has_span
+  local hits has_span is_cpp
+  is_cpp=no
+  if repo_has_cpp "$repo"; then
+    is_cpp=yes
+  fi
   # Does the repo already use span/string_view anywhere? If so, suppress the
   # span suggestion (it has the vocabulary; absence elsewhere is noise).
   has_span=no
   if rg -q --no-messages 'std::span|std::string_view|gsl::span|absl::Span' "$repo" 2>/dev/null; then
     has_span=yes
   fi
-  if [ "$has_span" = no ]; then
+  # On C++ repos with no span vocabulary, recommend std::span/string_view. On a
+  # pure-C repo ptr+len IS the idiom and span is impossible, so we relabel the
+  # same surface as an ownership-contract documentation gap (F1a / W2).
+  if [ "$is_cpp" = no ] || [ "$has_span" = no ]; then
     # pointer+length parameter pair in a signature: `T *name, size_t len`
     hits="$(rg_code '\*[A-Za-z_][A-Za-z0-9_]*\s*,\s*(size_t|std::size_t|unsigned|int|uint[0-9]+_t)\s+[A-Za-z_]*(len|size|count|n)[A-Za-z0-9_]*' "$repo" | strip_repo_prefix "$repo")"
     if [ -n "$hits" ]; then
@@ -186,18 +263,32 @@ emit_api_ergonomics() {
         [ -n "$line" ] || continue
         local anchor
         anchor="$(printf '%s' "$line" | cut -d: -f1-2)"
-        printf 'api-ergonomics\tpointer+length parameter pair with no span/view (misuse-prone surface)\t%s\n' "$anchor"
+        if [ "$is_cpp" = yes ]; then
+          printf 'api-ergonomics\tpointer+length parameter pair with no std::span/string_view (misuse-prone surface)\t%s\n' "$anchor"
+        else
+          printf 'api-ergonomics\tpointer+length parameter pair (C: document the ptr+len ownership/bounds contract)\t%s\n' "$anchor"
+        fi
       done <<EOF
 $hits
 EOF
     fi
   fi
-  # owning raw new/malloc inside a header (ownership crosses the boundary)
+  # owning raw new/malloc inside a header (ownership crosses the boundary). The
+  # `new` arm only applies on C++ repos; on C we keep the malloc/calloc arm.
+  local owner_pat
+  if [ "$is_cpp" = yes ]; then
+    owner_pat='(=|return)\s*(::)?(new\b|malloc\s*\(|calloc\s*\()'
+  else
+    owner_pat='(=|return)\s*(malloc\s*\(|calloc\s*\()'
+  fi
   hits="$(rg -n --no-heading --no-messages \
       --glob '*.{h,hh,hpp,hxx}' \
       --glob '!**/.git/**' --glob '!**/build/**' --glob '!**/_deps/**' \
-      --glob '!**/third_party/**' --glob '!**/vendor/**' --glob '!**/external/**' \
-      '(=|return)\s*(::)?(new\b|malloc\s*\(|calloc\s*\()' "$repo" 2>/dev/null | strip_repo_prefix "$repo" || true)"
+      --glob '!**/third_party/**' --glob '!**/thirdparty/**' --glob '!**/vendor/**' \
+      --glob '!**/extern/**' --glob '!**/external/**' \
+      --glob '!**/tests/**' --glob '!**/test/**' --glob '!**/examples/**' \
+      --glob '!**/example/**' --glob '!**/docs/**' --glob '!**/doc/**' \
+      "$owner_pat" "$repo" 2>/dev/null | drop_comment_lines | strip_repo_prefix "$repo" || true)"
   if [ -n "$hits" ]; then
     while IFS= read -r line; do
       [ -n "$line" ] || continue
@@ -214,12 +305,14 @@ EOF
 # portability: single-toolchain CI, load-bearing width/endian assumptions -----
 emit_portability() {
   local repo="$1"
-  local ci_files compilers archs stds hits
+  local ci_files compilers archs stds hits has_matrix
   # CI matrix files (anchor = the CI file path when present, else inventory key).
-  ci_files="$(rg -l --no-messages \
-      --glob '.github/workflows/*.yml' --glob '.github/workflows/*.yaml' \
-      --glob '.gitlab-ci.yml' --glob 'azure-pipelines.yml' \
-      --glob '.cirrus.yml' --glob '.travis.yml' --glob 'appveyor.yml' \
+  # --hidden: .github/workflows is a dot-dir that rg skips by default, which made
+  # the whole lane blind to GitHub Actions and over-report "no CI matrix" (F3a/F6).
+  ci_files="$(rg -l --hidden --no-messages \
+      --glob '**/.github/workflows/*.yml' --glob '**/.github/workflows/*.yaml' \
+      --glob '**/.gitlab-ci.yml' --glob '**/azure-pipelines.yml' \
+      --glob '**/.cirrus.yml' --glob '**/.travis.yml' --glob '**/appveyor.yml' \
       '' "$repo" 2>/dev/null | strip_repo_prefix "$repo" || true)"
   local ci_anchor
   if [ -n "$ci_files" ]; then
@@ -229,19 +322,33 @@ emit_portability() {
   fi
 
   local ci_globs=(
-    '.github/workflows/*.yml' '.github/workflows/*.yaml'
-    '.gitlab-ci.yml' 'azure-pipelines.yml'
-    '.cirrus.yml' '.travis.yml' 'appveyor.yml'
+    '**/.github/workflows/*.yml' '**/.github/workflows/*.yaml'
+    '**/.gitlab-ci.yml' '**/azure-pipelines.yml'
+    '**/.cirrus.yml' '**/.travis.yml' '**/appveyor.yml'
   )
   if [ -n "$ci_files" ]; then
+    # Does any CI file declare an explicit build/test matrix (strategy.matrix,
+    # a YAML matrix: key, or a multi-value compiler/arch list)?  If so we never
+    # claim CI is missing; we report what the matrix covers instead (F3a).
+    has_matrix=no
+    if rg -q --hidden --no-messages -i 'strategy:|matrix:|include:|fail-fast:' \
+        --glob '**/.github/workflows/*.yml' --glob '**/.github/workflows/*.yaml' \
+        '' "$repo" 2>/dev/null; then
+      has_matrix=yes
+    fi
     # Count distinct compilers / arches mentioned across CI files.
     compilers="$(count_distinct '\b(gcc|g\+\+|clang|clang\+\+|cl\.exe|msvc|mingw)\b' "$repo" "${ci_globs[@]}")"
-    archs="$(count_distinct '\b(x86_64|amd64|aarch64|arm64|armv7|i686|ppc64|riscv64|s390x|win32|win64)\b' "$repo" "${ci_globs[@]}")"
-    if [ "${compilers:-0}" -le 1 ]; then
-      printf 'portability\tonly one compiler exercised in CI (add a second toolchain)\t%s\n' "$ci_anchor"
-    fi
-    if [ "${archs:-0}" -le 1 ]; then
-      printf 'portability\tonly one architecture exercised in CI (add a second arch)\t%s\n' "$ci_anchor"
+    archs="$(count_distinct '\b(x86_64|amd64|aarch64|arm64|armv7|armv8|thumb|mips|powerpc|ppc64|i686|riscv64|s390x|win32|win64)\b' "$repo" "${ci_globs[@]}")"
+    if [ "$has_matrix" = yes ]; then
+      printf 'portability\tCI matrix present (covers %s compiler(s), %s arch(es)); verify it spans intended targets\t%s\n' \
+        "${compilers:-0}" "${archs:-0}" "$ci_anchor"
+    else
+      if [ "${compilers:-0}" -le 1 ]; then
+        printf 'portability\tonly one compiler exercised in CI (add a second toolchain)\t%s\n' "$ci_anchor"
+      fi
+      if [ "${archs:-0}" -le 1 ]; then
+        printf 'portability\tonly one architecture exercised in CI (add a second arch)\t%s\n' "$ci_anchor"
+      fi
     fi
   else
     printf 'portability\tno CI matrix detected; toolchain/arch/std coverage is unproven\t%s\n' "$ci_anchor"
@@ -249,8 +356,8 @@ emit_portability() {
 
   # Standard versions exercised anywhere in build/CI config.
   stds="$(count_distinct '(c\+\+(98|03|11|14|17|20|23)|gnu\+\+[0-9]+|std=c[0-9]+|c(89|99|11|17|23))' "$repo" \
-      'CMakeLists.txt' '*.cmake' 'CMakePresets.json' 'meson.build' 'Makefile' '*.mk' \
-      '.github/workflows/*.yml' '.github/workflows/*.yaml')"
+      '**/CMakeLists.txt' '**/*.cmake' '**/CMakePresets.json' '**/meson.build' '**/Makefile' '**/*.mk' \
+      '**/.github/workflows/*.yml' '**/.github/workflows/*.yaml')"
   if [ "${stds:-0}" -le 1 ]; then
     printf 'portability\tat most one language standard exercised in build/CI\t%s\n' "$ci_anchor"
   fi
@@ -284,16 +391,43 @@ EOF
 # test-fuzz-coverage: parse/decode entry points with no fuzz harness ----------
 emit_test_fuzz() {
   local repo="$1"
-  local has_fuzz fuzz_refs hits
-  # Does any fuzz harness exist at all?  (a fuzz/ dir or an LLVMFuzzerTestOneInput)
+  local has_fuzz fuzz_refs fuzz_files hits
+  # Does any fuzz harness exist at all?  A fuzz*/ dir, any *fuzz* source file, or
+  # any LLVMFuzzerTestOneInput definition counts (F3b). --hidden so a dot-prefixed
+  # OSS-Fuzz layout is still seen.
   has_fuzz=no
-  if [ -d "$repo/fuzz" ] || [ -d "$repo/fuzzing" ] || [ -d "$repo/test/fuzz" ]; then
+  # Files that ARE fuzz harnesses, found by path (fuzz*/ dir or *fuzz* name) or by
+  # an LLVMFuzzerTestOneInput entry point. --hidden so a dot-prefixed OSS-Fuzz
+  # layout is still seen. We must never flag one of these as an "uncovered"
+  # parser, and a parser referenced by one is COVERED (F3b).
+  local fuzz_paths_abs
+  fuzz_paths_abs="$(rg --files --hidden --no-messages \
+      --glob '**/fuzz/**' --glob '**/fuzzing/**' --glob '**/*fuzz*' \
+      --glob '!**/.git/**' \
+      "$repo" 2>/dev/null || true)"
+  local refs_abs
+  refs_abs="$(rg -l --hidden --no-messages 'LLVMFuzzerTestOneInput' "$repo" 2>/dev/null || true)"
+  fuzz_files="$(printf '%s\n' "$fuzz_paths_abs" | strip_repo_prefix "$repo" | awk 'NF')"
+  fuzz_refs="$(printf '%s\n' "$refs_abs" | strip_repo_prefix "$repo" | awk 'NF')"
+  if [ -n "$fuzz_files" ] || [ -n "$fuzz_refs" ]; then
     has_fuzz=yes
   fi
-  fuzz_refs=""
-  fuzz_refs="$(rg -l --no-messages 'LLVMFuzzerTestOneInput' "$repo" 2>/dev/null || true)"
-  if [ -n "$fuzz_refs" ]; then
-    has_fuzz=yes
+  # Repo-relative harness file list (so we never flag a harness as uncovered).
+  local harness_index
+  harness_index="$(printf '%s\n%s\n' "$fuzz_files" "$fuzz_refs" | awk 'NF' | LC_ALL=C sort -u)"
+  # Harness corpus: the concatenated text of every harness file. A parser entry
+  # is covered when its function name OR its source file's basename appears here
+  # (i.e. the harness #includes the file or calls the function).
+  local harness_corpus=""
+  if [ "$has_fuzz" = yes ]; then
+    local absf
+    while IFS= read -r absf; do
+      [ -n "$absf" ] || continue
+      harness_corpus="$harness_corpus
+$(cat "$absf" 2>/dev/null || true)"
+    done <<EOF
+$(printf '%s\n%s\n' "$fuzz_paths_abs" "$refs_abs" | awk 'NF' | LC_ALL=C sort -u)
+EOF
   fi
 
   # parser/decoder entry points: name matches *parse*/*decode*, or signature
@@ -316,19 +450,28 @@ $sig_hits"
 
   while IFS= read -r line; do
     [ -n "$line" ] || continue
-    local anchor fname
+    local anchor fname base content func
     anchor="$(printf '%s' "$line" | cut -d: -f1-2)"
     fname="$(printf '%s' "$anchor" | cut -d: -f1)"
-    # If a harness references THIS file (by basename) skip; else it is uncovered.
-    if [ "$has_fuzz" = yes ] && [ -n "$fuzz_refs" ]; then
-      local base covered
-      base="$(basename "$fname")"
-      covered=no
-      # is this source file's basename mentioned by any harness?
-      if printf '%s\n' "$fuzz_refs" | grep -qF "$base" 2>/dev/null; then
-        covered=yes
+    base="$(basename "$fname")"
+    # Never flag the fuzz harness file itself as an uncovered entry point (F3b).
+    if printf '%s\n' "$harness_index" | grep -qxF "$fname" 2>/dev/null; then
+      continue
+    fi
+    if [ "$has_fuzz" = yes ] && [ -n "$harness_corpus" ]; then
+      # Covered if a harness #includes this file (basename appears in corpus)...
+      if printf '%s\n' "$harness_corpus" | grep -qF "$base" 2>/dev/null; then
+        continue
       fi
-      if [ "$covered" = yes ]; then
+      # ...or a harness calls the entry-point function by name. Extract the
+      # identifier immediately before the FIRST "(" on the line (the declared/
+      # defined function), then look for it referenced in the harness corpus.
+      content="$(printf '%s' "$line" | cut -d: -f3-)"
+      func="$(printf '%s' "$content" \
+        | grep -oE '[A-Za-z_][A-Za-z0-9_]*[[:space:]]*\(' \
+        | grep -vwE '(if|for|while|switch|return|sizeof|defined)[[:space:]]*\(' \
+        | head -n1 | sed -E 's/[[:space:]]*\($//')"
+      if [ -n "$func" ] && printf '%s\n' "$harness_corpus" | grep -qE "(^|[^A-Za-z0-9_])${func}([^A-Za-z0-9_]|$)" 2>/dev/null; then
         continue
       fi
     fi
@@ -429,15 +572,29 @@ project(fake C)
 add_executable(fake src/main.c)
 CM
   # Source with an injected strcpy and a parse_* entry point, no fuzz harness.
+  # Also seeds comment-only prose that MUST NOT match (F1b/F1c): a doc comment
+  # mentioning strcpy/sprintf/new/delete, and a ptr+len signature (F1a-C).
   cat >"$tmp/src/main.c" <<'SRC'
 #include <string.h>
 #include <stdlib.h>
+/* This routine used to call sprintf and strcpy; we now use snprintf. */
+// delete the old buffer and allocate a new one (prose, not code)
 void copy_it(char *dst, const char *src) {
     strcpy(dst, src);
+}
+int read_bytes(char *buf, size_t len) {
+    return (int)(buf[0] + len);
 }
 int parse_packet(const unsigned char *buf, size_t len) {
     return (int)(buf[0] + len);
 }
+SRC
+
+  # A test-tree file with a real strcpy CALL that MUST be excluded (F7).
+  mkdir -p "$tmp/tests"
+  cat >"$tmp/tests/test_main.c" <<'SRC'
+#include <string.h>
+void t(char *d, const char *s) { strcpy(d, s); }
 SRC
 
   local out1 out2
@@ -457,6 +614,31 @@ SRC
   # Assertion 2: a test-fuzz-coverage row appears for parse_packet.
   if ! printf '%s\n' "$out1" | grep -q 'test-fuzz-coverage | parser/decoder entry point with no fuzz harness'; then
     printf 'cpp_backlog self-test: FAIL (expected parser/no-fuzz row absent)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out1"
+    exit 1
+  fi
+  # Assertion F1b/F1c: prose in comments (sprintf/strcpy/new/delete words) must
+  # NOT yield a hardening row. The only unsafe-string row may be the real call.
+  if printf '%s\n' "$out1" | grep -qE 'main\.c:4'; then
+    printf 'cpp_backlog self-test: FAIL (matched a comment-only line, F1b)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out1"
+    exit 1
+  fi
+  # Assertion F7: a strcpy CALL inside tests/ must be excluded.
+  if printf '%s\n' "$out1" | grep -qE 'tests/test_main\.c'; then
+    printf 'cpp_backlog self-test: FAIL (tests/ tree not excluded, F7)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out1"
+    exit 1
+  fi
+  # Assertion F1a (C): on a pure-C repo, ptr+len advice is relabeled as an
+  # ownership-contract gap, NOT a std::span/string_view suggestion.
+  if ! printf '%s\n' "$out1" | grep -q 'api-ergonomics | pointer+length parameter pair (C: document the ptr+len ownership/bounds contract)'; then
+    printf 'cpp_backlog self-test: FAIL (C ptr+len ownership-contract row absent, F1a)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out1"
+    exit 1
+  fi
+  if printf '%s\n' "$out1" | grep -q 'no std::span/string_view'; then
+    printf 'cpp_backlog self-test: FAIL (std::span advice emitted on a pure-C repo, F1a)\n'
     printf '%s\n%s\n' '--- backlog ---' "$out1"
     exit 1
   fi
@@ -510,6 +692,108 @@ SRC
       exit 1
       ;;
   esac
+
+  # -------------------------------------------------------------------------
+  # F3a: a .github/workflows matrix must be DETECTED (no "no CI matrix" claim).
+  # The dir is hidden, so this also locks the --hidden + **/ glob fix.
+  # -------------------------------------------------------------------------
+  mkdir -p "$tmp/.github/workflows"
+  cat >"$tmp/.github/workflows/ci.yml" <<'YML'
+name: ci
+jobs:
+  build:
+    strategy:
+      matrix:
+        cc: [gcc, clang]
+        arch: [x86_64, aarch64]
+    runs-on: ubuntu-latest
+YML
+  local out_ci
+  out_ci="$(run_backlog "$tmp" no)"
+  if printf '%s\n' "$out_ci" | grep -q 'no CI matrix detected'; then
+    printf 'cpp_backlog self-test: FAIL (blind to .github/workflows matrix, F3a)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_ci"
+    exit 1
+  fi
+  if ! printf '%s\n' "$out_ci" | grep -q 'portability | CI matrix present'; then
+    printf 'cpp_backlog self-test: FAIL (CI matrix not recognized, F3a)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_ci"
+    exit 1
+  fi
+  if ! printf '%s\n' "$out_ci" | grep -qE 'CI matrix present.*\.github/workflows/ci\.yml'; then
+    printf 'cpp_backlog self-test: FAIL (CI anchor not repo-relative, F3a)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_ci"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # F3b: a shipped fuzz harness that references a parser COVERS it (no row),
+  # and the harness file itself is never flagged as an uncovered entry point.
+  # -------------------------------------------------------------------------
+  mkdir -p "$tmp/fuzz"
+  cat >"$tmp/src/main.c" <<'SRC'
+#include <string.h>
+#include <stdlib.h>
+int parse_packet(const unsigned char *buf, size_t len) {
+    return (int)(buf[0] + len);
+}
+SRC
+  cat >"$tmp/fuzz/fuzz_parse.c" <<'SRC'
+#include <stddef.h>
+#include <stdint.h>
+int parse_packet(const unsigned char *buf, size_t len);
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+    return parse_packet(data, size);
+}
+SRC
+  local out_fuzz
+  out_fuzz="$(run_backlog "$tmp" no)"
+  if printf '%s\n' "$out_fuzz" | grep -qE 'test-fuzz-coverage \| parser/decoder.*\| src/main\.c'; then
+    printf 'cpp_backlog self-test: FAIL (parser covered by fuzz harness still flagged, F3b)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_fuzz"
+    exit 1
+  fi
+  if printf '%s\n' "$out_fuzz" | grep -qE 'test-fuzz-coverage \| parser/decoder.*\| fuzz/fuzz_parse\.c'; then
+    printf 'cpp_backlog self-test: FAIL (fuzz harness file itself flagged as uncovered, F3b)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_fuzz"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # F1a (C++): on a repo WITH C++ sources, ptr+len advice recommends std::span/
+  # string_view (not the C ownership-contract relabel).
+  # -------------------------------------------------------------------------
+  local cpptmp
+  cpptmp="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp' '$cpptmp'" EXIT
+  mkdir -p "$cpptmp/src"
+  cat >"$cpptmp/CMakeLists.txt" <<'CM'
+cmake_minimum_required(VERSION 3.16)
+project(fakecpp CXX)
+set(CMAKE_CXX_STANDARD 17)
+add_executable(fakecpp src/main.cpp)
+CM
+  cat >"$cpptmp/src/main.cpp" <<'SRC'
+#include <cstddef>
+int sum_bytes(const char *buf, std::size_t len) {
+    int t = 0;
+    for (std::size_t i = 0; i < len; ++i) t += buf[i];
+    return t;
+}
+SRC
+  local out_cpp
+  out_cpp="$(run_backlog "$cpptmp" no)"
+  if ! printf '%s\n' "$out_cpp" | grep -q 'api-ergonomics | pointer+length parameter pair with no std::span/string_view'; then
+    printf 'cpp_backlog self-test: FAIL (C++ repo did not get std::span advice, F1a)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_cpp"
+    exit 1
+  fi
+  if printf '%s\n' "$out_cpp" | grep -q 'C: document the ptr+len'; then
+    printf 'cpp_backlog self-test: FAIL (C ownership-contract relabel leaked onto a C++ repo, F1a)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_cpp"
+    exit 1
+  fi
 
   printf 'cpp_backlog self-test: PASS\n'
   exit 0
