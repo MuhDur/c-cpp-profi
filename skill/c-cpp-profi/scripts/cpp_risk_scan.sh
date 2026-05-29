@@ -56,6 +56,26 @@ EXCLUDE_GLOBS=(
   --glob '!**/*test*.cxx'
   --glob '!**/*_bench*.*'
   --glob '!**/ltests.*'
+  # R3+ test/vendored/generated conventions that path-segment + suffix globs miss:
+  #  - NASA cFE unit-test dirs `ut-coverage/`/`ut-stubs/` (77% of cFE's risk hits).
+  #  - CamelCase test roots: F´ `STest/`, `FppTestProject/`, and any `*Test/` dir
+  #    (GTest/, FooTest/) — `[A-Z]*Test` so ordinary lowercase dirs are untouched.
+  #  - the `*test_inc.h` driver-include convention (pcre2 `pcre2test_inc.h`, the
+  #    202 KB body of the test driver, #included only by `pcre2test.c`).
+  #  - generated amalgamations `single_include/` (nlohmann — a generated mirror of
+  #    `include/`; scanning it double-counts every shipped finding).
+  #  - vendored target-libc headers under `*/win32/include/` (tinycc ships the
+  #    Windows cross-compile target's mingw headers — NOT tinycc-authored source).
+  # NB: ordinary public `include/` is NOT excluded (that is the real API surface);
+  # only the `win32/include/` vendored variant and `single_include/` mirror are.
+  --glob '!**/ut-coverage/**'
+  --glob '!**/ut-stubs/**'
+  --glob '!**/STest/**'
+  --glob '!**/*TestProject*/**'
+  --glob '!**/[A-Z]*Test/**'
+  --glob '!**/*test_inc.h'
+  --glob '!**/single_include/**'
+  --glob '!**/win32/include/**'
 )
 
 # The file-extension glob applied to every scan/file-list pass. Kept next to the
@@ -196,7 +216,21 @@ run_scan() {
     printf '\n[raw C++ new/delete expressions]\n'
     printf 'skipped: no C++ signal (pure-C repo; new/delete are not C constructs)\n'
   fi
-  run_check 'casts requiring review' '\b(reinterpret_cast|const_cast|static_cast<.*\*>|\([A-Za-z_][A-Za-z0-9_:<>[:space:]]*\s*\*\))'
+  # R7: the C-style-cast arm must require an actual cast OF A VALUE — a `(Type *)`
+  # immediately followed by an OPERAND: an identifier, `(`, `&`, or a digit. The old
+  # arm flagged any `(Type *)` regardless of what followed, so it misread single-
+  # pointer function-prototype params `foo(Type *)` (nng's 314 NNG_DECL/extern decls
+  # = 68% of its cast lane, plus tinycc/pcre2/cFE prototypes) and `sizeof(T *)`
+  # (cFE/pcre2) as C-style casts. Requiring a trailing operand fixes BOTH classes at
+  # once: a prototype `(Type *)` is followed by `)`/`,`/`;` and a `sizeof(T *)` by
+  # `)`/`,`/`;`/an operator — none of which is an operand char — so neither matches,
+  # while a genuine cast `(char*)malloc(...)` / `(uint8_t *) &x` / `(int *) 0` still
+  # flags. The operand class deliberately EXCLUDES `*` so a binary multiply after a
+  # pointer-sizeof (`sizeof(T *) * count`, nng aio.c) is not misread as a cast-then-
+  # deref; a real cast-then-deref `*(int *)p` still flags via the trailing `p`. (No
+  # lookbehind: the operand requirement alone subsumes the sizeof exclusion, keeping
+  # the file-list and re-match passes on one PCRE- and default-engine-valid pattern.)
+  run_check 'casts requiring review' '\b(reinterpret_cast|const_cast|static_cast<.*\*>)|\([A-Za-z_][A-Za-z0-9_:<>[:space:]]*\*\)\s*[A-Za-z_0-9(&]'
   run_check 'unchecked memory movement' '\b(memcpy|memmove|memset|memcmp)\s*\('
   run_check 'process or shell execution' '\b(system|popen|execl|execlp|execle|execv|execvp|execvpe|CreateProcess)\s*\('
   run_check 'assert-only validation' '\bassert\s*\('
@@ -281,12 +315,77 @@ SRC
 void w(char *d, const char *s) { strcpy(d, s); }
 SRC
 
+  # --- Fixture 4 (R7 cast lane): a pure-C repo mixing GENUINE C-style casts (a
+  # cast immediately followed by an operand) with the two false-positive shapes the
+  # old arm flagged — single-pointer function PROTOTYPES `foo(Type *)` and
+  # `sizeof(T *)`. The genuine casts MUST flag; the prototypes and sizeof MUST NOT.
+  mkdir -p "$tmp/casts"
+  cat >"$tmp/casts/casts.c" <<'SRC'
+#include <stdlib.h>
+#include <stdint.h>
+/* prototypes: single-pointer param, NO operand after (Type *) — NOT casts */
+extern void nni_aio_fini(nni_aio *);
+void register_cb(callback_t *);
+static void win_del(void *);
+size_t type_size(void) {
+    /* sizeof of a pointer type — NOT a cast */
+    size_t a = sizeof(uint8_t *);
+    size_t b = sizeof(struct foo *) * 4;   /* sizeof then multiply — NOT a cast */
+    return a + b;
+}
+void real_casts(void *raw, sockaddr_t *sa) {
+    char *p = (char *)malloc(16);           /* GENUINE cast of malloc() */
+    uint8_t *q = (uint8_t *) &sa->addr;     /* GENUINE cast of an &-operand */
+    int n = *(int *) raw;                   /* GENUINE cast-then-deref */
+    void *z = (void *) 0;                   /* GENUINE cast of a number */
+    free(p); (void)q; (void)n; (void)z;
+}
+SRC
+
+  # --- Fixture 5 (R3+ exclusions): real risk hits living in dirs/files that the new
+  # exclusion conventions must drop — NASA `ut-coverage/`/`ut-stubs/`, a CamelCase
+  # `GTest/` dir, the `*test_inc.h` driver-include, a generated `single_include/`
+  # amalgamation, and a vendored `win32/include/` target-libc header. A real shipped
+  # `fsw/` hit in the SAME repo must SURVIVE (no over-correction). ----------------
+  mkdir -p "$tmp/excl/fsw" "$tmp/excl/ut-coverage" "$tmp/excl/ut-stubs" \
+           "$tmp/excl/GTest" "$tmp/excl/single_include" "$tmp/excl/win32/include"
+  cat >"$tmp/excl/fsw/real.c" <<'SRC'
+#include <string.h>
+void fsw_copy(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$tmp/excl/ut-coverage/cov.c" <<'SRC'
+#include <string.h>
+void cov(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$tmp/excl/ut-stubs/stub.c" <<'SRC'
+#include <string.h>
+void stub(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$tmp/excl/GTest/g.cc" <<'SRC'
+#include <cstring>
+void g(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$tmp/excl/foo_test_inc.h" <<'SRC'
+#include <string.h>
+static void inc(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$tmp/excl/single_include/amalgam.h" <<'SRC'
+#include <string.h>
+static void amalg(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$tmp/excl/win32/include/stdlib.h" <<'SRC'
+#include <string.h>
+static void w32(char *d, const char *s) { strcpy(d, s); }
+SRC
+
   # Run with RELATIVE targets (cd into the fixture root) so the report carries no
   # absolute path — risk-scan echoes the path it is handed verbatim by design.
-  local purec_out cpp_out exit_ok
+  local purec_out cpp_out casts_out excl_out exit_ok
   cd "$tmp" || { printf 'cpp_risk_scan self-test: FAIL (cd to tmp)\n'; exit 1; }
   targets=("purec"); purec_out="$(run_scan)"; exit_ok=$?
   targets=("cpp");   cpp_out="$(run_scan)"
+  targets=("casts"); casts_out="$(run_scan)"
+  targets=("excl");  excl_out="$(run_scan)"
 
   # R1: pure-C repo with CXX_STANDARD + test-only .cpp must report C++ signal: no
   if ! printf '%s\n' "$purec_out" | grep -qF 'C++ signal: no'; then
@@ -329,8 +428,44 @@ SRC
     printf 'cpp_risk_scan self-test: FAIL (R3: a suffix-test/testing/extras/ltests file leaked)\n'
     printf '%s\n%s\n' '--- cpp ---' "$cpp_out"; exit 1
   fi
+
+  # -------------------------------------------------------------------------
+  # R7 (cast lane): genuine C-style casts flag; prototypes and sizeof do NOT.
+  # -------------------------------------------------------------------------
+  # R7.1: the four GENUINE casts (cast immediately followed by an operand) flag.
+  local realcast
+  for realcast in '\(char \*\)malloc' '\(uint8_t \*\) &sa' '\*\(int \*\) raw' '\(void \*\) 0'; do
+    if ! printf '%s\n' "$casts_out" | grep -qE "casts\.c:[0-9]+:.*$realcast"; then
+      printf 'cpp_risk_scan self-test: FAIL (R7 over-correction: a genuine cast was dropped: %s)\n' "$realcast"
+      printf '%s\n%s\n' '--- casts ---' "$casts_out"; exit 1
+    fi
+  done
+  # R7.2: the single-pointer PROTOTYPES `foo(Type *);` must NOT flag as casts.
+  if printf '%s\n' "$casts_out" | grep -qE 'casts\.c:[0-9]+:.*(nni_aio_fini|register_cb|win_del)\s*\([A-Za-z_][A-Za-z0-9_ ]*\*\)\s*;'; then
+    printf 'cpp_risk_scan self-test: FAIL (R7: a single-pointer function prototype flagged as a cast)\n'
+    printf '%s\n%s\n' '--- casts ---' "$casts_out"; exit 1
+  fi
+  # R7.3: `sizeof(T *)` (incl. `sizeof(T *) * n`) must NOT flag as a cast.
+  if printf '%s\n' "$casts_out" | grep -qE 'casts\.c:[0-9]+:.*sizeof\([A-Za-z_][A-Za-z0-9_ ]*\*\)'; then
+    printf 'cpp_risk_scan self-test: FAIL (R7: sizeof(T *) flagged as a cast)\n'
+    printf '%s\n%s\n' '--- casts ---' "$casts_out"; exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # R3+ exclusions: ut-coverage/ut-stubs/CamelCase-Test/test_inc.h/single_include/
+  # win32-include all dropped; the real fsw/ hit in the same repo SURVIVES.
+  # -------------------------------------------------------------------------
+  if printf '%s\n' "$excl_out" | grep -qE 'ut-coverage/|ut-stubs/|GTest/|foo_test_inc\.h|single_include/|win32/include/'; then
+    printf 'cpp_risk_scan self-test: FAIL (R3+: an excluded test/vendored/generated path leaked)\n'
+    printf '%s\n%s\n' '--- excl ---' "$excl_out"; exit 1
+  fi
+  if ! printf '%s\n' "$excl_out" | grep -qE 'fsw/real\.c:[0-9]+:.*strcpy'; then
+    printf 'cpp_risk_scan self-test: FAIL (R3+ over-correction: real shipped fsw/ hit was dropped)\n'
+    printf '%s\n%s\n' '--- excl ---' "$excl_out"; exit 1
+  fi
+
   # No absolute path may leak.
-  if printf '%s\n' "$purec_out" "$cpp_out" | grep -qF "$tmp"; then
+  if printf '%s\n' "$purec_out" "$cpp_out" "$casts_out" "$excl_out" | grep -qF "$tmp"; then
     printf 'cpp_risk_scan self-test: FAIL (absolute path leaked into output)\n'; exit 1
   fi
   # F4 holds: exit 0 on a successful run.

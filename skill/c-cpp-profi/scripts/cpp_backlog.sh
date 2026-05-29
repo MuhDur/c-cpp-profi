@@ -87,6 +87,20 @@ EXCLUDE_GLOBS=(
   --glob '!**/*test*.cxx'
   --glob '!**/*_bench*.*'
   --glob '!**/ltests.*'
+  # R3+ test/vendored/generated conventions that path-segment + suffix globs miss
+  # (kept identical to cpp_risk_scan.sh so anchors line up): NASA cFE `ut-coverage/`/
+  # `ut-stubs/`; CamelCase test roots (`STest/`, `FppTestProject/`, any `[A-Z]*Test/`
+  # such as GTest/); the `*test_inc.h` driver-include (pcre2); generated `single_include/`
+  # amalgamations (nlohmann); vendored target-libc headers under `*/win32/include/`
+  # (tinycc mingw). Ordinary public `include/` is NOT excluded — only those variants.
+  --glob '!**/ut-coverage/**'
+  --glob '!**/ut-stubs/**'
+  --glob '!**/STest/**'
+  --glob '!**/*TestProject*/**'
+  --glob '!**/[A-Z]*Test/**'
+  --glob '!**/*test_inc.h'
+  --glob '!**/single_include/**'
+  --glob '!**/win32/include/**'
 )
 
 # Whole-file comment/string stripper (R2): emits "<cleaned>\t<path>:<line>:<orig>"
@@ -256,7 +270,10 @@ emit_hardening_calls() {
       [ -n "$line" ] || continue
       local anchor api
       anchor="$(printf '%s' "$line" | cut -d: -f1-2)"
-      api="$(printf '%s' "$line" | grep -oE '\b(strcpy|strcat|sprintf|gets)\b' | head -n1)"
+      # `|| true`: under `set -euo pipefail` a `grep` that matches nothing exits 1
+      # and pipefail propagates it through `| head`, aborting the substitution and
+      # the whole script (N-cmphang abort class). A no-match is benign here.
+      api="$(printf '%s' "$line" | grep -oE '\b(strcpy|strcat|sprintf|gets)\b' | head -n1 || true)"
       printf 'hardening\tunsafe string/format API %s (bounded-copy migration candidate)\t%s\n' "$api" "$anchor"
     done <<EOF
 $hits
@@ -511,10 +528,13 @@ $sig_hits"
       # identifier immediately before the FIRST "(" on the line (the declared/
       # defined function), then look for it referenced in the harness corpus.
       content="$(printf '%s' "$line" | cut -d: -f3-)"
+      # `|| true`: either `grep` can match nothing (the line's only `name(` is a
+      # control keyword filtered by the `grep -v`), exiting 1; under pipefail that
+      # status survives `| head | sed` and aborts the whole script (N-cmphang class).
       func="$(printf '%s' "$content" \
         | grep -oE '[A-Za-z_][A-Za-z0-9_]*[[:space:]]*\(' \
         | grep -vwE '(if|for|while|switch|return|sizeof|defined)[[:space:]]*\(' \
-        | head -n1 | sed -E 's/[[:space:]]*\($//')"
+        | head -n1 | sed -E 's/[[:space:]]*\($//' || true)"
       if [ -n "$func" ] && printf '%s\n' "$harness_corpus" | grep -qE "(^|[^A-Za-z0-9_])${func}([^A-Za-z0-9_]|$)" 2>/dev/null; then
         continue
       fi
@@ -659,6 +679,23 @@ SRC
 void tp(char *d, const char *s) { strcpy(d, s); }
 SRC
 
+  # R3+ TRAP: real strcpy CALLS inside the NASA `ut-coverage/`/`ut-stubs/` test
+  # convention and a vendored `win32/include/` target-libc header. The new R3+
+  # exclusion globs must drop all three (the shipped `src/main.c` strcpy survives).
+  mkdir -p "$tmp/modules/ut-coverage" "$tmp/modules/ut-stubs" "$tmp/win32/include"
+  cat >"$tmp/modules/ut-coverage/cov.c" <<'SRC'
+#include <string.h>
+void cov(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$tmp/modules/ut-stubs/stub.c" <<'SRC'
+#include <string.h>
+void stub(char *d, const char *s) { strcpy(d, s); }
+SRC
+  cat >"$tmp/win32/include/string.h" <<'SRC'
+#include <string.h>
+static void w32(char *d, const char *s) { strcpy(d, s); }
+SRC
+
   local out1 out2
   out1="$(run_backlog "$tmp" no)"
 
@@ -695,6 +732,18 @@ SRC
   # Assertion R3: a SUFFIX-named *_test.c co-located in src/ must be excluded.
   if printf '%s\n' "$out1" | grep -qE 'src/parser_test\.c'; then
     printf 'cpp_backlog self-test: FAIL (suffix-named *_test.c not excluded, R3)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out1"
+    exit 1
+  fi
+  # Assertion R3+: NASA `ut-coverage/`/`ut-stubs/` and vendored `win32/include/`
+  # hits must be excluded, while the real shipped `src/main.c` strcpy survives.
+  if printf '%s\n' "$out1" | grep -qE 'ut-coverage/|ut-stubs/|win32/include/'; then
+    printf 'cpp_backlog self-test: FAIL (R3+: ut-coverage/ut-stubs/win32-include path not excluded)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out1"
+    exit 1
+  fi
+  if ! printf '%s\n' "$out1" | grep -qE 'src/main\.c:[0-9]+'; then
+    printf 'cpp_backlog self-test: FAIL (R3+ over-correction: real shipped src/main.c hit dropped)\n'
     printf '%s\n%s\n' '--- backlog ---' "$out1"
     exit 1
   fi

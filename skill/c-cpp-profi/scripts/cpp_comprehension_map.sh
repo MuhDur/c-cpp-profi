@@ -56,6 +56,29 @@ rg_available() {
   command -v rg >/dev/null 2>&1
 }
 
+# R3+ test/vendored/generated exclusion conventions that path-segment + suffix
+# globs miss, mirroring the sibling scripts so the comprehension map reflects the
+# shipped surface (and so a generated mirror does not double-list the API):
+#  - NASA cFE unit-test dirs `ut-coverage/`/`ut-stubs/`.
+#  - CamelCase test roots: F´ `STest/`, `FppTestProject/`, and any `[A-Z]*Test/`
+#    dir (GTest/, FooTest/) — `[A-Z]*` so ordinary lowercase dirs are untouched.
+#  - the `*test_inc.h` driver-include convention (pcre2 `pcre2test_inc.h`).
+#  - generated amalgamations `single_include/` (nlohmann — a generated mirror of
+#    `include/`; without this its exported-API list is every public decl twice).
+#  - vendored target-libc headers under `*/win32/include/` (tinycc mingw headers).
+# Ordinary public `include/` is NOT excluded — that is the real API surface; only
+# the `single_include/` mirror and the `win32/include/` vendored variant are.
+R3PLUS_GLOBS=(
+  --glob '!**/ut-coverage/**'
+  --glob '!**/ut-stubs/**'
+  --glob '!**/STest/**'
+  --glob '!**/*TestProject*/**'
+  --glob '!**/[A-Z]*Test/**'
+  --glob '!**/*test_inc.h'
+  --glob '!**/single_include/**'
+  --glob '!**/win32/include/**'
+)
+
 rg_code() {
   # rg over C/C++ sources, vendored/build trees excluded. Args: PATTERN REPO
   rg -n --no-heading --no-messages \
@@ -68,6 +91,7 @@ rg_code() {
     --glob '!**/external/**' \
     --glob '!**/test/gtest/**' \
     --glob '!**/test/gmock/**' \
+    "${R3PLUS_GLOBS[@]}" \
     "$1" "$2" 2>/dev/null || true
 }
 
@@ -125,6 +149,7 @@ count_ext() {
         --glob '!**/third_party/**' \
         --glob '!**/vendor/**' \
         --glob '!**/external/**' \
+        "${R3PLUS_GLOBS[@]}" \
         "$repo" 2>/dev/null | grep -c . || true)"
   [ -n "$n" ] || n=0
   printf '%s' "$n"
@@ -248,9 +273,16 @@ emit_std_hints() {
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     anchor="$(printf '%s' "$line" | cut -d: -f1-2)"
+    # N-cmphang FIX: under `set -euo pipefail`, a `grep -oE` that finds nothing
+    # (e.g. a `-std=$(call ...)` Makefile where the broad rg prefilter matched but
+    # the narrow `-std=[a-z0-9+]+` extractor does not) exits 1; pipefail propagates
+    # that through the `| head` so the `$(...)` fails and `set -e` aborts the WHOLE
+    # script BEFORE the `|| hint='std hint'` fallback below ever runs — dropping all
+    # of L2 and exiting 1 (nlohmann docs/Makefile). Same brittleness class as F2's
+    # `-ffast-math`. Guard the substitution with `|| true` so a no-match is benign.
     hint="$(printf '%s' "$line" \
       | grep -oE 'CMAKE_CXX_STANDARD|CMAKE_C_STANDARD|cxx_std_[0-9]+|c_std_[0-9]+|c_std|cpp_std|-std=[a-z0-9+]+' \
-      | head -n1)"
+      | head -n1 || true)"
     [ -n "$hint" ] || hint='std hint'
     printf 'build\ttoolchain/std hint: %s\t%s\n' "$hint" "$anchor"
   done <<EOF
@@ -393,6 +425,7 @@ EOF
       --max-depth 1 \
       --glob '!**/.git/**' --glob '!**/build/**' --glob '!**/_deps/**' \
       --glob '!**/third_party/**' --glob '!**/vendor/**' --glob '!**/external/**' \
+      "${R3PLUS_GLOBS[@]}" \
       "$repo" 2>/dev/null | strip_repo_path "$repo" || true)"
   # rg --max-depth above bounds the top-level *.h scan; include/** is unbounded.
   local includes
@@ -400,6 +433,7 @@ EOF
       --glob 'include/**/*.{h,hh,hpp,hxx}' \
       --glob '!**/.git/**' --glob '!**/build/**' --glob '!**/_deps/**' \
       --glob '!**/third_party/**' --glob '!**/vendor/**' --glob '!**/external/**' \
+      "${R3PLUS_GLOBS[@]}" \
       "$repo" 2>/dev/null | strip_repo_path "$repo" || true)"
   if [ -n "$includes" ]; then
     headers="$headers
@@ -454,6 +488,7 @@ emit_exported_api() {
       --glob '!**/benchmark/**' --glob '!**/benchmarks/**' \
       --glob '!**/examples/**' --glob '!**/example/**' \
       --glob '!**/docs/**' --glob '!**/doc/**' \
+      "${R3PLUS_GLOBS[@]}" \
       "$repo" 2>/dev/null | LC_ALL=C sort -u || true)"
   [ -n "$all" ] || return 0
 
@@ -696,6 +731,7 @@ emit_modules() {
       --glob '*.{c,cc,cpp,cxx,h,hh,hpp,hxx}' \
       --glob '!**/.git/**' --glob '!**/build/**' --glob '!**/_deps/**' \
       --glob '!**/third_party/**' --glob '!**/vendor/**' --glob '!**/external/**' \
+      "${R3PLUS_GLOBS[@]}" \
       "$repo" 2>/dev/null | strip_repo_path "$repo" || true)"
   [ -n "$files" ] || return 0
   # Reduce each file to its top-level component (dir, or "(root)" for top-level
@@ -947,6 +983,18 @@ project(fake C)
 set(CMAKE_C_STANDARD 11)
 add_executable(fake app/main.c lib/util.c)
 CM
+  # N-cmphang FIX fixture: a Makefile whose std flag is computed via a `$(call ...)`,
+  # so the broad std-hint rg prefilter matches `-std=` but the narrow `grep -oE
+  # '-std=[a-z0-9+]+'` extractor finds nothing (the next char is `$`) and `grep`
+  # exits 1. Before the `|| true` guard, `set -euo pipefail` aborted the WHOLE script
+  # right there, dropping all of L2 and exiting 1 (nlohmann/json docs/Makefile). With
+  # the guard the run must reach exit 0 and still emit the L2 sections below.
+  mkdir -p "$tmp/docs"
+  cat >"$tmp/docs/Makefile" <<'MK'
+CXXSTD = -std=$(call detect_std,c++17)
+all:
+	$(CXX) $(CXXSTD) -o demo demo.cpp
+MK
   cat >"$tmp/app/main.c" <<'SRC'
 #include "util.h"
 int main(int argc, char **argv) {
@@ -1029,9 +1077,43 @@ SRC
     done
     printf '#endif\n'
   } >"$tmp/include/many.h"
+  # R3+ FIX fixture: a generated `single_include/` amalgamation that MIRRORS the
+  # public `include/` API (the nlohmann/json case). It declares the SAME functions
+  # as include/util.h; without the `single_include/` exclusion the exported-API list
+  # double-lists every decl and the module map gains a spurious `single_include`
+  # module. The R3+ glob must drop it while keeping the real `include/` surface.
+  mkdir -p "$tmp/single_include/fake"
+  cat >"$tmp/single_include/fake/amalgam.h" <<'SRC'
+#ifndef AMALGAM_H
+#define AMALGAM_H
+/* GENERATED amalgamation — do not edit. Mirror of include/. */
+int util_run(int n);                 /* duplicate of the include/ decl */
+const char *util_name(void);         /* duplicate of the include/ decl */
+#endif
+SRC
 
-  local out1 out2
-  out1="$(run_map "$tmp" no)"
+  local out1 out2 run_rc
+  # Capture the exit code: N-cmphang regressed by aborting (exit 1) mid-run, so the
+  # self-test must assert a clean exit, not just inspect the (partial) output. `|| rc`
+  # keeps `set -e` from killing the test if run_map ever exits non-zero again.
+  out1="$(run_map "$tmp" no)" && run_rc=0 || run_rc=$?
+
+  # N-cmphang: the run MUST exit 0 even though docs/Makefile carries `-std=$(call ...)`.
+  if [ "$run_rc" -ne 0 ]; then
+    printf 'cpp_comprehension_map self-test: FAIL (N-cmphang: run aborted with exit %s on a -std=$(call) Makefile)\n' "$run_rc"
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # N-cmphang: ALL FOUR L2 sections must be present (the abort dropped everything
+  # after L1). Assert the exported-API + entry-points + module-map headers exist.
+  local sec
+  for sec in '## L1 build graph & ground' '## L2 exported API' '## L2 entry points' '## L2 module map'; do
+    if ! printf '%s\n' "$out1" | grep -qF "$sec"; then
+      printf 'cpp_comprehension_map self-test: FAIL (N-cmphang: section "%s" missing — L2 dropped)\n' "$sec"
+      printf '%s\n%s\n' '--- map ---' "$out1"
+      exit 1
+    fi
+  done
 
   # Assertion 1: the CMake build system is detected, anchored to CMakeLists.txt.
   if ! printf '%s\n' "$out1" | grep -q 'build system detected: cmake | CMakeLists.txt'; then
@@ -1234,7 +1316,9 @@ SRC
   fi
   # F5.3: the symbol-hint list exceeds the cap and is bounded by a footer.
   local hintcount
-  hintcount="$(printf '%s\n' "$out1" | grep -c 'exported-symbol hint')"
+  # `grep -c` exits 1 when the count is 0; under `set -e` that would abort the
+  # self-test on a zero-hint tree (same pipefail-abort class as N-cmphang). Guard it.
+  hintcount="$(printf '%s\n' "$out1" | grep -c 'exported-symbol hint' || true)"
   if [ "$hintcount" -gt "$CAP_LIST" ]; then
     printf 'cpp_comprehension_map self-test: FAIL (F5: symbol-hint list not capped: %s > %s)\n' "$hintcount" "$CAP_LIST"
     printf '%s\n%s\n' '--- map ---' "$out1"
@@ -1242,6 +1326,26 @@ SRC
   fi
   if ! printf '%s\n' "$out1" | grep -qE '^\.\.\. \(\+[0-9]+ more; capped\)$'; then
     printf 'cpp_comprehension_map self-test: FAIL (F5: cap footer missing for over-cap list)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+
+  # R3+: the generated single_include/ amalgamation must be EXCLUDED — no anchor may
+  # point into it (no double-listed API, no spurious module), while the real
+  # include/ API surface is preserved (util_run/util_name from include/util.h).
+  if printf '%s\n' "$out1" | grep -qE 'single_include/'; then
+    printf 'cpp_comprehension_map self-test: FAIL (R3+: single_include/ amalgamation leaked into the map)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  if printf '%s\n' "$out1" | grep -qE '^single_include module '; then
+    printf 'cpp_comprehension_map self-test: FAIL (R3+: single_include listed as a module)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # R3+ no over-correction: the REAL include/ public API is still surfaced.
+  if ! printf '%s\n' "$out1" | grep -qE '^util_run\(\) \| include/util\.h:[0-9]+'; then
+    printf 'cpp_comprehension_map self-test: FAIL (R3+ over-correction: real include/ API util_run dropped)\n'
     printf '%s\n%s\n' '--- map ---' "$out1"
     exit 1
   fi

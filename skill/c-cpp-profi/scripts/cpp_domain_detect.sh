@@ -108,6 +108,23 @@ EXCLUDE_GLOBS=(
   --glob '!**/*test*.cxx'
   --glob '!**/*_bench*.*'
   --glob '!**/ltests.*'
+  # R3+ test/vendored/generated conventions that path-segment + suffix globs miss
+  # (kept identical to cpp_risk_scan.sh / cpp_backlog.sh so anchors line up): NASA
+  # cFE `ut-coverage/`/`ut-stubs/`; CamelCase test roots (`STest/`, `FppTestProject/`,
+  # any `[A-Z]*Test/` such as GTest/); the `*test_inc.h` driver-include (pcre2);
+  # generated `single_include/` amalgamations (nlohmann); vendored target-libc
+  # headers under `*/win32/include/` (tinycc mingw). These also keep a wrong domain
+  # signal from a repo's test/vendored trees (fprime's Compilers anchor lived in
+  # `FppTestProject/`). Ordinary public `include/` is NOT excluded — only the
+  # `single_include/` mirror and `win32/include/` vendored variant.
+  --glob '!**/ut-coverage/**'
+  --glob '!**/ut-stubs/**'
+  --glob '!**/STest/**'
+  --glob '!**/*TestProject*/**'
+  --glob '!**/[A-Z]*Test/**'
+  --glob '!**/*test_inc.h'
+  --glob '!**/single_include/**'
+  --glob '!**/win32/include/**'
 )
 
 # Whole-file comment/string stripper (R2): emits "<cleaned>\t<path>:<line>:<orig>"
@@ -161,15 +178,28 @@ signal_globs() {
   fi
 }
 
-# Comment/string-stripped, case-insensitive signal matches for PATTERN under REPO.
-# Returns "path:line:original" rows whose CODE part matches (R2/R3). Args: PATTERN REPO [MODE]
+# Comment/string-stripped, mostly-case-insensitive signal matches for PATTERN under
+# REPO. Returns "path:line:original" rows whose CODE part matches (R2/R3). Args: PATTERN REPO [MODE]
+#
+# R8: matching is case-insensitive by default (signals are matched loosely), but a
+# pack may force a DISTINCTIVE token case-sensitive with an inline `(?-i:...)` group
+# so its uppercase-API vocabulary matches the real domain but NOT ordinary
+# identifiers that merely share the spelling. The SPACE pack's `OS_`/`CFE_`/`OS_API`
+# and the Compilers pack's `opcode`/`OPCODE` use this: without it the case-folded
+# `OS_[A-Z]` matched zlib's gzip-header `OS_CODE` (+ `os_flush`) → SPACE-primary on a
+# compression lib, and `\bopcode\b` matched fprime's CamelCase `FwOpcodeType` →
+# Compilers over Space. Because `(?-i:...)` (and the `OS_(?!CODE\b)` negative
+# lookahead the SPACE pack uses to drop the gzip token) are PCRE constructs that
+# rg's DEFAULT regex engine rejects, BOTH the file-list pass and the re-match pass
+# run under PCRE (`-P`); the patterns are plain alternations/`\b`/char-classes that
+# the re-match pass already required to be PCRE-valid, so this is semantics-stable.
 rg_signal() {
   local mode="${3:-all}"
   local gl=()
   local g
   while IFS= read -r -d '' g; do gl+=(--glob "$g"); done < <(signal_globs "$mode")
   local files
-  files="$(rg -li -l --no-messages \
+  files="$(rg -liP -l --no-messages \
       "${gl[@]}" \
       "${EXCLUDE_GLOBS[@]}" \
       -e "$1" -- "$2" 2>/dev/null | LC_ALL=C sort || true)"
@@ -244,17 +274,23 @@ pack_label() {
 }
 
 # Signal regex per pack. Patterns are deliberately conservative: they mirror the
-# documented signals and avoid tokens that fire on unrelated code.
+# documented signals and avoid tokens that fire on unrelated code. Matching is
+# case-insensitive by default; a DISTINCTIVE uppercase-API token is wrapped in an
+# inline `(?-i:...)` group so it is matched CASE-SENSITIVELY (R8) — the SPACE pack's
+# `cFE_`/`CFE_`/`OS_API`/`OS_*` (with `OS_(?!CODE\b)` dropping zlib's gzip-header
+# `OS_CODE`) and the Compilers pack's `opcode`/`OPCODE` (so cFS/compiler vocabulary
+# matches but ordinary identifiers like zlib `OS_CODE`/`os_flush` and fprime's
+# CamelCase `FwOpcodeType` do not).
 pack_regex() {
   case "$1" in
-    space)       printf '%s' '\bMISRA\b|rules? of ten|Power of Ten|\bcFE_|\bOS_[A-Z]|\bwatchdog\b|\bRTEMS\b|EXPORT_SYMBOL_NASA' ;;
+    space)       printf '%s' '\bMISRA\b|rules? of ten|Power of Ten|(?-i:\bcFE_|\bCFE_|\bOS_API|\bOS_(?!CODE\b)[A-Z])|\bwatchdog\b|\bRTEMS\b|EXPORT_SYMBOL_NASA' ;;
     embedded)    printf '%s' '\bFreeRTOS\b|\bZephyr\b|xTaskCreate|-ffreestanding|\bvolatile\b.*(0x[0-9A-Fa-f]+|register)|ISR_HANDLER|\bHAL_' ;;
     kernel)      printf '%s' '(^|[^A-Za-z0-9_])__user([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])copy_(to|from)_user([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])MODULE_LICENSE([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])EXPORT_SYMBOL([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])spin_lock([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])GFP_(KERNEL|ATOMIC)([^A-Za-z0-9_]|$)' ;;
     gpu)         printf '%s' '(^|[^A-Za-z0-9_])__global__([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])__device__([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])__syncthreads([^A-Za-z0-9_]|$)|\bcudaMalloc\b|\bcudaMemcpy\b|\bhipMalloc\b|sycl::|-fsycl' ;;
     hpc)         printf '%s' '-ffast-math|_mm_[a-z]|vld1|svptrue|Eigen/|highway|#pragma omp|<cfenv>' ;;
     crypto)      printf '%s' 'constant.time|secret-dependent|\bEVP_|crypto_[a-z]|explicit_bzero|memset_s|\bFIPS\b|test.vector' ;;
     networking)  printf '%s' '\bntohl\b|\bhtons\b|\bntohs\b|\bhtonl\b|recvfrom|parse_packet|RFC[0-9]|__attribute__.*packed|#pragma pack' ;;
-    compilers)   printf '%s' 'LLVMContext|llvm::|IRBuilder|emitOpcode|\bopcode\b|\bbytecode\b|interpreter|codegen|opt -verify' ;;
+    compilers)   printf '%s' 'LLVMContext|llvm::|IRBuilder|emitOpcode|(?-i:\bopcode\b|\bOPCODE\b)|\bbytecode\b|interpreter|codegen|opt -verify' ;;
     databases)   printf '%s' '\bfsync\b|fdatasync|write-ahead|\bWAL\b|\bMVCC\b|crash.consistency|page_checksum|\bpwrite\b|dm-flakey|\bALICE\b' ;;
     audio)       printf '%s' 'audio_?callback|audio_?buffer|process_block|\bdenormal|\bxrun\b|\bjack_|kAudioUnit|\bVST3\b|\bASIO\b|\bCoreAudio\b|flush.to.zero|samples?_per_(buffer|frame)' ;;
     filesystems) printf '%s' '\bsuperblock\b|\binode\b|on-disk|\bmount\b|\bfsck\b|dm-flakey|\bFUA\b|crash.injection|barrier' ;;
@@ -561,7 +597,63 @@ int util_clamp(int x, int lo, int hi) {
 }
 SRC
 
+  # Fixture Z (R8 case-fold SPACE FP): a zlib-like compression lib whose ONLY
+  # "SPACE" tokens are the gzip RFC-1952 header byte `OS_CODE` (uppercase) and a
+  # lowercase `os_flush()` C++ method. Case-INSENSITIVE matching let `\bOS_[A-Z]`
+  # match both → SPACE won PRIMARY on a compression lib. With the case-sensitive
+  # `OS_(?!CODE\b)` token, NEITHER matches, so the repo must NOT be SPACE-primary.
+  mkdir -p "$tmp/zlibish"
+  cat >"$tmp/zlibish/zutil.h" <<'SRC'
+#ifndef ZUTIL_H
+#define ZUTIL_H
+#  define OS_CODE  0x03   /* gzip OS identifier byte (RFC 1952) */
+int inflate(void *strm, int flush);
+int deflate(void *strm, int flush);
+int compress(unsigned char *dest, unsigned long *destLen);
+#endif
+SRC
+  cat >"$tmp/zlibish/zstream.cc" <<'SRC'
+class ozstream {
+  void os_flush() { /* lowercase OS_ should not be a SPACE token */ }
+  unsigned char *buf_init(void) { return 0; }
+};
+SRC
+
+  # Fixture C (R8 real SPACE survives): a cFS-like flight-software repo using the
+  # genuine NASA uppercase API `CFE_*` and `OS_*` (NOT OS_CODE). It MUST stay
+  # SPACE-primary under case-sensitive matching.
+  mkdir -p "$tmp/cfsish/fsw"
+  cat >"$tmp/cfsish/fsw/cfe_es.c" <<'SRC'
+#include "cfe_es.h"
+int32 CFE_ES_RegisterApp(void) {
+    OS_TaskCreate(0, "APP", 0, 0, 0, 0);
+    OS_printf("registered\n");
+    return CFE_ES_RunLoop(0);
+}
+int32 CFE_EVS_SendEvent(uint16 id) { return OS_MAX_API_LEN + id; }
+SRC
+
+  # Fixture F (R8 opcode + R3+ CamelCase test dir): an F´-like repo. The Compilers
+  # signal must come ONLY from a CamelCase `FppTestProject/` test dir (excluded by
+  # R3+) plus the CamelCase TYPE `FwOpcodeType` (which case-sensitive `\bopcode\b`
+  # must NOT match). The shipped code carries genuine SPACE `OS_*`/`CFE_*` tokens.
+  # Net: SPACE must win PRIMARY; the `FwOpcodeType`/test-dir Compilers signal must
+  # NOT steal it (was: Compilers-primary off `\bopcode\b` matching `FwOpcodeType`).
+  mkdir -p "$tmp/fprimeish/Svc/Cmd" "$tmp/fprimeish/FppTestProject/FppTest"
+  cat >"$tmp/fprimeish/Svc/Cmd/CmdDispatcher.cpp" <<'SRC'
+#include "CmdDispatcher.hpp"
+void CmdDispatcher::dispatch(FwOpcodeType opCode) {
+    OS_TaskDelay(1);
+    CFE_SB_TransmitMsg(opCode);
+}
+SRC
+  cat >"$tmp/fprimeish/FppTestProject/FppTest/Driver.cpp" <<'SRC'
+/* Test-only driver: opcode opcode opcode bytecode interpreter codegen llvm:: */
+void run_opcode_interpreter() { /* opcode bytecode codegen interpreter */ }
+SRC
+
   local gpu_out kernel_out plain_out hpc_out parser_out generic_out comments_out
+  local zlibish_out cfsish_out fprimeish_out
   gpu_out="$(run_detect "$tmp/gpu" no)"
   kernel_out="$(run_detect "$tmp/kernel" no)"
   plain_out="$(run_detect "$tmp/plain" no)"
@@ -569,6 +661,9 @@ SRC
   parser_out="$(run_detect "$tmp/parser" no)"
   generic_out="$(run_detect "$tmp/generic" no)"
   comments_out="$(run_detect "$tmp/comments" no)"
+  zlibish_out="$(run_detect "$tmp/zlibish" no)"
+  cfsish_out="$(run_detect "$tmp/cfsish" no)"
+  fprimeish_out="$(run_detect "$tmp/fprimeish" no)"
 
   # Assertion 1: the CUDA fixture selects the GPU pack as primary, anchored to
   # the .cu file. Output format: "pack[<role>]: <label> | <anchor> (N code matches)".
@@ -598,13 +693,47 @@ SRC
   # Assertion 5 (no absolute paths leak): outputs must not contain the temp dir.
   local out
   for out in "$gpu_out" "$kernel_out" "$plain_out" "$hpc_out" \
-             "$parser_out" "$generic_out" "$comments_out"; do
+             "$parser_out" "$generic_out" "$comments_out" \
+             "$zlibish_out" "$cfsish_out" "$fprimeish_out"; do
     if printf '%s\n' "$out" | grep -qF "$tmp"; then
       printf 'cpp_domain_detect self-test: FAIL (absolute path leaked into output)\n'
       printf '%s\n%s\n' '--- out ---' "$out"
       exit 1
     fi
   done
+
+  # -------------------------------------------------------------------------
+  # R8 assertions: case-sensitive distinctive uppercase-API tokens.
+  # -------------------------------------------------------------------------
+  # R8.1: the zlib-like compression fixture must NOT be SPACE-primary — its only
+  # SPACE-shaped tokens are the gzip `OS_CODE` and lowercase `os_flush`, which the
+  # case-sensitive `OS_(?!CODE\b)`/`OS_API` tokens no longer match.
+  if printf '%s\n' "$zlibish_out" | grep -qE 'pack\[primary\]: Space / satellites'; then
+    printf 'cpp_domain_detect self-test: FAIL (R8: OS_CODE/os_flush case-fold made a compression lib SPACE-primary)\n'
+    printf '%s\n%s\n' '--- zlibish ---' "$zlibish_out"
+    exit 1
+  fi
+  # R8.2: the cFS-like fixture (real CFE_/OS_ API, no OS_CODE) MUST stay SPACE-primary.
+  if ! printf '%s\n' "$cfsish_out" | grep -qE 'pack\[primary\]: Space / satellites'; then
+    printf 'cpp_domain_detect self-test: FAIL (R8 over-correction: real cFS CFE_/OS_ repo lost SPACE-primary)\n'
+    printf '%s\n%s\n' '--- cfsish ---' "$cfsish_out"
+    exit 1
+  fi
+  # R8.3: the F´-like fixture must be SPACE-primary, NOT Compilers — the CamelCase
+  # `FwOpcodeType` TYPE must not match the now-case-sensitive `\bopcode\b`, and the
+  # `opcode/bytecode/interpreter` prose lives in a CamelCase `FppTestProject/` test
+  # dir excluded by R3+. SPACE must not be lost to a bare opcode match.
+  if ! printf '%s\n' "$fprimeish_out" | grep -qE 'pack\[primary\]: Space / satellites'; then
+    printf 'cpp_domain_detect self-test: FAIL (R8/R3+: F´ Space lost to a FwOpcodeType/test-dir Compilers match)\n'
+    printf '%s\n%s\n' '--- fprimeish ---' "$fprimeish_out"
+    exit 1
+  fi
+  # R3+: no anchor may point into the excluded CamelCase FppTestProject/ test dir.
+  if printf '%s\n' "$fprimeish_out" | grep -qE 'FppTestProject/'; then
+    printf 'cpp_domain_detect self-test: FAIL (R3+: CamelCase FppTestProject/ test dir not excluded)\n'
+    printf '%s\n%s\n' '--- fprimeish ---' "$fprimeish_out"
+    exit 1
+  fi
   # Assertion 6: reproducibility - two consecutive runs byte-match.
   local gpu_out2
   gpu_out2="$(run_detect "$tmp/gpu" no)"
