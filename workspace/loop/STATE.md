@@ -1,10 +1,13 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **89.5 / 100** (iteration 15, 2026-05-29). Trail: …→ 87.5 → 88.5 (jsmn lift)
-  → 89.5 (batch-3 37/50 + space-pack-on-cFE + fold-back F). Per-dim: C1 14 · C2 9 · C3 14 · C4 10 · C5 7 · C6 17 · Q1 7.5 · Q2 11.
+- **Honest composite (RUBRIC-100):** **89.5 / 100** (iteration 16, 2026-05-29; HELD — R9-vocab consolidated C6
+  at 17 rather than bumping). Per-dim: C1 14 · C2 9 · C3 14 · C4 10 · C5 7 · C6 17 · Q1 7.5 · Q2 11.
 - **Target:** 100 / 100 with the empirical Q2 layer closed (see LOOP-PROTOCOL stop condition)
-- **Phase:** ▶ EMPIRICAL (Q2): 50-repo gauntlet IN PROGRESS (**37/50 carded**; SPACE pack validated on NASA cFE/F´).
+- **Phase:** ▶ EMPIRICAL (Q2): 50-repo gauntlet IN PROGRESS (**37/50 carded; batch-4 (final 13) in flight `wyle6566n`**).
+- **Last iteration (16):** fold-back R9-vocab (`53118ea`) — 14th pack (Compression) + enriched Networking/Crypto/
+  Space vocab → fixed 4 wrong primaries (zlib/lz4→Compression, nng→Networking, blake2→Crypto, fprime→Space),
+  12-repo verified, 8-repo regression-guard unchanged. C6 evidence consolidated at 17. Launched batch-4 → 50.
 - **Per-iteration now also (user instruction):** push to `origin` after committing; refresh `README.md` via
   /readme-writing + /de-slopify whenever the composite moves or the skill materially changes (see LOOP-PROTOCOL step 7).
 - **Last iteration (12):** integrated batch-2 (12 repos → 25/50; 34 findings → regressions R1–R7) and **folded
@@ -29,26 +32,21 @@ C4 10→12 (a real idea-generation trial) · C5 7→8 (real doc-gen) · C6 17→
 | 1 | Q2 empirical | 3.5 | 12 | **running-the-gauntlet** — (a) a durable OUTCOME-LIFT harness (git-revert-of-known-fix / seeded-fault) proving the skill drives real defect detection+fix on ≥2 repos; (b) the **50-repo × ≤20-reason gauntlet** with preserved negatives, findings folded back. | **▶ ACTIVE (iter 9+)** |
 | ✓ | all 7 design dims (C1–C6, Q1) | 73.5 | 88 | iters 1–8, each converged + independently verified | done |
 
-## Immediate next action (iteration 16) — R9-vocab + R1±/R4+/R6 + targeted C2/C4/C5 trials + batch-4
+## Immediate next action (iteration 17) — integrate batch-4 (→50!) + R1±/R4+/R6 + targeted C2/C4/C5 trials
 
-1. **R9-vocab (domain-pack accuracy — fixes several wrong primaries):** enrich the domain packs in
-   `cpp_domain_detect.sh` + DOMAIN-AGNOSTIC-MASTERY.md: add a **Compression/codec** pack (deflate/inflate/lz/
-   huffman/zstd) so zlib/lz4 classify correctly; give **Networking** socket/listener/dialer/connect/bind/send/recv
-   vocab (nng scored 9, lost to Parser); give **Crypto** hash/digest/cipher/blake/sha/hmac vocab (blake2 lost to
-   HPC); give **Space** F´/CCSDS/Framer/Deframer/Tlm/APID/FwOpcode vocab (fprime); narrow Parser `*_decode` so it
-   doesn't snag codec identifiers. Re-verify zlib/lz4→compression, nng→Networking, blake2→Crypto.
-2. **R1± (header-only C++ detection):** content-probe `.h` for `template<`/`namespace`/`class`/`reinterpret_cast`
-   as a C++ signal (rapidjson false-neg); ignore pure `extern "C"` shim `.hpp` (wren false-pos).
-3. **R4+ (more export-macro idioms):** `Z*EXTERN`/no-underscore export macros (zlib deflate/inflate); treat
-   `*.h.in`/`*.h.generic` as public headers (pcre2 flagship API). **R6:** detect cifuzz.yml/oss-fuzz + better
-   shipped-harness mapping (nlohmann 78 false "no fuzz"); `tr -d '\0'` on corpus read.
-4. **Targeted single-capability trials** (lift the flat caps C2/C4/C5 with real evidence on cloned repos):
+Batch-4 `wyle6566n` (final 13: sqlite, redis, duktape, quickjs, zephyr, libjpeg-turbo, libpng, highway, Catch2,
+nginx, libzmq, simdjson, jq) is writing cards. On completion / next wake:
+1. **Integrate batch-4 → ~50/50** (the gauntlet-breadth milestone): INDEX, append findings, note domain-correct +
+   fixes-held counts on this hardest, largest batch. This unlocks the Q2 breadth point and the C1/C6 empirical caps.
+2. **R1± / R4+ / R6** (the residual domain/comprehension/backlog findings): header-only-C++ content-probe
+   (rapidjson/wren), `Z*EXTERN` + `*.h.in`/`*.h.generic` export idioms (zlib/pcre2), cifuzz/oss-fuzz detection +
+   `tr -d '\0'` (nlohmann/libsodium). Fixes the 5 residual misclassifications → unblocks C6 17→18.
+3. **Targeted single-capability trials** (lift the flat caps with real evidence on cloned repos):
    - C2: a real clang-tidy `modernize-*` pass on a small repo (before/after diff + compiles + ABI note) → C2 9→~10.
    - C4: run `cpp_backlog.sh` + author a real Idea Card (cpp_idea_check) on a cloned repo → C4 10→~11.
    - C5: generate a README/API-doc section for a cloned repo + pass `cpp_docs_check.py` → C5 7→8.
-5. **Batch-4 (→50)**: the final ~13 slate repos (incl. an RTOS/Zephyr, a GPU/CUDA sample, a game/graphics lib,
-   an HPC/Eigen, SQLite, redis, duktape, quickjs, libpng/libjpeg, masscan). Then a git-revert-of-CVE 3rd
-   outcome-lift + (ideally) a blind-agent trial. Re-rate Q2 toward ~12 + lift C1/C6 caps as breadth completes.
+4. A git-revert-of-CVE **3rd outcome-lift** + (the honest ceiling) a genuinely **blind-agent** trial — note where
+   self-certification structurally cannot reach 12/12 Q2 / 8/8 Q1, and say so plainly. Re-rate toward the low-to-mid 90s.
 
 ## (history) Iteration 9 plan — BEGIN Q2 (the empirical gauntlet)
 

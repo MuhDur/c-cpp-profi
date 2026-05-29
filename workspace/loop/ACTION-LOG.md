@@ -556,4 +556,31 @@ find→fix→verify cycle). Design dims held (the R7/R8 regressions that could h
 **Next:** iteration 16 → R9-vocab (compression/net/crypto/space pack tokens) + R1±/R4+/R6 + targeted C2/C4/C5
 real-repo trials + batch-4 (→50) + a 3rd outcome-lift (git-revert-of-CVE).
 
-**Commits:** `6feee9f` (integrate), `11663ae` (fold-back F) + this re-rate commit + push.
+**Commits:** `6feee9f` (integrate), `11663ae` (fold-back F), `c3b4b48` (re-rate + push).
+
+---
+
+## Iteration 16 — 2026-05-29 — fold-back R9-vocab (domain packs) + launch batch-4 (final)
+
+**Did:**
+- **Fold-back R9-vocab** (`53118ea`) — enriched domain-pack vocabulary + added a 14th pack (Compression/codec)
+  in `cpp_domain_detect.sh` + DOMAIN-AGNOSTIC-MASTERY.md. Fixed 4 wrong primaries: zlib/lz4→Compression,
+  nng→Networking (9→506), blake2→Crypto (10→2392), fprime→Space strengthened (70→571). Networking +socket/
+  listener/dialer/send/recv; Crypto +hash(context-gated)/blake/sha/aes/curve25519; Space +CCSDS/Tlm/APID/FwOpcode;
+  Parser `_decode` narrowed to format-prefixed. Independently verified: 12/12 spot-checks correct (4 reclassified
+  + 8 regression-guard unchanged incl. cFE Space, tinyxml2 Parser, cglm HPC); self-test PASS; validators PASS.
+- **Launched batch-4** (`wyle6566n`): the final 13 repos (sqlite, redis, duktape, quickjs, zephyr, libjpeg-turbo,
+  libpng, highway, Catch2, nginx, libzmq, simdjson, jq) → completes the 50-repo gauntlet; also validates R9 on fresh repos.
+
+**Rubric movement:** **HELD at 89.5.** R9-vocab consolidated C6's evidence (14 packs, correct on 12+ diverse repos
+incl. real flight software) rather than bumping the number — honest: a quality gain inside an existing dimension.
+The 5 residual misclassifications (jsmn/rapidjson/klib/sds/lua) are R1±/R4+ and keep C6 < 18. Next bumps: batch-4
+completion (Q2 breadth) + targeted C2/C4/C5 trials + R1±/R4+ (C6→18).
+
+**Honest note on the ceiling:** the last ~1-2 points are structurally hard for the loop to self-certify — Q1's
+"validates shape not command-output truth" and Q2's "blind-agent" both want an *independent* verifier the
+author-driven loop can't fully be. I'll push to the low-to-mid 90s with real evidence and state that ceiling plainly.
+
+**Next:** iteration 17 → integrate batch-4 (→50) + R1±/R4+/R6 + targeted C2/C4/C5 trials + a 3rd outcome-lift.
+
+**Commits:** `53118ea` (R9-vocab) + this re-rate commit + push.
