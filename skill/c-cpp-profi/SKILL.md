@@ -160,6 +160,7 @@ Reusable templates live under `assets/`. Copy them into a target repo only after
 - `assets/cmake/`: CMake presets and sanitizer helper module.
 - `assets/meson/`: Meson native files and libFuzzer build fragment.
 - `assets/fuzz/`: minimal C and C++ libFuzzer harnesses.
+- `assets/ci/`: portable CI + pre-commit drop-in (GitHub Actions workflow template, advisory pre-commit hook, and an adoption guide) so a consumer repo runs the contract, helper self-tests, and `--derive-profiles` evidence gate in CI and at commit time.
 
 ## Handoff Contract
 

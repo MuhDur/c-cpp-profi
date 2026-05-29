@@ -54,6 +54,9 @@ REQUIRED_SCRIPTS = [
 ]
 
 REQUIRED_ASSETS = [
+    "assets/ci/README.md",
+    "assets/ci/github-actions-c-cpp-profi.yml",
+    "assets/ci/pre-commit-c-cpp-profi.sh",
     "assets/cmake/CMakePresets.sanitizers.json",
     "assets/cmake/cmake/CppSystemsSanitizers.cmake",
     "assets/cmake/fuzz/CMakeLists.libfuzzer.example.txt",

@@ -57,6 +57,9 @@ REQUIRED_FILES = [
     "skill/c-cpp-profi/examples/documentation.md",
     "skill/c-cpp-profi/examples/domain-pack.md",
     "skill/c-cpp-profi/examples/remediation.md",
+    "skill/c-cpp-profi/assets/ci/README.md",
+    "skill/c-cpp-profi/assets/ci/github-actions-c-cpp-profi.yml",
+    "skill/c-cpp-profi/assets/ci/pre-commit-c-cpp-profi.sh",
 ]
 
 STALE_PHRASES = [
