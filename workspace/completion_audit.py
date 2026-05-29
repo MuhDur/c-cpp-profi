@@ -43,6 +43,7 @@ REQUIRED_FILES = [
     "skill/c-cpp-profi/references/REPO-COMPREHENSION.md",
     "skill/c-cpp-profi/references/TOOLCHAIN-MATRIX.md",
     "skill/c-cpp-profi/references/QUALITY-GATES.md",
+    "skill/c-cpp-profi/references/REMEDIATION-RECIPES.md",
     "skill/c-cpp-profi/references/TESTING-FUZZING.md",
     "skill/c-cpp-profi/references/NATIVE-UI-GOLDENS.md",
     "skill/c-cpp-profi/scripts/cpp_backlog.sh",
@@ -198,6 +199,14 @@ EVIDENCE_NEEDLES = {
         "Quick Optimization Card",
         "--require-performance-proof",
         "Opportunity score",
+    ],
+    "skill/c-cpp-profi/references/REMEDIATION-RECIPES.md": [
+        "overflow-checked",
+        "bounded copy",
+        "false sharing",
+        "exception-safe",
+        "binary-size",
+        "no-size-regression",
     ],
     ".github/workflows/skill-validate.yml": [
         "workspace/completion_audit.py --portable",

@@ -65,6 +65,8 @@ Do not let one green tool overrule another tool's concrete finding. Forward test
 
 Use this gate for code review, release hardening, security-sensitive changes, memory/input/concurrency changes, and any request to find bugs deeply.
 
+Once a defect is classified, [REMEDIATION-RECIPES.md](REMEDIATION-RECIPES.md) holds the copy-ready corrected code for each bug class (overflow-checked allocation, bounded copy, RAII/cleanup, false-sharing padding, exception-safe mutators, guarded narrowing, use-after-move/free) and the binary-size methodology; each card names the gate below that proves the fix.
+
 The cycle is:
 
 1. Surface scan: run `ubs` on changed files or the narrow target, plus the project compiler/static analyzer gate.

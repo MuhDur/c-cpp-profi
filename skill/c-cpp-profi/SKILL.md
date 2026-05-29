@@ -68,9 +68,9 @@ Native C/C++ extras are mandatory when relevant: no UB-for-speed contracts, no `
 |---|---|
 | Understand / onboard to any-domain repo | Climb the four-layer comprehension ladder in [REPO-COMPREHENSION.md](references/REPO-COMPREHENSION.md), read [DOMAIN-AGNOSTIC-MASTERY.md](references/DOMAIN-AGNOSTIC-MASTERY.md), detect the domain from repo signals, load or synthesize its pack, then gate comprehension and that pack's oracle |
 | Implement feature | Inventory -> design invariants -> edit -> compile -> tests -> relevant dynamic/static gates |
-| Fix crash | Reproduce first -> minimize input -> sanitizer/debugger -> regression test -> fix |
-| Security hardening | Threat model -> CERT/Core Guideline checks -> static analysis -> sanitizer/fuzz -> hardening flags |
-| Memory safety | Read [MEMORY-SAFETY.md](references/MEMORY-SAFETY.md), then prove ownership, bounds, lifetimes, and error paths |
+| Fix crash | Reproduce first -> minimize input -> sanitizer/debugger -> regression test -> fix; copy the corrected pattern from [REMEDIATION-RECIPES.md](references/REMEDIATION-RECIPES.md) |
+| Security hardening | Threat model -> CERT/Core Guideline checks -> static analysis -> sanitizer/fuzz -> hardening flags; apply the fix cards in [REMEDIATION-RECIPES.md](references/REMEDIATION-RECIPES.md) |
+| Memory safety | Read [MEMORY-SAFETY.md](references/MEMORY-SAFETY.md), then prove ownership, bounds, lifetimes, and error paths; pull the rewrite from [REMEDIATION-RECIPES.md](references/REMEDIATION-RECIPES.md) |
 | Concurrency/deadlock | Read [CONCURRENCY-DEADLOCKS.md](references/CONCURRENCY-DEADLOCKS.md), then prove lock order, interleavings, memory ordering, and runtime validation |
 | Performance | Read [PERFORMANCE.md](references/PERFORMANCE.md), then profile before changing code |
 | Parser/input handling | Read [TESTING-FUZZING.md](references/TESTING-FUZZING.md), then add fuzz and regression coverage |
@@ -104,6 +104,7 @@ Load only the relevant file:
 | Performance methodology | [PERFORMANCE.md](references/PERFORMANCE.md) |
 | Build systems, ABI, portability | [BUILD-PORTABILITY.md](references/BUILD-PORTABILITY.md) |
 | Behavior-preserving C/C++ refactors | [REFACTOR-ISOMORPHISM.md](references/REFACTOR-ISOMORPHISM.md) |
+| Copy-ready fix recipes and binary-size methodology | [REMEDIATION-RECIPES.md](references/REMEDIATION-RECIPES.md) |
 | Behavior- or target-changing transforms: port, modernize, re-architect | [CODE-TRANSFORM.md](references/CODE-TRANSFORM.md) |
 | Native UI, rendering, screenshots, pixels | [NATIVE-UI-GOLDENS.md](references/NATIVE-UI-GOLDENS.md) |
 | README, architecture/API docs, changelog, docs site, slop-free prose, docs-as-tests | [DOCUMENTATION.md](references/DOCUMENTATION.md) |
