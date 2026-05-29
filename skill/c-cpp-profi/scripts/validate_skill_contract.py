@@ -39,6 +39,7 @@ REQUIRED_SCRIPTS = [
     "cpp_abi_snapshot.sh",
     "cpp_backlog.sh",
     "cpp_comprehension_map.sh",
+    "cpp_docs_check.py",
     "cpp_evidence_check.py",
     "cpp_gate_plan.sh",
     "cpp_idea_check.py",
@@ -68,6 +69,7 @@ REQUIRED_EXAMPLES = [
     "native-ui-rendering.md",
     "idea-generation.md",
     "code-transform.md",
+    "documentation.md",
 ]
 
 REQUIRED_SKILL_TEXT = [
@@ -85,6 +87,8 @@ REQUIRED_SKILL_TEXT = [
     "examples/c-library.md",
     "examples/idea-generation.md",
     "examples/code-transform.md",
+    "examples/documentation.md",
+    "cpp_docs_check.py",
     "cpp_evidence_check.py",
     "cpp_idea_check.py",
     "validate_skill_contract.py",

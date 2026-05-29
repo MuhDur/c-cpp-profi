@@ -123,6 +123,7 @@ bash skill/c-cpp-profi/scripts/cpp_gate_report.sh .
 python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <filled-gate-report.md> --profile basic --require-warning-clean --require-analyzer-review
 python3 skill/c-cpp-profi/scripts/cpp_evidence_check.py <filled-gate-report.md> --profile performance --require-performance-proof
 python3 skill/c-cpp-profi/scripts/cpp_idea_check.py <filled-idea-card.md>
+python3 skill/c-cpp-profi/scripts/cpp_docs_check.py <doc.md> --kind readme
 bash skill/c-cpp-profi/scripts/cpp_abi_snapshot.sh <candidate-library> [baseline-library]
 python3 skill/c-cpp-profi/scripts/cpp_pixel_diff.py <baseline-image> <candidate-image> --threshold 0
 python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi
@@ -131,6 +132,7 @@ python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi
 Use the inventory script at the start of non-trivial work, `cpp_comprehension_map.sh <repo>` to emit a falsifiable L1+L2 comprehension map (build graph and ground, entry points, and a coarse module map, every line anchored to a repo-relative `file:line` or path) in one command before modeling an unfamiliar repo, the gate plan before changing build/test commands, the risk scan before review or after touching memory/input/concurrency code, the ABI snapshot helper when public libraries or plugin boundaries are touched, the pixel diff helper when rendered image artifacts are touched, and the gate report script before handoff. Prefer running `cpp_risk_scan.sh` on changed files or touched directories; whole-repo scans on mature C/C++ projects are intentionally noisy triage, not a defect list.
 After filling a gate report, run `cpp_evidence_check.py` with the applicable risk profiles (`parser`, `memory`, `public-abi`, `concurrency`, `performance`, `refactor`, `native-ui`, `portability`, or `security`) before claiming the work is complete. Use `--require-warning-clean` when compile success must mean warning-clean, and `--require-analyzer-review` whenever static-analysis output is part of the gate; static tools can exit `0` while printing findings.
 When proposing what to build, first run `cpp_backlog.sh <repo>` to enumerate a deduplicated, reproducible capability-gap backlog (hardening, API ergonomics, portability, test/fuzz coverage) where every row carries a `file:line` or inventory-key evidence anchor, then validate every Idea Card with `cpp_idea_check.py` before it earns an edit; it rejects blank or placeholder fields, a problem-evidence that reads as a feeling instead of a measurable anchor, and a `kind: radical` card missing its behavior oracle or reversible one-lever floor. Then enforce the matching gate row with `cpp_evidence_check.py --profile idea`.
+When writing or revising a documentation surface, run `cpp_docs_check.py <doc.md> --kind readme|api|changelog` (or `--kind auto`) to lint it the same way: it flags banned AI-slop tokens outside code fences, a README missing its build/usage/license sections, a public symbol whose contract omits ownership, thread-safety, or an error/returns field, and a changelog with no versioned section.
 
 ## Examples
 
@@ -143,6 +145,7 @@ Use the examples as compact execution cards when a task matches a common C/C++ s
 - [Native UI or rendering](examples/native-ui-rendering.md): screenshots, pixel/golden artifacts, DPI/font/color/platform matrices, and frame-time evidence.
 - [Idea generation](examples/idea-generation.md): accretive vs radical Idea Cards, adversarial scoring, and the idea-card evidence gate validated by `cpp_idea_check.py`.
 - [Code transform](examples/code-transform.md): worked `port` + `modernize` + `re-architect` transforms with one combined Evidence Packet that passes `--profile port --profile modernize --profile rearchitect --require-transform-proof`.
+- [Documentation](examples/documentation.md): a worked README + architecture note + header API contract + Keep-a-Changelog ABI-break excerpt for a sample C library, slop-free and passing `cpp_docs_check.py` for each `--kind`.
 
 ## Assets
 

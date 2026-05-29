@@ -48,8 +48,10 @@ REQUIRED_FILES = [
     "skill/c-cpp-profi/scripts/cpp_comprehension_map.sh",
     "skill/c-cpp-profi/scripts/cpp_evidence_check.py",
     "skill/c-cpp-profi/scripts/cpp_idea_check.py",
+    "skill/c-cpp-profi/scripts/cpp_docs_check.py",
     "skill/c-cpp-profi/examples/idea-generation.md",
     "skill/c-cpp-profi/examples/code-transform.md",
+    "skill/c-cpp-profi/examples/documentation.md",
 ]
 
 STALE_PHRASES = [
