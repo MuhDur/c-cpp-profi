@@ -21,7 +21,7 @@ Priority = recommended order for *remaining* passes (1 = next).
 
 | Pri | Skill | Caps | Mission for a `/repeatedly-apply-skill` pass |
 |---:|---|---|---|
-| 1 | operationalizing-expertise | C6,C4 | Restructure the skill as a **domain-agnostic kernel + plug-n-play domain packs**; distill expertise into executable operator/validator rules |
+| ✓ | operationalizing-expertise | C6,C4 | **APPLIED (iter 6)** — UNKNOWN-DOMAIN.md derivation recipe + 4 new seed packs (11 total) + cpp_domain_detect.sh + worked example. C6 12→16. (iter-1 wiring also used this lens.) |
 | ✓ | idea-wizard | C4 | **APPLIED (iter 2)** — built the innovation engine's enforcement tooling: cpp_idea_check.py, `idea` profile, cpp_backlog.sh, examples/idea-generation.md. C4 6→10. |
 | 3 | dueling-idea-wizards | C4 | Adversarial idea scoring; force competing designs before committing radical changes |
 | 4 | reality-check-for-project | C1,Q | Honest gap-analysis harness; vision-vs-reality scoring to keep the rubric truthful |
