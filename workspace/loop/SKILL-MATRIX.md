@@ -38,7 +38,7 @@ Priority = recommended order for *remaining* passes (1 = next).
 | 15 | ubs | C3 | Ultimate Bug Scanner review lens as an additional finder |
 | 16 | rust-undefined-behavior-exorcist | C3,C6 | UB taxonomy & proof discipline (concepts transfer hard into C/C++ UB) |
 | 17 | rust-unsafe-code-exorcist | C3,C6 | unsafe/FFI/SIMD boundary classification & hardening |
-| 18 | legacy-to-rust-porting | C2 | Cross-language port/modernization methodology (transform "however needed") |
+| ✓ | legacy-to-rust-porting | C2 | **APPLIED (iter 4)** — CODE-TRANSFORM.md (port/modernize/rearchitect) + 3 profiles + `--require-transform-proof` + worked example. C2 5→9. |
 | 19 | library-updater | C2 | Dependency modernization / standard-version migration |
 | 20 | readme-writing | C5 | Professional README/handoff generation |
 | 21 | documentation-website-for-software-project | C5 | Full docs-site generation methodology |

@@ -161,4 +161,41 @@ completion audit PASS (both modes); probe finds the real LLVMFuzzerTestOneInput 
 
 **Next:** iteration 4 → `/repeatedly-apply-skill legacy-to-rust-porting` (C2 transform: CODE-TRANSFORM.md + port/modernize/rearchitect profiles).
 
-**Commits:** `a9168be`, `f8d94da` (passes) + this artifact-update commit.
+**Commits:** `a9168be`, `f8d94da` (passes) + `1a21882` (artifact update).
+
+---
+
+## Iteration 4 — 2026-05-29 — `/repeatedly-apply-skill legacy-to-rust-porting` → C2 transform
+
+**Read:** all loop artifacts; REFACTOR-ISOMORPHISM.md + cpp_evidence_check.py's two existing strict-proof flags.
+
+**Did (2 serial subagent passes, orchestrator-verified + committed each):**
+- **Pass 1** (`cc94020`): `references/CODE-TRANSFORM.md` — three executable transform loops: **port**
+  (differential oracle: origin+target triple, emulator/HW, corpus; incl. C/C++↔Rust handoff behind a frozen C
+  ABI seam), **modernize** (per-transform clang-tidy isomorphism + ABI), **re-architect** (migration ledger +
+  caller census + tests + ABI). Added `port`/`modernize`/`rearchitect` profiles + a 3rd strict flag
+  `--require-transform-proof` (differential-oracle + migration-ledger field checks), threaded identically to
+  the perf/comprehension flags. `differential oracle` + `migration ledger` gate rows. Wired Task Router x3 +
+  Reference Map + both validators.
+- **Pass 2** (`0989487`): `examples/code-transform.md` worked example (libcfg) exercising all 3 modes; its
+  Evidence Packet PASSES `--profile port --profile modernize --profile rearchitect --require-transform-proof`.
+- INNOVATION-ENGINE.md banner: port/modernize/rearchitect now "exists today"; only `--derive-profiles`/
+  `--strict-numeric` remain planned.
+
+**Independently verified:** port FAIL(exit 1) missing target-triple / PASS(exit 0) complete; rearchitect
+FAIL(exit 1) missing caller-census; perf+comprehension proofs unregressed; example Evidence Packet PASSES all
+3 transform profiles (extracted + run myself); contract PASS references=17 examples=7; completion audit PASS (both modes).
+
+**Found / weak spots observed (feed next loop):**
+- modernize profile reuses `refactor isomorphism`+`ABI/API` with no modernize-specific strict field (can't
+  assert the clang-tidy check name is cited) — small future tightening.
+- `--derive-profiles` still doesn't map transform modes from Change Scope (Q1 mission).
+- No empirical proof an agent completes a real port/modernize (Q2).
+
+**Rubric movement:** 59 → **63/100** (C2 5→9; capped pending modernize strict field + empirical proof).
+
+**Convergence:** 2 passes (quality target met — C2 first-class + gated + exampled).
+
+**Next:** iteration 5 → `/repeatedly-apply-skill readme-writing` (C5 documentation: DOCUMENTATION.md + de-slopify cross-link). C5 is the most-neglected dim at 2/8.
+
+**Commits:** `cc94020`, `0989487` (passes) + this artifact-update commit.
