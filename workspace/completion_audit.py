@@ -54,6 +54,7 @@ REQUIRED_FILES = [
     "skill/c-cpp-profi/examples/idea-generation.md",
     "skill/c-cpp-profi/examples/code-transform.md",
     "skill/c-cpp-profi/examples/documentation.md",
+    "skill/c-cpp-profi/examples/domain-pack.md",
 ]
 
 STALE_PHRASES = [

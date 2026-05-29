@@ -72,6 +72,7 @@ REQUIRED_EXAMPLES = [
     "idea-generation.md",
     "code-transform.md",
     "documentation.md",
+    "domain-pack.md",
 ]
 
 REQUIRED_SKILL_TEXT = [
@@ -91,6 +92,7 @@ REQUIRED_SKILL_TEXT = [
     "examples/idea-generation.md",
     "examples/code-transform.md",
     "examples/documentation.md",
+    "examples/domain-pack.md",
     "cpp_docs_check.py",
     "cpp_evidence_check.py",
     "cpp_idea_check.py",
