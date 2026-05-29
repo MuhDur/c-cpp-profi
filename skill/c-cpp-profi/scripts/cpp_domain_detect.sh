@@ -67,66 +67,117 @@ rg_available() {
 # errors out, and `--no-messages`/`|| true` silently swallow it -> the pack is
 # never detected. `-e` (and `--` before the path) makes a leading-dash pattern
 # a literal search term, restoring HPC/SIMD detection (cglm's 297 `_mm_`).
-rg_signal() {
-  local mode="${3:-all}"
-  local file_globs=(--glob '*.{c,cc,cpp,cxx,h,hh,hpp,hxx,cu,cuh,cl}')
+# Shared exclusion globs, mirroring cpp_risk_scan.sh / cpp_backlog.sh so anchors
+# line up across the helper family. Adds testing/, extras/, suffix-named tests and
+# flat-root harnesses (R3) on top of the existing dir excludes — so a repo's own
+# test/bench/vendored-split code never contributes domain signal.
+EXCLUDE_GLOBS=(
+  --glob '!**/.git/**'
+  --glob '!**/build/**'
+  --glob '!**/_deps/**'
+  --glob '!**/third_party/**'
+  --glob '!**/thirdparty/**'
+  --glob '!**/vendor/**'
+  --glob '!**/extern/**'
+  --glob '!**/external/**'
+  --glob '!**/tests/**'
+  --glob '!**/test/**'
+  --glob '!**/testing/**'
+  --glob '!**/docs/**'
+  --glob '!**/doc/**'
+  --glob '!**/examples/**'
+  --glob '!**/example/**'
+  --glob '!**/bench/**'
+  --glob '!**/benches/**'
+  --glob '!**/benchmark/**'
+  --glob '!**/benchmarks/**'
+  --glob '!**/extras/**'
+  --glob '!**/extra/**'
+  --glob '!**/runners/**'
+  --glob '!**/unity*'
+  --glob '!**/utest.h'
+  --glob '!**/catch.hpp'
+  --glob '!**/catch2/**'
+  --glob '!**/gtest/**'
+  --glob '!**/gmock/**'
+  --glob '!**/*_test.*'
+  --glob '!**/*_tests.*'
+  --glob '!**/*test*.c'
+  --glob '!**/*test*.cc'
+  --glob '!**/*test*.cpp'
+  --glob '!**/*test*.cxx'
+  --glob '!**/*_bench*.*'
+  --glob '!**/ltests.*'
+)
+
+# Whole-file comment/string stripper (R2): emits "<cleaned>\t<path>:<line>:<orig>"
+# for every line of the files passed as args, blanking C/C++ // /* */ comment
+# spans (block state tracked across lines from each file's start) and "..."/'...'
+# literal contents. The same helper used by the sibling scripts; a downstream rg
+# re-applies the signal pattern to the CLEANED field so a token that lived only
+# in a TRAILING //, an inline/▸multi-line /* */, or a string literal disappears
+# (the F1b leading-marker-only filter missed all three). Build/CI files (YAML/
+# CMake) carry their tokens in code, not C comments, so the strip is a near no-op
+# there and never removes a real toolchain signal.
+STRIP_COMMENTS_AWK='
+FNR == 1 { inblock = 0 }
+{
+  print strip($0) "\t" FILENAME ":" FNR ":" $0
+}
+function strip(s,   out, i, c, nx, n) {
+  out = ""; n = length(s); i = 1
+  while (i <= n) {
+    c = substr(s, i, 1); nx = substr(s, i + 1, 1)
+    if (inblock) {
+      if (c == "*" && nx == "/") { inblock = 0; i += 2; continue }
+      i++; continue
+    }
+    if (c == "/" && nx == "/") break
+    if (c == "/" && nx == "*") { inblock = 1; i += 2; continue }
+    if (c == "\"") {
+      i++
+      while (i <= n) { c = substr(s, i, 1); if (c == "\\") { i += 2; continue } if (c == "\"") { i++; break } i++ }
+      out = out " "; continue
+    }
+    if (c == "\047") {
+      i++
+      while (i <= n) { c = substr(s, i, 1); if (c == "\\") { i += 2; continue } if (c == "\047") { i++; break } i++ }
+      out = out " "; continue
+    }
+    if (c == "\t") c = " "   # keep the cleaned field tab-free so it is one
+    out = out c; i++         # cut/awk field (source tab-indentation would split it)
+  }
+  return out
+}'
+
+# Glob set for a mode: source/header always; build/config files added for 'all'.
+signal_globs() {
+  local mode="${1:-all}"
+  printf '%s\0' '*.{c,cc,cpp,cxx,h,hh,hpp,hxx,cu,cuh,cl}'
   if [ "$mode" = all ]; then
-    file_globs+=(
-      --glob '*.{cmake,build,mk,txt,json,yml,yaml,ld,ini}'
-      --glob 'CMakeLists.txt' --glob 'Makefile' --glob 'GNUmakefile'
-      --glob 'meson.build' --glob 'Kconfig' --glob 'Kbuild'
-    )
+    printf '%s\0' '*.{cmake,build,mk,txt,json,yml,yaml,ld,ini}' \
+                  'CMakeLists.txt' 'Makefile' 'GNUmakefile' \
+                  'meson.build' 'Kconfig' 'Kbuild'
   fi
-  rg -ni --no-heading --no-messages \
-    "${file_globs[@]}" \
-    --glob '!**/.git/**' \
-    --glob '!**/build/**' \
-    --glob '!**/_deps/**' \
-    --glob '!**/third_party/**' \
-    --glob '!**/thirdparty/**' \
-    --glob '!**/vendor/**' \
-    --glob '!**/extern/**' \
-    --glob '!**/external/**' \
-    --glob '!**/tests/**' \
-    --glob '!**/test/**' \
-    --glob '!**/docs/**' \
-    --glob '!**/doc/**' \
-    --glob '!**/examples/**' \
-    --glob '!**/example/**' \
-    --glob '!**/bench/**' \
-    --glob '!**/benches/**' \
-    --glob '!**/benchmark/**' \
-    --glob '!**/benchmarks/**' \
-    --glob '!**/runners/**' \
-    --glob '!**/unity*' \
-    --glob '!**/utest.h' \
-    --glob '!**/catch.hpp' \
-    --glob '!**/catch2/**' \
-    --glob '!**/gtest/**' \
-    --glob '!**/gmock/**' \
-    -e "$1" -- "$2" 2>/dev/null || true
 }
 
-# Comment post-filter (F2b): rg emits "file:line:content"; drop rows whose
-# content field, left-trimmed, begins with a doc/line-comment marker (* // /*).
-# This kills "coordinate system", "ideal%", "cat bytes ... from the kernel",
-# "gets va_list", and "/* delete */" prose without parsing the language. Same
-# approach as cpp_risk_scan.sh's drop_comment_lines so anchors line up.
-drop_comment_lines() {
-  awk -F: '
-    {
-      p = index($0, ":")
-      if (p == 0) { print; next }
-      rest = substr($0, p + 1)
-      q = index(rest, ":")
-      if (q == 0) { print; next }
-      content = substr(rest, q + 1)
-      sub(/^[ \t]+/, "", content)
-      if (content ~ /^\*/)  next
-      if (content ~ /^\/\//) next
-      if (content ~ /^\/\*/) next
-      print
-    }'
+# Comment/string-stripped, case-insensitive signal matches for PATTERN under REPO.
+# Returns "path:line:original" rows whose CODE part matches (R2/R3). Args: PATTERN REPO [MODE]
+rg_signal() {
+  local mode="${3:-all}"
+  local gl=()
+  local g
+  while IFS= read -r -d '' g; do gl+=(--glob "$g"); done < <(signal_globs "$mode")
+  local files
+  files="$(rg -li -l --no-messages \
+      "${gl[@]}" \
+      "${EXCLUDE_GLOBS[@]}" \
+      -e "$1" -- "$2" 2>/dev/null | LC_ALL=C sort || true)"
+  [ -n "$files" ] || return 0
+  printf '%s\n' "$files" | awk 'NF' | tr '\n' '\0' \
+    | xargs -0 awk "$STRIP_COMMENTS_AWK" 2>/dev/null \
+    | rg -iP "^[^\t]*(?:$1)" 2>/dev/null \
+    | cut -f2- || true
 }
 
 # Strip a leading "REPO/" (or "REPO" == ".") prefix so anchors are repo-relative.
@@ -148,11 +199,12 @@ strip_repo_prefix() {
     }'
 }
 
-# Repo-relative, comment-stripped, de-duplicated file:line anchors for PATTERN
-# under REPO, LC_ALL=C sorted. Args: PATTERN REPO [MODE]
+# Repo-relative, comment/string-stripped, de-duplicated file:line anchors for
+# PATTERN under REPO, LC_ALL=C sorted (rg_signal already strips comments/strings
+# and re-matches, so a token that lived only in a comment/literal is gone). Args:
+# PATTERN REPO [MODE]
 pack_anchors() {
   rg_signal "$1" "$2" "${3:-all}" \
-    | drop_comment_lines \
     | strip_repo_prefix "$2" \
     | awk -F: 'NF>=2 { print $1 ":" $2 }' \
     | LC_ALL=C sort -u
@@ -197,8 +249,8 @@ pack_regex() {
   case "$1" in
     space)       printf '%s' '\bMISRA\b|rules? of ten|Power of Ten|\bcFE_|\bOS_[A-Z]|\bwatchdog\b|\bRTEMS\b|EXPORT_SYMBOL_NASA' ;;
     embedded)    printf '%s' '\bFreeRTOS\b|\bZephyr\b|xTaskCreate|-ffreestanding|\bvolatile\b.*(0x[0-9A-Fa-f]+|register)|ISR_HANDLER|\bHAL_' ;;
-    kernel)      printf '%s' '__user\b|copy_(to|from)_user|MODULE_LICENSE|EXPORT_SYMBOL\b|\bspin_lock\b|GFP_KERNEL|GFP_ATOMIC' ;;
-    gpu)         printf '%s' '__global__|__device__|cudaMalloc|sycl::|hipMalloc|-fsycl|cudaMemcpy|__syncthreads' ;;
+    kernel)      printf '%s' '(^|[^A-Za-z0-9_])__user([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])copy_(to|from)_user([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])MODULE_LICENSE([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])EXPORT_SYMBOL([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])spin_lock([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])GFP_(KERNEL|ATOMIC)([^A-Za-z0-9_]|$)' ;;
+    gpu)         printf '%s' '(^|[^A-Za-z0-9_])__global__([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])__device__([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])__syncthreads([^A-Za-z0-9_]|$)|\bcudaMalloc\b|\bcudaMemcpy\b|\bhipMalloc\b|sycl::|-fsycl' ;;
     hpc)         printf '%s' '-ffast-math|_mm_[a-z]|vld1|svptrue|Eigen/|highway|#pragma omp|<cfenv>' ;;
     crypto)      printf '%s' 'constant.time|secret-dependent|\bEVP_|crypto_[a-z]|explicit_bzero|memset_s|\bFIPS\b|test.vector' ;;
     networking)  printf '%s' '\bntohl\b|\bhtons\b|\bntohs\b|\bhtonl\b|recvfrom|parse_packet|RFC[0-9]|__attribute__.*packed|#pragma pack' ;;
@@ -236,17 +288,29 @@ pack_mode() {
 }
 
 # ---------------------------------------------------------------------------
-# Detection (F2b ranked): count each pack's distinct, comment-stripped code
-# matches, then RANK by (priority tier, count, fixed order). Emits tab-separated
-# "id\tlabel\tanchor\tcount\trole" rows, ranked best-first. Roles:
-#   primary        - the top-ranked matched pack (the binding classification)
-#   secondary      - other confident packs (>=2 code matches): a repo may
-#                    legitimately span several packs; union their gates.
-# Packs with a single incidental code match (count==1) are NOT emitted: one hit
-# (often a struct-packing macro or a stray token) is too weak to gate on, and a
-# wrong pack is worse than no pack. `generic` is the honest fallback for a real
-# library that matches no domain; it never masks a confident real-domain pack
-# but wins by dominance when it is the strongest signal (klib/uthash/sds).
+# Detection (R5 ranked): count each pack's distinct, comment/string-stripped code
+# matches, then RANK. Emits tab-separated "id\tlabel\tanchor\tcount\trole" rows.
+# Roles: primary (the binding classification) / secondary (other confident packs).
+# Packs with a single incidental code match (count==1) are dropped (F2b).
+#
+# Ranking is primarily by COUNT, with two corrections proven necessary on the
+# batch-2 repos (R5):
+#  (b) TIER-1 COUNT FLOOR. gpu/kernel carry unambiguous, never-incidental tokens
+#      (`__global__`, `MODULE_LICENSE`, `copy_from_user`) and sit in priority tier
+#      1 so a genuine CUDA/Linux-driver repo outranks the broad generic pack. But
+#      a tier-1 pack must EARN that promotion: it only jumps ahead of a
+#      higher-count tier-0 pack when its own count clears a floor (>=3) AND is
+#      within 10x of the leader. This stops 8 incidental GPU substring hits from
+#      beating 1446 Audio matches (miniaudio) and 13 Pico-spinlock `spin_lock`
+#      hits from beating 1968 RTOS matches (FreeRTOS) — both are real regressions.
+#  (c) GENERIC IS NEVER PRIMARY WHEN A SPECIFIC PACK CLEARS THE FLOOR. `generic`
+#      is the honest "it's just a C library" fallback. Its broad vocabulary
+#      (ctx/init/free/struct/string idioms) wins raw count on any sizeable library
+#      and buried the true domain (lwip Networking, mbedtls Crypto, leveldb
+#      Databases). So when the count leader is `generic` but some SPECIFIC pack
+#      has >= GENERIC_FLOOR (3) matches, the best-supported specific pack becomes
+#      primary and generic drops to last. With no specific pack clearing the floor
+#      (klib/uthash/sds containers), generic stays primary — the honest result.
 # When nothing confident matches, detect() emits nothing -> unknown-domain.
 # ---------------------------------------------------------------------------
 detect() {
@@ -274,35 +338,46 @@ detect() {
 
   [ -n "$raw" ] || return 0
 
-  # Stable rank: priority tier desc, count desc, original pack order asc.
-  # Generic-dominance rule: `generic` is the least-specific pack ("it's a
-  # library"). It only earns `primary` when it strictly DOMINATES every other
-  # matched pack (>= 2x the next pack's count) -- the klib/uthash/sds case. When
-  # it merely edges out a more-specific pack (e.g. a 2-function JSON header where
-  # `*_init` ties `*_parse`), the specific pack stays primary and generic drops
-  # to last. Then assign role (first = primary, rest = secondary).
+  # Base order: COUNT desc, then original pack order asc (the priority column is
+  # carried for the tier-1 floor logic but is NOT the primary sort key any more).
   printf '%b' "$raw" \
     | awk -F'\t' 'NF>=5 { print NR "\t" $0 }' \
-    | LC_ALL=C sort -t$'\t' -k2,2nr -k3,3nr -k1,1n \
+    | LC_ALL=C sort -t$'\t' -k3,3nr -k1,1n \
     | awk -F'\t' '
+        BEGIN { TIER1_FLOOR = 3; TIER1_RATIO = 10; GENERIC_FLOOR = 3 }
         { order[NR]=$1; prio[NR]=$2; count[NR]=$3
           id[NR]=$4; label[NR]=$5; anchor[NR]=$6; n=NR }
         END {
-          # Find the best non-generic pack (already sorted, so first such row).
-          best_other = 0
-          for (i = 1; i <= n; i++) if (id[i] != "generic") { best_other = i; break }
-          # If generic is rank 1 but does not dominate the best other pack,
-          # rotate generic to the end of the ranking.
-          rotate = (n >= 2 && id[1] == "generic" && best_other > 0 \
-                    && count[1] < 2 * count[best_other])
-          # Emit order: rotated (others first, generic last) or as-sorted.
-          emitted = 0
-          if (rotate) {
-            for (i = 1; i <= n; i++) if (id[i] != "generic") emit(++emitted, i)
-            for (i = 1; i <= n; i++) if (id[i] == "generic") emit(++emitted, i)
-          } else {
-            for (i = 1; i <= n; i++) emit(++emitted, i)
+          # Count leader (row 1 after the count-desc sort).
+          leader = 1
+          # (b) Tier-1 promotion: the highest-count tier-1 pack is promoted to
+          # primary ONLY if it clears the floor and is within TIER1_RATIO of the
+          # leader. Otherwise tier-1 gets no special standing (ranked by count).
+          tier1 = 0
+          for (i = 1; i <= n; i++) {
+            if (prio[i] == "1") {
+              if (count[i] >= TIER1_FLOOR && count[i] * TIER1_RATIO >= count[leader]) {
+                tier1 = i
+              }
+              break   # rows are count-sorted; first tier-1 is the strongest
+            }
           }
+          primary = (tier1 > 0 ? tier1 : leader)
+          # (c) Generic demotion: if the chosen primary is generic but a specific
+          # pack clears GENERIC_FLOOR, the best-supported specific pack wins.
+          if (id[primary] == "generic") {
+            best_specific = 0
+            for (i = 1; i <= n; i++) {
+              if (id[i] != "generic" && count[i] >= GENERIC_FLOOR) { best_specific = i; break }
+            }
+            if (best_specific > 0) primary = best_specific
+          }
+          # Emit: primary first, then the rest in count order; generic always
+          # last (it is the least-specific label whenever a real pack exists).
+          emitted = 0
+          emit(++emitted, primary)
+          for (i = 1; i <= n; i++) if (i != primary && id[i] != "generic") emit(++emitted, i)
+          for (i = 1; i <= n; i++) if (i != primary && id[i] == "generic") emit(++emitted, i)
         }
         function emit(rank, i,   role) {
           role = (rank == 1 ? "primary" : "secondary")

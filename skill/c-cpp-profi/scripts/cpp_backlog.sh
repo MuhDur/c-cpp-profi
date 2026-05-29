@@ -48,75 +48,114 @@ rg_available() {
   command -v rg >/dev/null 2>&1
 }
 
-# Drop rg "file:line:content" rows whose content (left-trimmed) begins with a
-# doc/line-comment marker (* // /*), so prose like "coordinate system", "a new
-# frame", or "gets va_list" never reaches a lane (F1b). Pure stdin filter.
-drop_comment_lines() {
-  awk -F: '
-    {
-      p = index($0, ":")
-      if (p == 0) { print; next }
-      rest = substr($0, p + 1)
-      q = index(rest, ":")
-      if (q == 0) { print; next }
-      content = substr(rest, q + 1)
-      sub(/^[ \t]+/, "", content)
-      if (content ~ /^\*/)  next
-      if (content ~ /^\/\//) next
-      if (content ~ /^\/\*/) next
-      print
-    }'
-}
+# Shared exclusion globs: vendored/build trees AND non-shipped dirs, mirroring
+# cpp_risk_scan.sh so anchors line up across the helper family. Path-segment globs
+# alone miss suffix-named tests (leveldb db_test.cc, re2 parse_test.cc), the
+# `testing/` gerund (re2), `extras/` (miniaudio split-copy + vendored decoders),
+# and flat-root harnesses (lua ltests.*) — all added below (R3).
+EXCLUDE_GLOBS=(
+  --glob '!**/.git/**'
+  --glob '!**/build/**'
+  --glob '!**/_deps/**'
+  --glob '!**/third_party/**'
+  --glob '!**/thirdparty/**'
+  --glob '!**/vendor/**'
+  --glob '!**/extern/**'
+  --glob '!**/external/**'
+  --glob '!**/tests/**'
+  --glob '!**/test/**'
+  --glob '!**/testing/**'
+  --glob '!**/bench/**'
+  --glob '!**/benches/**'
+  --glob '!**/benchmark/**'
+  --glob '!**/benchmarks/**'
+  --glob '!**/examples/**'
+  --glob '!**/example/**'
+  --glob '!**/extras/**'
+  --glob '!**/extra/**'
+  --glob '!**/docs/**'
+  --glob '!**/doc/**'
+  --glob '!**/utest.h'
+  --glob '!**/unity*'
+  --glob '!**/catch.hpp'
+  --glob '!**/catch2/**'
+  --glob '!**/*_test.*'
+  --glob '!**/*_tests.*'
+  --glob '!**/*test*.c'
+  --glob '!**/*test*.cc'
+  --glob '!**/*test*.cpp'
+  --glob '!**/*test*.cxx'
+  --glob '!**/*_bench*.*'
+  --glob '!**/ltests.*'
+)
 
+# Whole-file comment/string stripper (R2): emits "<cleaned>\t<path>:<line>:<orig>"
+# for every line of the files passed as args, blanking // /* */ comment spans
+# (block state tracked across lines from each file's start) and "..."/'...' literal
+# contents. This carries multi-line block state correctly — the only robust way,
+# since the `/*` opener often lands on a line the search pattern does not match.
+# A downstream rg re-applies the search pattern to the cleaned field; `cut`
+# recovers the original row. Replaces the old leading-marker-only F1b filter.
+STRIP_COMMENTS_AWK='
+FNR == 1 { inblock = 0 }
+{
+  print strip($0) "\t" FILENAME ":" FNR ":" $0
+}
+function strip(s,   out, i, c, nx, n) {
+  out = ""; n = length(s); i = 1
+  while (i <= n) {
+    c = substr(s, i, 1); nx = substr(s, i + 1, 1)
+    if (inblock) {
+      if (c == "*" && nx == "/") { inblock = 0; i += 2; continue }
+      i++; continue
+    }
+    if (c == "/" && nx == "/") break
+    if (c == "/" && nx == "*") { inblock = 1; i += 2; continue }
+    if (c == "\"") {
+      i++
+      while (i <= n) { c = substr(s, i, 1); if (c == "\\") { i += 2; continue } if (c == "\"") { i++; break } i++ }
+      out = out " "; continue
+    }
+    if (c == "\047") {
+      i++
+      while (i <= n) { c = substr(s, i, 1); if (c == "\\") { i += 2; continue } if (c == "\047") { i++; break } i++ }
+      out = out " "; continue
+    }
+    if (c == "\t") c = " "   # keep the cleaned field tab-free so it is one
+    out = out c; i++         # cut/awk field (source tab-indentation would split it)
+  }
+  return out
+}'
+
+# rg over SHIPPED C/C++ sources with whole-file comment/string stripping (R2/R3).
+# Returns "path:line:original" rows whose CODE part matches PATTERN. Args: PATTERN REPO
 rg_code() {
-  # rg over SHIPPED C/C++ sources: vendored/build trees AND non-shipped dirs
-  # (tests/bench/examples/docs) excluded (F7), comment-only lines dropped (F1b).
-  # Args: PATTERN REPO
-  rg -n --no-heading --no-messages \
-    --glob '*.{c,cc,cpp,cxx,h,hh,hpp,hxx}' \
-    --glob '!**/.git/**' \
-    --glob '!**/build/**' \
-    --glob '!**/_deps/**' \
-    --glob '!**/third_party/**' \
-    --glob '!**/thirdparty/**' \
-    --glob '!**/vendor/**' \
-    --glob '!**/extern/**' \
-    --glob '!**/external/**' \
-    --glob '!**/tests/**' \
-    --glob '!**/test/**' \
-    --glob '!**/bench/**' \
-    --glob '!**/benches/**' \
-    --glob '!**/benchmark/**' \
-    --glob '!**/benchmarks/**' \
-    --glob '!**/examples/**' \
-    --glob '!**/example/**' \
-    --glob '!**/docs/**' \
-    --glob '!**/doc/**' \
-    --glob '!**/utest.h' \
-    --glob '!**/unity*' \
-    --glob '!**/catch.hpp' \
-    --glob '!**/catch2/**' \
-    "$1" "$2" 2>/dev/null | drop_comment_lines || true
+  local files
+  files="$(rg -l --no-messages \
+      --glob '*.{c,cc,cpp,cxx,h,hh,hpp,hxx}' \
+      "${EXCLUDE_GLOBS[@]}" \
+      "$1" "$2" 2>/dev/null | LC_ALL=C sort || true)"
+  [ -n "$files" ] || return 0
+  printf '%s\n' "$files" | awk 'NF' | tr '\n' '\0' \
+    | xargs -0 awk "$STRIP_COMMENTS_AWK" 2>/dev/null \
+    | rg -P "^[^\t]*(?:$1)" 2>/dev/null \
+    | cut -f2- || true
 }
 
-# C++ signal: the repo has real C++ sources, or a C++ standard/CXX language is
-# declared in the build. C++-only advice (std::span/string_view) is only emitted
-# when this is "yes"; on pure-C repos the same surface is relabeled as a ptr+len
-# ownership-contract gap instead (F1a).
+# C++ signal: does the repo SHIP real C++ code? True only when an actual C++
+# translation unit (.cc/.cpp/.cxx/.c++) OR C++-only header (.hpp/.hh/.hxx/.h++)
+# exists in a SHIPPED (non-test/non-vendored/non-extras) dir — same exclusion set
+# as the scan (R1). A lone CMAKE_CXX_STANDARD / enable_language(CXX) build variable
+# or a test-only/extras .cpp must NOT count: it falsely flipped pure-C repos to C++
+# and re-enabled C++-only advice. C++-only advice (std::span/string_view) is only
+# emitted when this is "yes"; on pure-C repos the same surface is relabeled as a
+# ptr+len ownership-contract gap (F1a / W2).
 repo_has_cpp() {
   local repo="$1"
   if [ -n "$(rg --files --no-messages \
-        --glob '*.{cc,cpp,cxx,hpp,hh,hxx}' \
-        --glob '!**/.git/**' --glob '!**/build/**' --glob '!**/_deps/**' \
+        --glob '*.{cc,cpp,cxx,c++,hpp,hh,hxx,h++}' \
+        "${EXCLUDE_GLOBS[@]}" \
         "$repo" 2>/dev/null)" ]; then
-    return 0
-  fi
-  if rg -q --no-messages \
-      --glob 'CMakeLists.txt' --glob '*.cmake' --glob 'CMakePresets.json' \
-      --glob 'meson.build' --glob 'Makefile' --glob '*.mk' \
-      --glob '!**/.git/**' \
-      '(-std=c\+\+|-std=gnu\+\+|CMAKE_CXX_STANDARD|CXX_STANDARD|cpp_std|languages?\s*\(.*CXX)' \
-      "$repo" 2>/dev/null; then
     return 0
   fi
   return 1
@@ -281,14 +320,19 @@ EOF
   else
     owner_pat='(=|return)\s*(malloc\s*\(|calloc\s*\()'
   fi
-  hits="$(rg -n --no-heading --no-messages \
-      --glob '*.{h,hh,hpp,hxx}' \
-      --glob '!**/.git/**' --glob '!**/build/**' --glob '!**/_deps/**' \
-      --glob '!**/third_party/**' --glob '!**/thirdparty/**' --glob '!**/vendor/**' \
-      --glob '!**/extern/**' --glob '!**/external/**' \
-      --glob '!**/tests/**' --glob '!**/test/**' --glob '!**/examples/**' \
-      --glob '!**/example/**' --glob '!**/docs/**' --glob '!**/doc/**' \
-      "$owner_pat" "$repo" 2>/dev/null | drop_comment_lines | strip_repo_prefix "$repo" || true)"
+  local hdr_files
+  hdr_files="$(rg -l --no-messages \
+      --glob '*.{h,hh,hpp,hxx,h++}' \
+      "${EXCLUDE_GLOBS[@]}" \
+      "$owner_pat" "$repo" 2>/dev/null | LC_ALL=C sort || true)"
+  if [ -n "$hdr_files" ]; then
+    hits="$(printf '%s\n' "$hdr_files" | awk 'NF' | tr '\n' '\0' \
+        | xargs -0 awk "$STRIP_COMMENTS_AWK" 2>/dev/null \
+        | rg -P "^[^\t]*(?:$owner_pat)" 2>/dev/null \
+        | cut -f2- | strip_repo_prefix "$repo" || true)"
+  else
+    hits=""
+  fi
   if [ -n "$hits" ]; then
     while IFS= read -r line; do
       [ -n "$line" ] || continue
@@ -565,20 +609,31 @@ self_test() {
   trap "rm -rf '$tmp'" EXIT
 
   mkdir -p "$tmp/src"
-  # Build file with no hardening flags -> hardening build rows.
+  # Build file with no hardening flags -> hardening build rows. R1 TRAP: it also
+  # declares CMAKE_CXX_STANDARD + enable_language(CXX) for an auxiliary target,
+  # which previously flipped this pure-C repo to "C++" and leaked std::span advice.
+  # With zero shipped C++ TUs the repo MUST stay C (asserted below via the C
+  # ownership-contract relabel + the no-span assertion).
   cat >"$tmp/CMakeLists.txt" <<'CM'
 cmake_minimum_required(VERSION 3.16)
 project(fake C)
+set(CMAKE_CXX_STANDARD 17)
+enable_language(CXX)
 add_executable(fake src/main.c)
 CM
   # Source with an injected strcpy and a parse_* entry point, no fuzz harness.
   # Also seeds comment-only prose that MUST NOT match (F1b/F1c): a doc comment
-  # mentioning strcpy/sprintf/new/delete, and a ptr+len signature (F1a-C).
+  # mentioning strcpy/sprintf/new/delete, and a ptr+len signature (F1a-C). The
+  # R2 TRAP is a MULTI-LINE /* ... */ block whose CONTINUATION line mentions
+  # `malloc()` with no leading marker (the leveldb c.h class of leak) — it must
+  # NOT yield a hardening row; only the real strcpy call may.
   cat >"$tmp/src/main.c" <<'SRC'
 #include <string.h>
 #include <stdlib.h>
 /* This routine used to call sprintf and strcpy; we now use snprintf. */
 // delete the old buffer and allocate a new one (prose, not code)
+/* REQUIRES: ptr was
+   malloc()-ed by the caller and is freed here */
 void copy_it(char *dst, const char *src) {
     strcpy(dst, src);
 }
@@ -595,6 +650,13 @@ SRC
   cat >"$tmp/tests/test_main.c" <<'SRC'
 #include <string.h>
 void t(char *d, const char *s) { strcpy(d, s); }
+SRC
+
+  # R3 TRAP: a SUFFIX-named test co-located with sources (Google style) carrying
+  # a real strcpy CALL. No dir-glob catches it; the *_test.* filename filter must.
+  cat >"$tmp/src/parser_test.c" <<'SRC'
+#include <string.h>
+void tp(char *d, const char *s) { strcpy(d, s); }
 SRC
 
   local out1 out2
@@ -627,6 +689,21 @@ SRC
   # Assertion F7: a strcpy CALL inside tests/ must be excluded.
   if printf '%s\n' "$out1" | grep -qE 'tests/test_main\.c'; then
     printf 'cpp_backlog self-test: FAIL (tests/ tree not excluded, F7)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out1"
+    exit 1
+  fi
+  # Assertion R3: a SUFFIX-named *_test.c co-located in src/ must be excluded.
+  if printf '%s\n' "$out1" | grep -qE 'src/parser_test\.c'; then
+    printf 'cpp_backlog self-test: FAIL (suffix-named *_test.c not excluded, R3)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out1"
+    exit 1
+  fi
+  # Assertion R2: the multi-line block-comment CONTINUATION line that mentions
+  # malloc() (no leading marker) must NOT produce a hardening malloc row. The
+  # malloc-with-multiply row anchors only to real code; the doc line at main.c:6
+  # must not appear anywhere.
+  if printf '%s\n' "$out1" | grep -qE 'main\.c:6'; then
+    printf 'cpp_backlog self-test: FAIL (block-comment continuation leaked a malloc row, R2)\n'
     printf '%s\n%s\n' '--- backlog ---' "$out1"
     exit 1
   fi
