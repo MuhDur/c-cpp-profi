@@ -37,6 +37,7 @@ REQUIRED_FILES = [
     "skill/c-cpp-profi/references/C-CPP-EXPERT-CANON.md",
     "skill/c-cpp-profi/references/DOMAIN-AGNOSTIC-MASTERY.md",
     "skill/c-cpp-profi/references/INNOVATION-ENGINE.md",
+    "skill/c-cpp-profi/references/REPO-COMPREHENSION.md",
     "skill/c-cpp-profi/references/TOOLCHAIN-MATRIX.md",
     "skill/c-cpp-profi/references/QUALITY-GATES.md",
     "skill/c-cpp-profi/references/TESTING-FUZZING.md",
@@ -140,6 +141,13 @@ EVIDENCE_NEEDLES = {
         "Adversarial Scoring",
         "Accretive vs Radical",
         "Mandatory Evidence Gates for Radical Change",
+    ],
+    "skill/c-cpp-profi/references/REPO-COMPREHENSION.md": [
+        "Build graph",
+        "Domain intent",
+        "Comprehension is falsifiable",
+        "No editing code you cannot model",
+        "--require-comprehension-proof",
     ],
     "skill/c-cpp-profi/references/QUALITY-GATES.md": [
         "validate the filled packet",

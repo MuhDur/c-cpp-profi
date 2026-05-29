@@ -66,7 +66,7 @@ Native C/C++ extras are mandatory when relevant: no UB-for-speed contracts, no `
 
 | User asks for | Do this |
 |---|---|
-| Understand / onboard to any-domain repo | Read [DOMAIN-AGNOSTIC-MASTERY.md](references/DOMAIN-AGNOSTIC-MASTERY.md), detect the domain from repo signals, load or synthesize its pack, then gate against that pack's oracle |
+| Understand / onboard to any-domain repo | Climb the four-layer comprehension ladder in [REPO-COMPREHENSION.md](references/REPO-COMPREHENSION.md), read [DOMAIN-AGNOSTIC-MASTERY.md](references/DOMAIN-AGNOSTIC-MASTERY.md), detect the domain from repo signals, load or synthesize its pack, then gate comprehension and that pack's oracle |
 | Implement feature | Inventory -> design invariants -> edit -> compile -> tests -> relevant dynamic/static gates |
 | Fix crash | Reproduce first -> minimize input -> sanitizer/debugger -> regression test -> fix |
 | Security hardening | Threat model -> CERT/Core Guideline checks -> static analysis -> sanitizer/fuzz -> hardening flags |
@@ -88,6 +88,7 @@ Load only the relevant file:
 |---|---|
 | Enforcing expert workflow and elite-project patterns | [C-CPP-EXPERT-CANON.md](references/C-CPP-EXPERT-CANON.md) |
 | Any-domain transfer, domain packs, unknown-domain template | [DOMAIN-AGNOSTIC-MASTERY.md](references/DOMAIN-AGNOSTIC-MASTERY.md) |
+| Four-layer comprehension ladder, comprehension gate | [REPO-COMPREHENSION.md](references/REPO-COMPREHENSION.md) |
 | Idea generation, accretive backlog, radical bets, idea-evidence gate | [INNOVATION-ENGINE.md](references/INNOVATION-ENGINE.md) |
 | Tool families, commands, manpages, missing-tool handling | [TOOLCHAIN-MATRIX.md](references/TOOLCHAIN-MATRIX.md) |
 | Gate selection and commands | [QUALITY-GATES.md](references/QUALITY-GATES.md) |

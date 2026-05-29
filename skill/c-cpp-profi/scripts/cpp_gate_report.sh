@@ -72,6 +72,7 @@ cat <<REPORT
 | refactor isomorphism | not applicable |  |  |
 | golden artifacts | not applicable |  |  |
 | idea card | not applicable |  | include idea-card: validated by cpp_idea_check.py; kind: <accretive\|radical>; score: <n> |
+| comprehension | not applicable |  | include entry-point:, module-map:, callgraph:, intent: |
 
 Use statuses: passed, failed, not run, not applicable.
 

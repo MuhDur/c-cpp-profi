@@ -26,6 +26,7 @@ BASELINE_REQUIRED = [
 
 PROFILE_REQUIRED = {
     "basic": BASELINE_REQUIRED,
+    "comprehension": [("comprehension",)],
     "docs-scripts": [("inventory",)],
     "idea": [("idea card",)],
     "memory": [("static analysis",), ("ASan+UBSan",)],
@@ -161,6 +162,7 @@ def check_gates(
     require_warning_clean: bool,
     require_analyzer_review: bool,
     require_performance_proof: bool,
+    require_comprehension_proof: bool,
     errors: list[str],
 ) -> None:
     for gate_name, row in sorted(rows.items()):
@@ -218,6 +220,22 @@ def check_gates(
                         "gate performance: passed evidence missing strict proof fields: "
                         + ", ".join(missing)
                     )
+            if require_comprehension_proof and gate_name == "comprehension":
+                requirements = {
+                    "entry-point": ("entry-point:" in evidence),
+                    "module-map": ("module-map:" in evidence),
+                    "callgraph": (
+                        "callgraph:" in evidence
+                        or "touched-path-callgraph:" in evidence
+                    ),
+                    "intent": ("intent:" in evidence),
+                }
+                missing = [name for name, ok in requirements.items() if not ok]
+                if missing:
+                    errors.append(
+                        "gate comprehension: passed evidence missing strict proof fields: "
+                        + ", ".join(missing)
+                    )
 
     for group in required_gate_groups(profiles):
         matching_rows = [rows.get(normalize(gate)) for gate in group]
@@ -237,6 +255,7 @@ def check_report(
     require_warning_clean: bool,
     require_analyzer_review: bool,
     require_performance_proof: bool,
+    require_comprehension_proof: bool,
 ) -> list[str]:
     errors: list[str] = []
     if "# C/C++ Gate Report" not in text:
@@ -257,6 +276,7 @@ def check_report(
         require_warning_clean,
         require_analyzer_review,
         require_performance_proof,
+        require_comprehension_proof,
         errors,
     )
     return errors
@@ -301,6 +321,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
             "profile/hotspot, score/opportunity, oracle/golden/isomorphism, and after/result"
         ),
     )
+    parser.add_argument(
+        "--require-comprehension-proof",
+        action="store_true",
+        help=(
+            "require passed comprehension evidence to include entry-point, "
+            "module-map, callgraph (or touched-path-callgraph), and intent"
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="emit JSON result")
     return parser.parse_args(argv)
 
@@ -316,6 +344,7 @@ def main(argv: list[str]) -> int:
         args.require_warning_clean,
         args.require_analyzer_review,
         args.require_performance_proof,
+        args.require_comprehension_proof,
     )
 
     if args.json:
@@ -325,6 +354,7 @@ def main(argv: list[str]) -> int:
                     "ok": not errors,
                     "profiles": profiles,
                     "require_analyzer_review": args.require_analyzer_review,
+                    "require_comprehension_proof": args.require_comprehension_proof,
                     "require_performance_proof": args.require_performance_proof,
                     "require_warning_clean": args.require_warning_clean,
                     "errors": errors,
