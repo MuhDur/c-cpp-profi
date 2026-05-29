@@ -153,6 +153,8 @@ EVIDENCE_NEEDLES = {
         "Databases / storage engines",
         "Audio / DSP / real-time media",
         "Filesystems / block storage",
+        "Parser / text-format / serialization",
+        "Generic library / data-structures / strings",
         "cpp_domain_detect.sh",
     ],
     "skill/c-cpp-profi/references/UNKNOWN-DOMAIN.md": [

@@ -159,6 +159,28 @@ Worked unknown-domain example (industrial motion control, never briefed). Signal
 - Toolchain: a mount-path image fuzzer (AFL++/libFuzzer over the superblock/inode parser) + ASan/UBSan, `dm-flakey`/CrashMonkey crash injection, the fsck/repair tool as oracle, a format-version golden-image corpus, KASAN if in-kernel.
 - Failure modes: out-of-bounds read/write from an unchecked length/offset in a crafted image (mount-path CVE), unrecoverable corruption after a power cut because a barrier was missing, an fsck that "repairs" by deleting user data, a format-version bump that bricks old images, integer overflow computing a block offset, a torn metadata write with no checksum to catch it.
 
+### Parser / text-format / serialization
+
+This is the most common and most security-relevant C/C++ surface: anything that turns untrusted bytes (a file, a packet, a config) into structured data. It overlaps Networking (wire protocols) but covers every text/binary format — JSON, XML, YAML, INI, CSV, HTTP, protobuf/msgpack, and file-format codecs (WAV/FLAC/MP3 readers, image/font loaders).
+
+- Authorities: the governing RFC/format spec (RFC 8259 JSON, the XML 1.0 REC, RFC 7230 HTTP/1.1, the container's format spec); the format's own conformance suite; the project's reference parser; differential-fuzzing literature (OSS-Fuzz parser corpora).
+- Invariants: **validate length/bounds before every read** (never trust an attacker-supplied size/offset/count); **bounded recursion** on nested structures (a depth cap, not stack faith); explicit handling of truncated/partial input and EOF mid-token; the input boundary is the untrusted-input boundary — everything past the parse is trusted only after validation; canonical encode → decode → encode round-trips to the same bytes.
+- Oracle: a format conformance corpus (valid + invalid + adversarial inputs) with expected accept/reject; differential testing against a reference parser of the same format; round-trip identity for serializers; crash inputs promoted to permanent regression seeds.
+- Constraints: the entire input is attacker-controlled; no casting a raw buffer to a struct (alignment + endianness + trailing-bytes UB); integer overflow in `len * count` / `offset + len` size math; a single malformed token must not desync the whole parse; reject-don't-crash on ill-formed input.
+- Toolchain: a coverage-guided fuzzer (libFuzzer/AFL++) at the parse-boundary entry point + ASan/UBSan; a structure-aware/grammar fuzzer for deep formats; the conformance corpus as a regression gate; differential harness vs the reference parser.
+- Failure modes: heap/stack overflow from an unchecked length field; integer overflow in allocation sizing; unbounded recursion on crafted nesting (stack exhaustion); out-of-bounds read past a truncated buffer; use-after-free on an error path; parser desync from one malformed byte; an accept of input the spec says to reject (a forgery surface).
+
+### Generic library / data-structures / strings
+
+The honest fallback for a real C/C++ library that matches no domain: header-only containers (hashtables, vectors, lists, b-trees), string utilities, arena/pool allocators, single-header `#define IMPLEMENTATION` libraries. This is distinct from `unknown-domain` — `unknown-domain` means "no pack at all, derive one from the template"; this pack means "it is a general-purpose library and these are its real, domain-light invariants." Pick it only when no specific domain dominates (see the dominance rule in the Pack-Selection Procedure).
+
+- Authorities: the C++ Core Guidelines (containers, lifetime, ownership); the project's own header contract/README; CERT C/C++ (macro hygiene, integer rules); the single-header-library idiom (stb-style `#define X_IMPLEMENTATION`).
+- Invariants: **ownership/lifetime of every returned handle is documented** (who frees it, when, idempotence of free); **iterator/pointer invalidation across realloc/rehash/insert is stated** (the classic container footgun); macro hygiene — no double-evaluation of arguments, no UB in token-pasting/`##`, parenthesized macro params; capacity/length math never overflows; `*_init`/`*_free` pair with no leak on the error path.
+- Oracle: unit tests exercising grow/shrink/clear/realloc paths under ASan + UBSan; LeakSanitizer for the init/free contract; a fuzzer over the container's mutating API for the macro-heavy ones; valgrind for the C subset that ASan misses.
+- Constraints: a ptr+len pair is the C idiom for a view — document its ownership rather than reaching for `std::span` (that advice is C++-only); macro-template headers cannot use RAII — their contract is manual and must be spelled out; single-header libs put the implementation behind one TU's `#define`, so ODR/duplicate-symbol rules apply if included in two TUs without the guard.
+- Toolchain: ASan + UBSan + LSan over the unit tests; a libFuzzer harness on the mutating API; `-Wall -Wextra` plus the macro-expansion check (`-E` spot-checks for hairy macros); clang-tidy for the C++ headers.
+- Failure modes: use-after-free of a handle the caller assumed the library still owned (or double-free of one it did not); dangling iterator/pointer after a realloc/rehash; macro double-evaluation (`MAX(i++, j)`); integer overflow in `count * sizeof(elem)` capacity math; leak on an allocation-failure error path; ODR violation from a single-header lib included in two TUs.
+
 ### Pack-to-gate mapping (which generic gate becomes mandatory or forbidden)
 
 | Pack | Mandatory gate(s) | Forbidden / re-shaped |
@@ -174,10 +196,19 @@ Worked unknown-domain example (industrial motion control, never briefed). Signal
 | Databases / storage engines | crash-injection (`dm-flakey`/ALICE) + recovery oracle, fsync-ordering trace, page-checksum verify | reporting commit before `fsync` durable forbidden; un-versioned on-disk format change forbidden |
 | Audio / DSP / real-time media | xrun/callback-duration check, real-time-safety (no malloc/lock in callback), golden-buffer differential | `malloc`/lock/syscall in the audio callback forbidden; bitwise-equality FP oracle forbidden |
 | Filesystems / block storage | mount-path image fuzz + ASan/UBSan, crash-injection + fsck oracle, format-version golden images | trusting on-disk length/offset before validation forbidden; missing barrier on the durability path forbidden |
+| Parser / text-format / serialization | parse-boundary fuzz (libFuzzer/AFL++) + ASan/UBSan, RFC/format conformance corpus, differential vs reference parser, round-trip identity | trusting an input length/offset before validation forbidden; unbounded recursion on nested input forbidden; casting a raw buffer to a struct forbidden |
+| Generic library / data-structures / strings | unit tests under ASan+UBSan+LSan, mutating-API fuzz, ownership/lifetime contract documented per returned handle | leaking/double-freeing a returned handle forbidden; using an iterator/pointer across a realloc/rehash forbidden; macro double-evaluation forbidden; `std::span` advice on a C ptr+len API is N/A |
 
 ## Pack-Selection Procedure (detect the domain from repo signals)
 
 Run the inventory first, then match signals. A repo may match several packs — load all that apply and union their gates (the strictest constraint wins). `cpp_domain_detect.sh` mechanizes this table: it runs the signal greps below over a repo and prints every matched pack with the `file:line`/anchor that matched, or `unknown-domain: build a pack from references/UNKNOWN-DOMAIN.md` when none match.
+
+How the mechanized detector ranks (so its output is trustworthy, not a keyword soup):
+
+- It scans the project's **shipped code only** — `tests/`, `test/`, `docs/`, `examples/`, `bench*/`, `runners/`, and vendored/`third_party/` trees are excluded, and **comment/doc lines are stripped** before matching, so "left-hand coordinate **system**", a `/* delete */` doc, or a `tests/*.toml` build rule never decide a domain.
+- It **ranks matched packs by distinct code-match count** and reports the strongest as `primary`, the rest as `secondary` (a repo can legitimately span several — e.g. a codec is both Parser and HPC/SIMD). gpu/kernel signatures (`__global__`, `MODULE_LICENSE`) are unambiguous and always outrank the generic fallback.
+- A pack with a **single incidental code match is dropped** (one `__attribute__((__packed__))` is not "Networking"; one `ring buffer` identifier is not "Audio").
+- **`generic` is the least-specific pack** and only becomes `primary` when it strictly dominates (>= 2x the next pack's count); otherwise the more-specific pack wins. `generic` is still distinct from `unknown-domain` — generic means "a real general-purpose library with domain-light invariants", unknown means "no pack — derive one from the template".
 
 ```bash
 bash skill/c-cpp-profi/scripts/cpp_domain_detect.sh .   # mechanical pack selection; prints matched pack(s) + anchor
@@ -190,8 +221,10 @@ grep -RInE 'constant.time|secret|EVP_|crypto_|explicit_bzero|memset_s' . | head 
 grep -RInE 'recvfrom|parse_packet|ntohl|RFC[0-9]|struct .*__attribute__.*packed' . | head || true
 grep -RInE 'LLVMContext|llvm::|emitOpcode|opcode|bytecode|interpreter|codegen|\bIRBuilder\b' . | head || true
 grep -RInE 'fsync|fdatasync|write-ahead|\bWAL\b|MVCC|crash.consistency|page_checksum|pwrite' . | head || true
-grep -RInE 'ringbuffer|ring_buffer|audio_callback|process_block|denormal|xrun|jack_|kAudioUnit|VST3' . | head || true
+grep -RInE 'audio_callback|process_block|denormal|xrun|jack_|kAudioUnit|VST3|flush.to.zero' . | head || true
 grep -RInE 'superblock|inode|on-disk|mount|fsck|dm-flakey|barrier|FUA|crash.injection' . | head || true
+grep -RInE '\b(json|xml|yaml|toml|ini|csv|protobuf|msgpack)\b|_parse|parse_|tokeniz|lexer|_decode|deserialize|phr_' . | head || true
+grep -RInE 'typedef +struct|_init\b|_free\b|KHASH|HASH_(ADD|FIND|DEL)|#define +[A-Z0-9_]*IMPLEMENTATION' . | head || true
 ```
 
 | Signal | Pack |
@@ -205,9 +238,11 @@ grep -RInE 'superblock|inode|on-disk|mount|fsck|dm-flakey|barrier|FUA|crash.inje
 | `ntohl`/`htons`, packed wire structs, `RFC` references, protocol test fixtures, socket I/O | Networking / protocols |
 | `llvm::`/`IRBuilder`/`LLVMContext`, opcode/`bytecode` dispatch `switch`, `interpreter`/`codegen`, gas/fuel counter, IR `-verify` | Compilers / interpreters / VMs |
 | `fsync`/`fdatasync`/`pwrite`, `WAL`/write-ahead, `MVCC`, page checksum, crash-consistency tests, `dm-flakey`/ALICE | Databases / storage engines |
-| ring buffer + `process_block`/`audio_callback`, `denormal`/flush-to-zero, `xrun`, JACK/CoreAudio/ASIO/VST3 | Audio / DSP / real-time media |
+| `process_block`/`audio_callback`, `denormal`/flush-to-zero, `xrun`, JACK/CoreAudio/ASIO/VST3 | Audio / DSP / real-time media |
 | `superblock`/`inode`/on-disk struct, `mount`/`fsck`, `barrier`/FUA, crash-injection, format-version compat | Filesystems / block storage |
-| None of the above match cleanly | Build a **Domain Pack** on the spot with [UNKNOWN-DOMAIN.md](UNKNOWN-DOMAIN.md) before editing |
+| JSON/XML/YAML/INI/CSV/HTTP/protobuf, `*_parse`/`parse_*`/`tokeniz`/`lexer`/`*_decode`/`deserialize`/`phr_`/`yy*`, file-format magic (RIFF/FOURCC), codec readers | Parser / text-format / serialization |
+| header-only containers, hashtable/vector/list/btree/string macros (KHASH/`HASH_ADD`/kvec/sds), `typedef struct` + `*_init`/`*_free` API, single-header `#define …IMPLEMENTATION` — and **no specific domain dominates** | Generic library / data-structures / strings |
+| None of the above match cleanly (and not even a generic-library shape) | Build a **Domain Pack** on the spot with [UNKNOWN-DOMAIN.md](UNKNOWN-DOMAIN.md) before editing |
 
 Selection discipline:
 
