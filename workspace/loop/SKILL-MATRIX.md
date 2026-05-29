@@ -50,6 +50,7 @@ Priority = recommended order for *remaining* passes (1 = next).
 | 27 | multi-model-triangulation | C4,Q | Cross-model second opinions on high-stakes design choices |
 | 28 | world-class-doctor-mode-for-cli-tools | C5,C6 | `doctor`-subcommand discipline for the skill's own tooling |
 | 29 | system-performance-remediation | C3 | Whole-machine perf triage (build/CI environment health) |
+| ✓ | mcp-server-design | Q1 | **APPLIED (iter 8)** — `--derive-profiles` (scope-derived profiles) + scope vocab {yes,no} + portable assets/ci/ drop-in. Q1 5.5→7.5. |
 | 30 | agent-fungibility-philosophy | meta | Make the skill robust to interchangeable agents / swarms |
 
 ## Iteration progress (against this backlog)

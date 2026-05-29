@@ -298,4 +298,42 @@ examples=10; completion audit PASS (both modes); slop-free.
 
 **Next:** iteration 8 → `/repeatedly-apply-skill mcp-server-design` (Q1: --derive-profiles, scope vocab {yes,no}, portable CI). Then iteration 9 BEGINS the Q2 50-repo gauntlet.
 
-**Commits:** `81a78f1`, `93e2290` (passes) + this artifact-update commit.
+**Commits:** `81a78f1`, `93e2290` (passes) + `6914e2c` (artifact update).
+
+---
+
+## Iteration 8 — 2026-05-29 — `/repeatedly-apply-skill mcp-server-design` → Q1 (DESIGN CEILING)
+
+**Read:** all loop artifacts; cpp_evidence_check.py strict-flag pattern + SCOPE_KEYS.
+
+**Did (2 serial subagent passes, orchestrator-verified + committed each):**
+- **Pass 1** (`fd9b655`): `--derive-profiles` in cpp_evidence_check.py — derives the required profile set from
+  the `## Change Scope` yes/no answers (parser→parser+security, ABI→public-abi, threads→concurrency,
+  perf→performance+proof, refactor→refactor, rendering→native-ui; always basic), unioned with explicit
+  --profile. Constrained the 6 boolean scope fields to {yes,no}. `--strict-numeric` alias. Removed the LAST
+  "planned" item in INNOVATION-ENGINE.md. **The mechanism caught a real gap** (remediation.md declared
+  parser-touched but shipped no fuzz/corpus gate) → fixed truthfully (added the fuzz gate; the fix already
+  promotes a crash regression to the corpus).
+- **Pass 2** (`562b420`): portable `assets/ci/` drop-in (GitHub Actions workflow template + bash-n-clean
+  pre-commit hook + Diataxis README) so a consumer repo gets the gates in CI. REQUIRED_ASSETS 8→11.
+
+**Independently verified:** --derive-profiles FAILs a parser-touched report without parser+security gates and
+FAILs `Performance claim: maybe` with a vocab error; remediation packet now PASSES both --derive-profiles
+(basic,parser,security,performance) and its documented invocation; hook bash -n clean; workflow YAML parses;
+contract PASS references=20 examples=10 assets=11; completion audit PASS (both modes).
+
+**Found / weak spots observed (feed next loop):**
+- The checker validates evidence SHAPE, not command-output TRUTH — inherent limit, now documented in QUALITY-GATES.md.
+- `--strict-numeric` is only an alias; the rich numeric perf oracle (cpp_perf_proof parsing hyperfine/bench JSON
+  with k*stddev) is unbuilt — honestly labeled next-increment.
+- **DESIGN CEILING reached.** No further design polish can move the needle; only the Q2 empirical gauntlet can.
+
+**Rubric movement:** 75 → **77/100** (Q1 5.5→7.5). Design subtotal 73.5/88; empirical Q2 3.5/12.
+
+**Convergence:** 2 passes (quality target met — derived profiles + vocab + portable CI).
+
+**Next:** iteration 9 → **BEGIN Q2** — `/repeatedly-apply-skill running-the-gauntlet`: capability probe (can the
+sandbox clone+build?), an outcome-lift harness (git-revert-of-known-fix on ≥2 repos), and the first batch of the
+50-repo gauntlet. This is the only path from 77 to ~100, and the user's headline deliverable.
+
+**Commits:** `fd9b655`, `562b420` (passes) + this artifact-update commit.
