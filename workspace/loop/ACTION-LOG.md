@@ -87,3 +87,42 @@ UNKNOWN-DOMAIN.md) → idea-wizard (build C4 tooling) → codebase-archaeology (
 → running-the-gauntlet (Q2 outcome lift) → readme-writing (C5) → ubs (C3 fix-recipes) → mcp-server-design (Q1).
 
 **Commit:** `f1f8e6a`
+
+---
+
+## Iteration 2 — 2026-05-29 — `/repeatedly-apply-skill idea-wizard` → C4 enforcement tooling
+
+**Read:** all loop artifacts; invoked `repeatedly-apply-skill` (orchestrator protocol); read
+`cpp_evidence_check.py` + `cpp_gate_report.sh` internals to spec the new profile precisely.
+
+**Did (2 serial subagent passes, orchestrator-verified + committed each):**
+- **Pass 1** (`1854be1`): built `scripts/cpp_idea_check.py` (standalone Idea Card validator — 10 required
+  fields, `Kind∈{accretive,radical}`, problem-evidence must cite a measurable anchor not a feeling, radical
+  cards require behavior-oracle + reversibility; rejects placeholders; `--json`; multi-card). Added the `idea`
+  profile to `cpp_evidence_check.py`, an `idea card` gate row to the report template, and a worked
+  `examples/idea-generation.md` (validated, cards=2). Wired into both validators + SKILL.md.
+- **Pass 2** (`003890b`): built `scripts/cpp_backlog.sh` (read-only; 4 fixed lanes; every row carries an
+  evidence anchor; reproducible byte-match; built-in `--self-test` injecting a `strcpy` + a parser-without-
+  harness and asserting the rows appear then disappear). rg-guarded. Wired into both validators + SKILL.md.
+- INNOVATION-ENGINE.md tooling banner: `cpp_idea_check.py`, `idea` profile, and `cpp_backlog.sh` moved to
+  "exists today"; only `comprehension/port/modernize/rearchitect` profiles remain honestly "planned".
+
+**Independently verified (orchestrator ran these, did not trust the subagents):** contract PASS
+references=15 examples=6; completion audit PASS (portable + both skill roots); `cpp_idea_check.py` PASS on the
+example (cards=2) and FAIL on a deliberately-bad card with field-level reasons; `cpp_backlog.sh --self-test`
+PASS; two-run output BYTE-MATCH.
+
+**Found / weak spots observed (feed next loop):**
+- Portfolio/adversarial-scoring rule (carry ≥1 radical candidate) is documented in INNOVATION-ENGINE.md but
+  NOT machine-enforced by cpp_idea_check.py (it validates one card's fields). → small future pass.
+- `cpp_backlog.sh` flags the libFuzzer entry point itself as a pointer+length surface (minor noise); fuzz
+  coverage mapping is basename-based (rare false-negative on cross-dir basename collisions).
+- No empirical proof yet that an agent USES the engine to generate good ideas on a real repo (that is Q2).
+
+**Rubric movement:** 51 → **55/100** (C4 6→10; capped at 10 pending machine-enforced portfolio rule + Q2 use).
+
+**Convergence:** idea-wizard run stopped at 2 passes (quality target met — tooling operational + validated).
+
+**Next:** iteration 3 → `/repeatedly-apply-skill codebase-archaeology` (C1: REPO-COMPREHENSION.md + comprehension probe + `comprehension` profile).
+
+**Commits:** `1854be1`, `003890b` (passes) + this artifact-update commit.

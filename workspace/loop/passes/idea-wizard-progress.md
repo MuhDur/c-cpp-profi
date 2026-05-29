@@ -4,7 +4,7 @@
 # Iteration: loop iteration 2 (C4 enforcement tooling)
 # Note: progress lives HERE, not root .skill-loop-progress.md (that file is pinned by completion_audit.py).
 
-## Status: IN PROGRESS — Pass 1
+## Status: COMPLETE — 2 passes, converged (quality target met)
 
 ## Goal
 Operationalize INNOVATION-ENGINE.md: turn its documented-but-unbuilt tooling into real, validator-checked
@@ -25,4 +25,19 @@ example, and cpp_backlog.sh self-test). Stop when the C4 tooling exists and all 
 target met) or two consecutive zero-change passes.
 
 ## Completed Passes
-(none yet)
+
+### Pass 1 — idea-evidence gate — commit 1854be1 — PRODUCTIVE
+- New `cpp_idea_check.py` (Idea Card validator: 10 fields, Kind∈{accretive,radical}, measurable-anchor rule,
+  radical four-gate floor; rejects placeholders; --json; multi-card). New `idea` profile in cpp_evidence_check.py.
+  `idea card` gate row in template. New `examples/idea-generation.md` (validated, cards=2). Wired into both
+  validators + SKILL.md. Verified independently: contract PASS refs=15 examples=6; idea-check FAILs a bad card.
+
+### Pass 2 — accretive-backlog generator — commit 003890b — PRODUCTIVE
+- New `cpp_backlog.sh` (read-only; 4 lanes; evidence-anchored rows; reproducible byte-match; built-in
+  --self-test injecting strcpy + parser-without-harness). rg-guarded, consistent with sibling scripts.
+  Wired into both validators + SKILL.md. Verified: self-test PASS, byte-match, validators PASS.
+
+### Convergence
+The innovation engine's tooling is fully operational and validator-checked → quality target met, 2 passes.
+Residual (next loop): portfolio/adversarial-scoring rule is documented but NOT machine-enforced; cpp_backlog.sh
+flags the libFuzzer entry point itself (minor noise) and uses basename-based fuzz mapping (rare false-negative).
