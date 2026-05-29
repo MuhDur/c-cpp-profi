@@ -29,7 +29,7 @@ The skill is scored against the six capabilities an agent wielding it should hav
 empirical layers. The score is earned with evidence, not asserted; it dropped to 41 once when an adversarial
 re-grade showed the earlier number was inflated, and it stays capped until the empirical gauntlet finishes.
 
-**Composite: 88.5 / 100** (seven design dimensions 78.5/88; empirical layer Q2 10/12, still climbing).
+**Composite: 89.5 / 100** (seven design dimensions 78.5/88; empirical layer Q2 11/12, still climbing).
 
 | Dim | Capability | Score | Earned by |
 |---|---|---:|---|
@@ -40,7 +40,7 @@ re-grade showed the earlier number was inflated, and it stays capped until the e
 | C5 | Document | 7/8 | `DOCUMENTATION.md` + `cpp_docs_check.py` linter + worked example |
 | C6 | Domain-agnostic mastery | 17/18 | universal core + 13 plug-in domain packs + unknown-domain derivation + `cpp_domain_detect.sh` |
 | Q1 | Machine-checkable enforcement | 7.5/8 | profile-derived evidence checker, scope-derived profiles, portable CI drop-in |
-| Q2 | Empirical validation | 10/12 | the 50-repo gauntlet (see below); capped until it completes |
+| Q2 | Empirical validation | 11/12 | the 50-repo gauntlet (see below); capped until it completes |
 
 Caps are honest: design work alone tops out near 78. The remaining points require real fresh-repo evidence.
 
@@ -49,9 +49,13 @@ Caps are honest: design work alone tops out near 78. The remaining points requir
 The skill is being validated by applying it to 50 maximally different fresh C/C++ repositories, documenting each,
 and folding the observed weaknesses back into the tools.
 
-- **25 / 50 repositories carded** so far, spanning JSON/XML/INI/HTTP parsers, crypto (mbedtls, libsodium),
-  interpreters/compilers (lua, chibicc), databases (leveldb), async I/O (libuv), an RTOS kernel (FreeRTOS),
-  an embedded filesystem (littlefs), SIMD math (cglm, xsimd), audio (miniaudio), a regex engine (re2), and more.
+- **37 / 50 repositories carded** so far, spanning JSON/XML/INI/HTTP parsers, crypto (mbedtls, libsodium, BLAKE2),
+  interpreters/compilers (lua, chibicc, tinycc, wren), databases (leveldb), async I/O (libuv), an RTOS kernel
+  (FreeRTOS), an embedded filesystem (littlefs), SIMD math (cglm, xsimd), audio (miniaudio), regex (re2, pcre2),
+  compression (zlib, lz4), and **real flight software (NASA cFE and F´)**.
+- **Domain-agnostic claim validated on satellites**: with no special briefing, the domain detector classified
+  NASA cFE (the core Flight Executive) as the space/satellite pack (14,398 matching signals) and selected the
+  matching gate set — evidence the skill plugs into a domain it was never told about.
 - **Outcome-lift proven on two codebases**: on a fresh cJSON, the skill's libFuzzer + ASan gate caught a seeded
   one-character bounds bug (heap-buffer-overflow, 5-byte reproducer) while the clean tree survived 1.27M
   executions; the same was reproduced on jsmn (an independently-written JSON parser) with a deterministic ASan

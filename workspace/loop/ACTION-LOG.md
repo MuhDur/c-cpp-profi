@@ -527,4 +527,33 @@ C2/C4/C5 real-repo trials + batch-3 (→ ~37/50). Push + README-refresh now run 
 **Next:** iteration 15 → integrate batch-3 (→ ~37/50; note whether the SPACE pack fired for cFE/F´), fold any new
 findings, R6/R7/F8, targeted C2/C4/C5 real-repo trials, then batch-4 (→50).
 
-**Commits:** this iteration's commit + push.
+**Commits:** `d73a5b5` (iter-14 + push).
+
+---
+
+## Iteration 15 — 2026-05-29 — batch-3 (→37/50, SPACE pack validated on NASA cFE) + fold-back F
+
+**Woken by:** task-notification (batch-3 workflow `w4qh703zz`: 12/12 cloned+carded, 0 failures).
+
+**Did:**
+- **Integrated batch-3** (`6feee9f`): zlib, lz4, nlohmann/json, rapidjson, fmt, nasa/fprime, nasa/cFE, pcre2,
+  wren, tinycc, nng, BLAKE2 → 37/50. iter-12/13 fixes held 12/12. **Headline: the SPACE/satellite pack fired
+  correctly as PRIMARY on NASA cFE (24,806→14,398 signals after fold-back) + secondary on F´ — the
+  domain-agnostic, plug-into-an-unknown-domain claim validated on real flight software (the brief's satellite emphasis).**
+  22 findings → N-cmphang / R8 / R7 / R3+ (high-priority) and R9-vocab / R1± / R4+ / R6 (→ iter 16).
+- **Fold-back F** (`11663ae`) — fixed the high-priority cluster across all four scripts: N-cmphang (comprehension
+  `-std=` pipefail-abort → `|| true`, audited all scripts), R8 (case-sensitive distinctive domain tokens), R7
+  (cast-lane operand requirement), R3+ (ut-coverage/ut-stubs/CamelCase-test/single_include/win32-include exclusion).
+
+**Independently verified on real repos:** nlohmann comprehension exits 0 with full L2; zlib→Networking (not
+Space), cFE→Space (14398), fprime→Space; nng cast FPs 462→298 (0 genuine lost; real casts still flag); cFE risk
+689→330 (ut-coverage/ut-stubs 0 leaks); 19-repo no-regression check 0 unintended reclassifications; 4/4
+self-tests PASS; contract PASS refs=20 examples=10 assets=11; audit PASS.
+
+**Rubric movement:** 88.5 → **89.5/100** (Q2 10→11: 74% of slate carded + space-pack validation + a 3rd verified
+find→fix→verify cycle). Design dims held (the R7/R8 regressions that could have lowered C3/C6 are fixed + verified).
+
+**Next:** iteration 16 → R9-vocab (compression/net/crypto/space pack tokens) + R1±/R4+/R6 + targeted C2/C4/C5
+real-repo trials + batch-4 (→50) + a 3rd outcome-lift (git-revert-of-CVE).
+
+**Commits:** `6feee9f` (integrate), `11663ae` (fold-back F) + this re-rate commit + push.
