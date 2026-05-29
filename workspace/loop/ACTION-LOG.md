@@ -125,4 +125,40 @@ PASS; two-run output BYTE-MATCH.
 
 **Next:** iteration 3 → `/repeatedly-apply-skill codebase-archaeology` (C1: REPO-COMPREHENSION.md + comprehension probe + `comprehension` profile).
 
-**Commits:** `1854be1`, `003890b` (passes) + this artifact-update commit.
+**Commits:** `1854be1`, `003890b` (passes) + `f48fc7e` (artifact update).
+
+---
+
+## Iteration 3 — 2026-05-29 — `/repeatedly-apply-skill codebase-archaeology` → C1 comprehension
+
+**Read:** all loop artifacts; `cpp_evidence_check.py` `require_performance_proof` pattern (to mirror it).
+
+**Did (2 serial subagent passes, orchestrator-verified + committed each):**
+- **Pass 1** (`a9168be`): `references/REPO-COMPREHENSION.md` — four-layer mental-model ladder (L1 build graph +
+  triple + toolchain; L2 entry points + module map + touched-path callgraph; L3 data/control flow; L4
+  domain-intent reconstruction cross-linked to DOMAIN-AGNOSTIC-MASTERY pack detection), with a "comprehension
+  is falsifiable" rule and a "no editing code you cannot model" stop. Added `comprehension` profile +
+  `--require-comprehension-proof` to `cpp_evidence_check.py` (mirrors the perf-proof pattern: a passed
+  comprehension gate must cite entry-point:/module-map:/callgraph:/intent:). Wired into SKILL.md + both validators.
+- **Pass 2** (`f8d94da`): `scripts/cpp_comprehension_map.sh` — read-only L1+L2 probe (build graph + entry
+  points + module map, file:line anchors, reproducible, `--self-test` with 8 assertions). Wired into SKILL.md
+  Helper Scripts + both validators + REPO-COMPREHENSION.md fast-path.
+- INNOVATION-ENGINE.md banner: `comprehension` profile moved to "exists today".
+
+**Independently verified:** comprehension proof FAIL(exit 1) on missing `intent:`, PASS(exit 0) when complete;
+performance proof unaffected; probe self-test PASS + two-run byte-match; contract PASS references=16 examples=6;
+completion audit PASS (both modes); probe finds the real LLVMFuzzerTestOneInput harnesses.
+
+**Found / weak spots observed (feed next loop):**
+- The probe does not auto-draw the L3 touched-path callgraph (cscope/clangd remain the manual fallback).
+- Deep ISA/codegen-reading (reading asm / godbolt) is mentioned but not a deep taught sub-procedure.
+- `--derive-profiles` still doesn't auto-require `comprehension` before edits (Q1 mission).
+- completion_audit now hard-codes 5 phrases from REPO-COMPREHENSION.md (content-rot coupling — intentional pin).
+
+**Rubric movement:** 55 → **59/100** (C1 7→11; capped pending L3 auto-callgraph + codegen depth + Q2 proof).
+
+**Convergence:** 2 passes (quality target met — C1 taught + enforced + tooled).
+
+**Next:** iteration 4 → `/repeatedly-apply-skill legacy-to-rust-porting` (C2 transform: CODE-TRANSFORM.md + port/modernize/rearchitect profiles).
+
+**Commits:** `a9168be`, `f8d94da` (passes) + this artifact-update commit.

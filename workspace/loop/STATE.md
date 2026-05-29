@@ -1,43 +1,44 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **55 / 100** (iteration 2, 2026-05-29). Trail: 58 self-estimate →
-  41 adversarial true-baseline → 51 (wired 2 refs) → 55 (built C4 enforcement tooling).
+- **Honest composite (RUBRIC-100):** **59 / 100** (iteration 3, 2026-05-29). Trail: 58 self-estimate →
+  41 adversarial true-baseline → 51 (wired 2 refs) → 55 (C4 tooling) → 59 (C1 comprehension).
 - **Target:** 100 / 100 with the empirical Q2 layer closed (see LOOP-PROTOCOL stop condition)
 - **Phase:** Design-hardening (climb to ≈80 on design dims) → then the 50-repo empirical gauntlet (Q2).
-- **Last iteration (2):** `/repeatedly-apply-skill idea-wizard` (2 passes, converged) built the innovation
-  engine's enforcement tooling (cpp_idea_check.py, `idea` profile, cpp_backlog.sh, examples/idea-generation.md);
-  validators PASS refs=15 examples=6. C4 6→10.
+- **Last iteration (3):** `/repeatedly-apply-skill codebase-archaeology` (2 passes, converged) made C1 taught +
+  enforced + tooled (REPO-COMPREHENSION.md, `comprehension` profile + `--require-comprehension-proof`,
+  cpp_comprehension_map.sh); validators PASS refs=16 examples=6. C1 7→11.
 
 ## Gap queue (highest leverage first = score-gap × weight, ties → "unlocks others")
 
-Honest per-dim now (iteration 2): C1 7/15 · C2 5/12 · C3 10/15 · C4 10/12 · C5 2/8 · C6 12/18 · Q1 5.5/8 · Q2 3.5/12.
+Honest per-dim now (iteration 3): C1 11/15 · C2 5/12 · C3 10/15 · C4 10/12 · C5 2/8 · C6 12/18 · Q1 5.5/8 · Q2 3.5/12.
 
 | Rank | Dim | Now | Cap | Mission (skill) → closes | Status |
 |---:|---|---:|---:|---|---|
-| 1 | C1 understand | 7 | 15 | **codebase-archaeology** — references/REPO-COMPREHENSION.md four-layer ladder (build-graph→entry/module/callgraph→data/control flow→domain intent) + `cpp_comprehension_map.sh` probe + `comprehension` profile (also removes a "planned" caveat in INNOVATION-ENGINE.md) | **NEXT (iter 3)** |
-| 2 | C6 domain-agnostic | 12 | 18 | operationalizing-expertise — per-domain pack depth + `references/domains/UNKNOWN-DOMAIN.md` derivation template | queued |
+| 1 | C2 transform | 5 | 12 | **legacy-to-rust-porting** — references/CODE-TRANSFORM.md (executable loops for port / modernize / re-architect with behavior-oracle + ABI gates) + `port`/`modernize`/`rearchitect` profiles in cpp_evidence_check.py + Task Router rows (also removes 3 "planned" caveats in INNOVATION-ENGINE.md) | **NEXT (iter 4)** |
+| 2 | C6 domain-agnostic | 12 | 18 | operationalizing-expertise — per-domain pack depth + `references/domains/UNKNOWN-DOMAIN.md` derivation template (resolves the dangling ref) | queued |
 | 3 | Q2 empirical | 3.5 | 12 | running-the-gauntlet — durable outcome-lift harness (seeded-fault / git-revert), ≥2 repos, blind trial → then the **50-repo gauntlet** | queued (the ceiling on 100) |
-| 4 | C2 transform | 5 | 12 | legacy-to-rust-porting — CODE-TRANSFORM.md (port/modernize/rearchitect) + matching profiles + Task Router rows | queued |
-| 5 | C5 documentation | 2 | 8 | readme-writing — DOCUMENTATION.md (README/arch/Doxygen/changelog/docs-site) + de-slopify cross-link | queued |
-| 6 | C3 improve | 10 | 15 | ubs — REMEDIATION-RECIPES.md fix cookbook + binary-size methodology + cpp_perf_proof.py | queued |
-| 7 | Q1 enforcement | 5.5 | 8 | mcp-server-design — `--derive-profiles` from Change Scope, proof-of-execution (numeric) checks, portable CI drop-in | queued |
-| ✓ | C4 innovation | 10 | 12 | idea-wizard (iter 2, DONE) — cpp_idea_check.py + idea profile + cpp_backlog.sh + example. Residual: machine-enforce portfolio/adversarial rule (small later pass). | done |
+| 4 | C5 documentation | 2 | 8 | readme-writing — DOCUMENTATION.md (README/arch/Doxygen/changelog/docs-site) + de-slopify cross-link | queued |
+| 5 | C3 improve | 10 | 15 | ubs — REMEDIATION-RECIPES.md fix cookbook + binary-size methodology + cpp_perf_proof.py | queued |
+| 6 | Q1 enforcement | 5.5 | 8 | mcp-server-design — `--derive-profiles` from Change Scope, proof-of-execution (numeric) checks, portable CI drop-in | queued |
+| ✓ | C4 innovation | 10 | 12 | idea-wizard (iter 2, DONE). Residual: machine-enforce portfolio/adversarial rule. | done |
+| ✓ | C1 understand | 11 | 15 | codebase-archaeology (iter 3, DONE). Residual: L3 callgraph auto-draw, deep codegen-reading, empirical (Q2). | done |
 
-## Immediate next action (iteration 3)
+## Immediate next action (iteration 4)
 
-Run **`/repeatedly-apply-skill codebase-archaeology`** against `skill/c-cpp-profi/` to convergence, mission:
-make C1 ("understand any repo at every level/angle/depth") a taught, enforced procedure, not implicit. Build —
-- `references/REPO-COMPREHENSION.md` — the four-layer mental-model ladder: (L1) build graph + target triple +
-  toolchain from compile_commands.json/CMake/Meson; (L2) entry points, module map, touched-path callgraph
-  (ctags/cscope/clangd/`rg`); (L3) data-flow & control-flow of the touched path; (L4) domain-intent
-  reconstruction (no-docs onboarding checklist), cross-linked to DOMAIN-AGNOSTIC-MASTERY.md pack detection.
-- `scripts/cpp_comprehension_map.sh` — read-only probe that emits the build graph + entry points + module map
-  for a repo (reproducible), so "I understood it" is falsifiable with cited symbols/file:line.
-- a `comprehension` profile in `cpp_evidence_check.py` (requires a filled, cited `entry-point:`/`module-map:`/
-  `callgraph:`/`intent:` gate) — this also removes the `comprehension` "planned" caveat in INNOVATION-ENGINE.md.
-- a Task Router note + Helper-Scripts line + an `## Evidence Packet`-bearing example if useful.
-Wire into both validators, run them, commit per pass, re-rate (C1 7→~11), update artifacts. Then continue down the queue.
+Run **`/repeatedly-apply-skill legacy-to-rust-porting`** against `skill/c-cpp-profi/` to convergence, mission:
+make C2 ("transform code however needed") a first-class, gated capability — today only behavior-preserving
+refactor (REFACTOR-ISOMORPHISM.md) is strong; port/modernize/re-architect are stubs or forbidden. Build —
+- `references/CODE-TRANSFORM.md` — executable loops for three transform modes: **port** (cross-compiler/std/
+  platform or cross-language C/C++↔Rust; differential oracle naming origin+target triple, emulator/HW path,
+  corpus size), **modernize** (standard-raise + clang-tidy `modernize-*` with a per-transform isomorphism row +
+  ABI check), **re-architect** (bounded, with a migration ledger + per-commit caller census + tests + ABI). The
+  C/C++→Rust handoff note should cross-link the `legacy-to-rust-porting` sibling skill.
+- `port` / `modernize` / `rearchitect` profiles in `cpp_evidence_check.py` PROFILE_REQUIRED (mirror existing
+  profiles; reuse the gate table — e.g. port→differential oracle gate, modernize→isomorphism+ABI, rearchitect→
+  migration-ledger+tests+ABI). These remove the `port/modernize/rearchitect` "planned" caveats in INNOVATION-ENGINE.md.
+- Task Router rows (Port / Modernize / Re-architect) + Reference Map row + Helper-Scripts/example as useful.
+Wire into both validators, run them, commit per pass, re-rate (C2 5→~9), update artifacts. Then continue down the queue.
 
 ## The 50-repo empirical gauntlet (Q2) — plan (executes once design ≈ 80/100)
 

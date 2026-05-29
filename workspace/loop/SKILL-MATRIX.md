@@ -26,7 +26,7 @@ Priority = recommended order for *remaining* passes (1 = next).
 | 3 | dueling-idea-wizards | C4 | Adversarial idea scoring; force competing designs before committing radical changes |
 | 4 | reality-check-for-project | C1,Q | Honest gap-analysis harness; vision-vs-reality scoring to keep the rubric truthful |
 | 5 | running-the-gauntlet-on-your-rust-port | C6,Q | Convergent **honest-evaluation gauntlet** + oracle-building methodology (drives the 50-repo Q2 layer) |
-| 6 | codebase-archaeology | C1 | Systematic mental-model construction for unfamiliar/legacy code (the "understand at any depth" core) |
+| ✓ | codebase-archaeology | C1 | **APPLIED (iter 3)** — REPO-COMPREHENSION.md four-layer ladder + `comprehension` profile + `--require-comprehension-proof` + cpp_comprehension_map.sh probe. C1 7→11. |
 | 7 | codebase-report | C1,C5 | Reusable architecture write-ups / handoff docs from exploration |
 | 8 | modes-of-reasoning-project-analysis | C1,C4 | Multi-perspective / epistemological review lenses |
 | 9 | testing-conformance-harnesses | C6 | Verify implementations against specs/RFCs (domain-agnostic correctness) |
