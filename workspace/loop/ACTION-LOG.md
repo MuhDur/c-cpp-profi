@@ -437,4 +437,43 @@ labeled conditional; self-test PASS; contract PASS refs=20 examples=10 assets=11
 new findings, a 2nd outcome-lift in a different domain, and targeted single-capability trials (C2 modernize/port,
 C4 idea backlog, C5 doc-gen) on real repos to lift the still-flat design caps.
 
-**Commits:** `2337a3b` (fold-back C) + this artifact-update commit.
+**Commits:** `2337a3b` (fold-back C), `100ac3e` (re-rate).
+
+---
+
+## Iteration 12 — 2026-05-29 — batch-2 + self-correcting fold-back D
+
+**Woken by:** task-notification (batch-2 workflow `wkkej6djl`: 12/12 cloned+carded, 0 failures).
+
+**Did:**
+- **Integrated batch-2** (`77cf81c`): 12 uncovered-pack cards (mbedtls, libsodium, lua, chibicc, leveldb, libuv,
+  re2, ftxui, xsimd, freertos_kernel, lwip, miniaudio) → 25/50. The regression-check proved the iter-10/11 fixes
+  hold on easy repos but regress on harder ones (domainCorrect 3/12 fully-yes; fixes-held 10/12) → 34 findings →
+  7 recurring regressions R1–R7.
+- **Fold-back D** (`477dacb`) — fixed the 4 highest-frequency regressions across cpp_risk_scan/cpp_backlog/
+  cpp_domain_detect: R1 detect_cpp robustness (require shipped C++ TUs, not a build-var), R2 whole-file comment+
+  string stripper (block-state + literals), R3 suffix-named-test + testing/extras exclusion, R5 word-bound domain
+  tokens + count-floor + generic-demotion.
+
+**Independently verified on the real cloned repos:** new/delete FP explosions gone (FreeRTOS 201→0, mbedtls 27→0,
+miniaudio 97→0); domain reclassified miniaudio→Audio, FreeRTOS→Embedded, mbedtls→Crypto, leveldb→Databases,
+re2→Parser (the "Generic-primary" problem solved); NO over-correction (real C++ new/delete still flags in
+leveldb/ftxui/tinyxml2); all 3 self-tests PASS; contract PASS refs=20 examples=10 assets=11; audit PASS.
+
+**Found / weak spots observed (feed next loop):**
+- R4 (comprehension exported-API breaks on macro/paren idioms — lua `int()`, mbedtls PRIVATE markers, libuv
+  buried API) is the top remaining regression → iter-13 Pass E. **C1 13 is provisional until R4 is fixed.**
+- R6 (backlog parser over-match + OSS-Fuzz blindness + null-byte warning), R7 (cast-lane FPs), F8 (Compilers pack
+  tokens — lua→Filesystems) → iter-13.
+
+**Rubric movement:** 85.5 → **86.5/100** (Q2 8→9: half the slate carded + TWO verified find→fold-back cycles +
+the regression methodology that proves fixes generalize). Design dims HELD, not inflated — the regressions that
+threatened the iter-10 C3/C6 lifts are now fixed, making those lifts honest.
+
+**This is the loop self-correcting**: batch-2 caught that the batch-1 fixes were incomplete, and fold-back D fixed
+the regressions — a second find→fix→verify cycle on real code.
+
+**Next:** iteration 13 → fold-back E (R4 comprehension) + R6/R7/F8 + a 2nd outcome-lift in a new domain + targeted
+C2/C4/C5 real-repo trials + batch-3.
+
+**Commits:** `77cf81c` (integrate), `477dacb` (fold-back D) + this artifact-update commit.

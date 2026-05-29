@@ -1,21 +1,24 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **85.5 / 100** (iteration 11, 2026-05-29). Trail: 58 self → 41 adversarial →
-  51 → 55 → 59 → 63 → 68 → 71 → 75 → 77 (design ceiling) → 79.5 → 84.5 (batch-1 + fold-back) → 85.5 (F5 fold-back).
+- **Honest composite (RUBRIC-100):** **86.5 / 100** (iteration 12, 2026-05-29). Trail: …→ 77 (design ceiling)
+  → 79.5 → 84.5 → 85.5 → 86.5 (batch-2 + regression fold-back D).
 - **Target:** 100 / 100 with the empirical Q2 layer closed (see LOOP-PROTOCOL stop condition)
-- **Phase:** ▶ EMPIRICAL (Q2): 50-repo gauntlet IN PROGRESS (**13/50 carded; batch-2 (12) in flight `wkkej6djl`**).
-- **Last iteration (11):** fold-back C (`2337a3b`) closed F5 — comprehension surfaces exported C API, labels
-  conditional test-main, dedups+caps (cglm 1534→78). **All 7 batch-1 findings folded back.** Launched batch-2
-  (12 uncovered-pack repos: crypto/VMs/DB/net/regex/UI/SIMD/embedded/audio) — regression-checks the fixes hold. C1 12→13.
+- **Phase:** ▶ EMPIRICAL (Q2): 50-repo gauntlet IN PROGRESS (**25/50 carded**).
+- **Last iteration (12):** integrated batch-2 (12 repos → 25/50; 34 findings → regressions R1–R7) and **folded
+  R1/R2/R3/R5 back** (`477dacb`), re-verified on real repos: detect_cpp FP explosions gone (FreeRTOS 201→0,
+  mbedtls 27→0, miniaudio 97→0); whole-file comment/string stripper; suffix-test exclusion; domain reclassified
+  (miniaudio→Audio, mbedtls→Crypto, leveldb→Databases, re2→Parser — "Generic-primary" problem solved). Q2 8→9.
 
 ## Gap queue (highest leverage first = score-gap × weight, ties → "unlocks others")
 
 Honest per-dim now (iteration 8): C1 11/15 · C2 9/12 · C3 13/15 · C4 10/12 · C5 7/8 · C6 16/18 · Q1 7.5/8 · Q2 3.5/12.
 **Design subtotal = 73.5/88 (CEILING); empirical Q2 = 3.5/12.** All 7 design dims are done. Only Q2 remains.
 
-Honest per-dim now (iteration 11): C1 13/15 · C2 9/12 · C3 14/15 · C4 10/12 · C5 7/8 · C6 17/18 · Q1 7.5/8 · Q2 8/12.
-Remaining caps Q2 evidence will lift: C1 13→~14 (L3 callgraph + breadth) · C2 9→~11 (a real port/modernize trial) ·
+Honest per-dim now (iteration 12): C1 13/15 · C2 9/12 · C3 14/15 · C4 10/12 · C5 7/8 · C6 17/18 · Q1 7.5/8 · Q2 9/12.
+(C1 13 is provisional: exported-API surfacing works on simple repos but R4 shows it breaks on macro-wrapped APIs
+— lua `int()`, mbedtls PRIVATE markers, libuv buried — iter-13 Pass E fixes this. C6 17 capped by F8 — lua→Filesystems.)
+Remaining caps Q2 evidence will lift: C1 13→~14 (R4 + L3 callgraph) · C2 9→~11 (a real port/modernize trial) ·
 C4 10→12 (a real idea-generation trial) · C5 7→8 (real doc-gen) · C6 17→18 (broader pack-use) · Q2 8→~11
 (reach ~50 repos + a 2nd outcome-lift via git-revert-of-CVE + a blind-ish trial). Path 84.5 → ~100.
 
@@ -24,21 +27,21 @@ C4 10→12 (a real idea-generation trial) · C5 7→8 (real doc-gen) · C6 17→
 | 1 | Q2 empirical | 3.5 | 12 | **running-the-gauntlet** — (a) a durable OUTCOME-LIFT harness (git-revert-of-known-fix / seeded-fault) proving the skill drives real defect detection+fix on ≥2 repos; (b) the **50-repo × ≤20-reason gauntlet** with preserved negatives, findings folded back. | **▶ ACTIVE (iter 9+)** |
 | ✓ | all 7 design dims (C1–C6, Q1) | 73.5 | 88 | iters 1–8, each converged + independently verified | done |
 
-## Immediate next action (iteration 12) — integrate batch-2 + 2nd outcome-lift + targeted C2/C4/C5 trials
+## Immediate next action (iteration 13) — fold-back E (R4) + R6/R7/F8 + 2nd outcome-lift + targeted trials
 
-Batch-2 workflow `wkkej6djl` (12 repos: mbedtls, libsodium, lua, chibicc, leveldb, libuv, re2, ftxui, xsimd,
-freertos_kernel, lwip, miniaudio) is writing cards + regression-checks + new weaknesses. On completion / next wake:
-1. Integrate batch-2 → `cards/INDEX.md` (→ ~25/50), append new findings to FINDINGS.md, note the **regression
-   result** (domain-correct count + fixes-held count) — this is empirical proof the iter-10/11 fixes generalize.
-2. Fold back any NEW recurring findings (scoped fixes, re-verified).
-3. **2nd outcome-lift** (strengthen Q2 beyond cJSON): a git-revert-of-known-fix OR a seeded fault in a DIFFERENT
-   domain (e.g. a compression/codec lib or an XML parser like the cloned tinyxml2) → gate catches it → OUTCOME-LIFT.md.
-4. **Targeted single-capability trials** to lift the still-flat design caps with real evidence:
-   - C2: run a real `modernize`/`port` transform on a small cloned repo (e.g. a clang-tidy modernize pass with a
-     before/after + ABI/behavior check) → fills the C2 Evidence Packet on a real repo.
-   - C4: run the idea engine (cpp_backlog + Idea Card) on a real repo to produce a scored accretive+radical backlog.
-   - C5: generate a README/API-doc section for a real repo and run cpp_docs_check on it.
-5. Re-rate Q2 (toward ~10) + lift C2/C4/C5/C6 caps where the trials provide evidence. Continue batches until 50 carded.
+1. **Fold-back E (R4 — top remaining regression):** fix `cpp_comprehension_map.sh` exported-API extraction for
+   macro/paren-wrapped idioms — `LUA_API int (lua_absindex)(...)`, `UV_EXTERN`, `MA_API`, `MBEDTLS_PRIVATE()`
+   field-markers, `... PRIVILEGED_FUNCTION;`; skip inline-asm/macro-param tokens (xsimd `__volatile__()`); rank
+   `include/`-path + macro-exported decls FIRST in the cap; don't drop C++ `static` member functions (leveldb
+   `DB::Open`). Re-verify on lua/mbedtls/libuv/FreeRTOS/leveldb → real public API surfaced. Unblocks C1 13→~14.
+2. **R6/R7/F8:** backlog parser-entry over-match + OSS-Fuzz/CIFuzz detection + null-byte `tr -d '\0'` fix (R6);
+   risk-scan cast-lane tightening (R7); enrich Compilers/VMs pack tokens so lua/chibicc rank Compilers (F8).
+3. **2nd outcome-lift** (strengthen Q2 beyond cJSON): seed a fault / git-revert in a DIFFERENT domain using an
+   already-cloned repo (tinyxml2 XML parser, or zlib/miniaudio) → ASan + fuzz/harness → gate catches it → OUTCOME-LIFT.md.
+4. **Targeted single-capability trials** (lift the flat caps with real evidence): C2 — a real clang-tidy
+   `modernize-*` pass on a small cloned repo (before/after + ABI); C4 — cpp_backlog + an Idea Card on a real repo;
+   C5 — generate + cpp_docs_check a README/API-doc for a real repo.
+5. Batch-3 (→ ~37/50) then batch-4 (→50). Re-rate Q2 toward ~11 + lift C1/C2/C4/C5/C6 caps as trials land.
 
 ## (history) Iteration 9 plan — BEGIN Q2 (the empirical gauntlet)
 
