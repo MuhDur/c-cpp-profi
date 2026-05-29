@@ -264,4 +264,38 @@ PASS (both modes); new files slop-free.
 
 **Next:** iteration 7 → `/repeatedly-apply-skill ubs` (C3 improve: REMEDIATION-RECIPES.md fix cookbook + binary-size methodology).
 
-**Commits:** `64975ca`, `dbb8fa5` (passes) + this artifact-update commit.
+**Commits:** `64975ca`, `dbb8fa5` (passes) + `0a57d5c` (artifact update).
+
+---
+
+## Iteration 7 — 2026-05-29 — `/repeatedly-apply-skill ubs` → C3 remediation recipes
+
+**Read:** all loop artifacts; existing MEMORY-SAFETY/SECURITY/PERFORMANCE taxonomies (so recipes reference, not duplicate).
+
+**Did (2 serial subagent passes, orchestrator-verified + committed each):**
+- **Pass 1** (`81a78f1`): `references/REMEDIATION-RECIPES.md` (273 lines) — Part A: 8 copy-ready Before/After/
+  Invariant/Proving-gate/Precedent fix recipes (overflow-checked alloc, bounded copy, RAII conversion,
+  false-sharing alignas, exception-safe copy-and-swap, narrowing/signed-overflow guard, use-after-move/dangling,
+  double-free/UAF+TOCTOU). Part B: binary-size methodology (size/bloaty oracle, levers, no-size-regression gate
+  tied to the Optimization Card). Wired into SKILL.md (Fix/Memory/Security rows + Reference Map) + QUALITY-GATES.md.
+- **Pass 2** (`93e2290`): `examples/remediation.md` — worked TLV-parser overflow fix + binary-size reduction;
+  Evidence Packet PASSES memory+performance under --require-performance-proof.
+
+**Independently verified:** After snippets compile (g++ 15.2 -fsyntax-only, confirmed g++ present); example
+Evidence Packet PASSES memory+performance (extracted + run myself, exit 0); contract PASS references=20
+examples=10; completion audit PASS (both modes); slop-free.
+
+**Found / weak spots observed (feed next loop):**
+- Empirical proof an agent fixes a REAL bug on a fresh repo is unproven (Q2).
+- Numeric perf proof (`cpp_perf_proof.py`/`--strict-numeric`) not built — folded into Q1's mcp-server-design mission.
+- My first packet-extraction regex was too narrow (missed the ```text fence); broadened it and confirmed PASS.
+  Operational note: extract gate reports with a fence-agnostic regex.
+
+**Rubric movement:** 71 → **75/100** (C3 10→13; capped pending empirical fix-on-real-repo + numeric perf proof).
+**Design subtotal now 71.5/88 — near the design ceiling; only Q1 remains before the Q2 gauntlet.**
+
+**Convergence:** 2 passes (quality target met — copy-ready recipes + size method + example).
+
+**Next:** iteration 8 → `/repeatedly-apply-skill mcp-server-design` (Q1: --derive-profiles, scope vocab {yes,no}, portable CI). Then iteration 9 BEGINS the Q2 50-repo gauntlet.
+
+**Commits:** `81a78f1`, `93e2290` (passes) + this artifact-update commit.

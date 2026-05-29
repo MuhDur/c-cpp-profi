@@ -35,7 +35,7 @@ Priority = recommended order for *remaining* passes (1 = next).
 | 12 | lean-formal-feedback-loop | C6 | Formal-methods / highest-assurance layer (safety-critical, avionics, satellites) |
 | 13 | gdb-for-debugging | C3 | Runtime debugging depth: hangs, segfaults, core dumps, ptrace, /proc |
 | 14 | profiling-software-performance | C3 | Hot-path ranking by CPU/mem/IO/contention → scored target list |
-| 15 | ubs | C3 | Ultimate Bug Scanner review lens as an additional finder |
+| ✓ | ubs | C3 | **APPLIED (iter 7)** — REMEDIATION-RECIPES.md (8 copy-ready fix recipes + binary-size methodology) + worked example. C3 10→13. |
 | 16 | rust-undefined-behavior-exorcist | C3,C6 | UB taxonomy & proof discipline (concepts transfer hard into C/C++ UB) |
 | 17 | rust-unsafe-code-exorcist | C3,C6 | unsafe/FFI/SIMD boundary classification & hardening |
 | ✓ | legacy-to-rust-porting | C2 | **APPLIED (iter 4)** — CODE-TRANSFORM.md (port/modernize/rearchitect) + 3 profiles + `--require-transform-proof` + worked example. C2 5→9. |
