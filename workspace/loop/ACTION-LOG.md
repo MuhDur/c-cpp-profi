@@ -336,4 +336,38 @@ contract PASS references=20 examples=10 assets=11; completion audit PASS (both m
 sandbox clone+build?), an outcome-lift harness (git-revert-of-known-fix on ≥2 repos), and the first batch of the
 50-repo gauntlet. This is the only path from 77 to ~100, and the user's headline deliverable.
 
-**Commits:** `fd9b655`, `562b420` (passes) + this artifact-update commit.
+**Commits:** `fd9b655`, `562b420` (passes) + `348624f` (artifact update).
+
+---
+
+## Iteration 9 — 2026-05-29 — BEGIN Q2: capability probe + outcome-lift + gauntlet bootstrap
+
+**Read:** all loop artifacts (design ceiling at 77).
+
+**Did:**
+- **Capability probe (honesty gate) — PASS.** Sandbox CAN clone over the network and build/sanitize C/C++:
+  git 2.51, gcc 15.2, clang 20.1 (+libFuzzer), clang-tidy, cmake 3.31, ninja, valgrind 3.25, cppcheck 2.17, rg.
+  `git clone` of cJSON succeeded. So Q2 evidence is REAL, not fabricated. (Recorded so I never fake repo evidence.)
+- **Outcome-lift harness on cJSON @ fb16e5c** (the rubric's hardest Q2 requirement, was "zero outcome lift"):
+  built cJSON's libFuzzer harness with clang -fsanitize=fuzzer,address,undefined; baseline = 1,268,718 execs in
+  21s, 0 crashes (clean). Seeded a one-char off-by-one (`<`→`<=`) in the `can_access_at_index` bounds macro →
+  the gate caught an ASan heap-buffer-overflow (READ size 1) at cJSON.c:1102 `buffer_skip_whitespace`, 5-byte
+  minimized reproducer; `git checkout` restored clean. **The skill's fuzz+sanitizer gate detects a real defect.**
+- Built the gauntlet infra: `workspace/loop/gauntlet/` with OUTCOME-LIFT.md, REPO-SLATE.md (50 maximally-diverse
+  repos across all 11 domain packs), cards/cJSON.md (6 reasons applied), FINDINGS.md, cards/INDEX.md.
+- Ran the skill's read-only gates on cJSON → real output AND **3 real skill weaknesses surfaced**:
+  W1 `cpp_domain_detect` over-matched a Unity *test fixture* → "embedded" (missed the obvious parser class) and
+  returns unranked multi-packs; W2 `cpp_backlog` floods C++ "span/view" advice on a C library; W3 risk hits need
+  a triage verdict (the flagged strcpy@461 is actually bounded — false positive). Logged to FINDINGS.md to fold back.
+- Launched batch-1 workflow `wzfbbf1dt` (12 small diverse repos → read-only-gate cards + weakness observations).
+
+**Found / weak spots observed (feed next loop):** W1–W3 above (the gauntlet is already doing its job — surfacing
+real tool weaknesses on real code). These fold back in iteration 10.
+
+**Rubric movement:** 77 → **79.5/100** (Q2 3.5→6 from the outcome-lift + probe + slate + 1 card + findings; capped
+because breadth (1/50), fold-back, and blind-agent/git-revert-of-CVE remain). Design caps not yet lifted.
+
+**Next:** iteration 10 → integrate batch-1 cards, FOLD FINDINGS BACK into the skill (fix domain-detect/backlog),
+re-rate Q2 with breadth + begin lifting design caps, launch batch-2 (+ a 2nd outcome-lift via git-revert).
+
+**Commits:** this iteration's gauntlet-bootstrap commit (infra + outcome-lift ledger + cJSON card + findings).

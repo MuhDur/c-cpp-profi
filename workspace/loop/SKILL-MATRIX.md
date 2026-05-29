@@ -25,7 +25,7 @@ Priority = recommended order for *remaining* passes (1 = next).
 | ✓ | idea-wizard | C4 | **APPLIED (iter 2)** — built the innovation engine's enforcement tooling: cpp_idea_check.py, `idea` profile, cpp_backlog.sh, examples/idea-generation.md. C4 6→10. |
 | 3 | dueling-idea-wizards | C4 | Adversarial idea scoring; force competing designs before committing radical changes |
 | 4 | reality-check-for-project | C1,Q | Honest gap-analysis harness; vision-vs-reality scoring to keep the rubric truthful |
-| 5 | running-the-gauntlet-on-your-rust-port | C6,Q | Convergent **honest-evaluation gauntlet** + oracle-building methodology (drives the 50-repo Q2 layer) |
+| ▶ | running-the-gauntlet-on-your-rust-port | C6,Q | **ACTIVE (iter 9+)** — drives the Q2 50-repo gauntlet. Done: capability probe + cJSON outcome-lift (real ASan catch) + infra + 1/50 cards + batch-1 (12) in flight. Q2 3.5→6. |
 | ✓ | codebase-archaeology | C1 | **APPLIED (iter 3)** — REPO-COMPREHENSION.md four-layer ladder + `comprehension` profile + `--require-comprehension-proof` + cpp_comprehension_map.sh probe. C1 7→11. |
 | 7 | codebase-report | C1,C5 | Reusable architecture write-ups / handoff docs from exploration |
 | 8 | modes-of-reasoning-project-analysis | C1,C4 | Multi-perspective / epistemological review lenses |

@@ -1,13 +1,15 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **77 / 100** (iteration 8, 2026-05-29). Trail: 58 self → 41 adversarial →
-  51 → 55 → 59 → 63 → 68 → 71 → 75 → 77 (Q1). **DESIGN CEILING reached (design 73.5/88).**
+- **Honest composite (RUBRIC-100):** **79.5 / 100** (iteration 9, 2026-05-29). Trail: 58 self → 41 adversarial →
+  51 → 55 → 59 → 63 → 68 → 71 → 75 → 77 (design ceiling) → 79.5 (Q2 outcome-lift begun).
 - **Target:** 100 / 100 with the empirical Q2 layer closed (see LOOP-PROTOCOL stop condition)
-- **Phase:** ✅ Design-hardening COMPLETE → **▶ EMPIRICAL (Q2): the 50-repo gauntlet** (the only path to 100).
-- **Last iteration (8):** `/repeatedly-apply-skill mcp-server-design` (2 passes, converged) hardened Q1:
-  `--derive-profiles` (scope-derived, not self-attested) + scope vocab {yes,no} + portable `assets/ci/` drop-in;
-  the mechanism caught + fixed a real gap in remediation.md. validators PASS refs=20 examples=10 assets=11. Q1 5.5→7.5.
+- **Phase:** ▶ EMPIRICAL (Q2): 50-repo gauntlet IN PROGRESS (1/50 carded + 12 in flight).
+- **Last iteration (9):** BEGAN Q2. Capability probe PASS (sandbox clones+builds+sanitizes C/C++). **Outcome-lift
+  harness on cJSON**: clean baseline (1.27M fuzz execs) vs seeded off-by-one → libFuzzer+ASan caught a
+  heap-buffer-overflow with a 5-byte reproducer → restored. Built `workspace/loop/gauntlet/` (OUTCOME-LIFT.md,
+  REPO-SLATE.md [50 repos], cards/cJSON.md, FINDINGS.md [W1–W3], INDEX.md). Launched batch-1 workflow (wzfbbf1dt).
+  Q2 3.5→6 (capped: breadth + fold-back pending). Design caps not yet lifted (await breadth).
 
 ## Gap queue (highest leverage first = score-gap × weight, ties → "unlocks others")
 
@@ -22,7 +24,23 @@ C1 11→~14 · C2 9→~11 · C3 13→~14 · C4 10→12 · C5 7→8 · C6 16→~1
 | 1 | Q2 empirical | 3.5 | 12 | **running-the-gauntlet** — (a) a durable OUTCOME-LIFT harness (git-revert-of-known-fix / seeded-fault) proving the skill drives real defect detection+fix on ≥2 repos; (b) the **50-repo × ≤20-reason gauntlet** with preserved negatives, findings folded back. | **▶ ACTIVE (iter 9+)** |
 | ✓ | all 7 design dims (C1–C6, Q1) | 73.5 | 88 | iters 1–8, each converged + independently verified | done |
 
-## Immediate next action (iteration 9) — BEGIN Q2 (the empirical gauntlet)
+## Immediate next action (iteration 10) — integrate batch-1, fold findings, continue the gauntlet
+
+Batch-1 workflow `wzfbbf1dt` (12 repos: tinyxml2, inih, jsmn, sds, klib, uthash, utf8h, logc, picohttpparser,
+littlefs, cglm, dr_libs) is writing read-only-gate cards + weakness observations. On its completion (task
+notification) OR next wake:
+1. Integrate: update `cards/INDEX.md` (done count), append batch weaknesses to `FINDINGS.md`, sanity-read a few cards.
+2. **Fold findings back** (the brief's core loop): the highest-frequency/severity findings (W1 domain-detect
+   over-matching, W2 backlog C/C++ gating, W3 triage protocol, + new ones) become a scoped skill-improvement pass
+   — fix `cpp_domain_detect.sh` (exclude tests/vendored, rank by count), gate `cpp_backlog.sh` api-ergonomics behind
+   a C++ signal, etc. — each re-verified by validators + self-tests, committed. This is where the gauntlet
+   IMPROVES the skill, not just exercises it.
+3. Re-rate Q2 with breadth (toward ~9-11) and begin LIFTING the design caps (C1/C6 first, supported by the cards'
+   real comprehension/domain-detect evidence), with per-dim justification.
+4. Launch batch-2 (M/L repos + a 2nd outcome-lift via git-revert-of-known-fix on a repo with a historical
+   sanitizer-visible bug). Continue until 50 carded + findings folded + caps justified.
+
+## (history) Iteration 9 plan — BEGIN Q2 (the empirical gauntlet)
 
 This is the phase the brief emphasized ("clone 50 high-signal, totally different C/C++ repos and apply the skill
 for up to 20 valid reasons each"). It is large and spans multiple iterations. Iteration 9 bootstraps it HONESTLY:
