@@ -26,10 +26,12 @@ inventory -> invariants -> gate plan -> implementation -> mechanical evidence ->
 ## How it is rated (honest 0-100)
 
 The skill is scored against the six capabilities an agent wielding it should have, plus enforcement and
-empirical layers. The score is earned with evidence, not asserted; it dropped to 41 once when an adversarial
-re-grade showed the earlier number was inflated, and it stays capped until the empirical gauntlet finishes.
+empirical layers. The score is earned with evidence, not asserted. It has dropped twice when evidence demanded
+it: to 41 when an adversarial re-grade exposed an inflated estimate, and again when completing the 50-repo
+gauntlet showed the domain detector's primary accuracy was ~80%, not the near-perfect figure the easier repos
+implied.
 
-**Composite: 89.5 / 100** (seven design dimensions 78.5/88; empirical layer Q2 11/12, still climbing).
+**Composite: 89.0 / 100** (seven design dimensions 77.5/88; empirical layer Q2 11.5/12).
 
 | Dim | Capability | Score | Earned by |
 |---|---|---:|---|
@@ -38,9 +40,9 @@ re-grade showed the earlier number was inflated, and it stays capped until the e
 | C3 | Improve (correctness/perf/size/security) | 14/15 | gate ladder + copy-ready `REMEDIATION-RECIPES.md` + binary-size methodology |
 | C4 | Generate ideas (accretive + radical) | 10/12 | `INNOVATION-ENGINE.md` + `cpp_backlog.sh` + `cpp_idea_check.py` Idea-Card gate |
 | C5 | Document | 7/8 | `DOCUMENTATION.md` + `cpp_docs_check.py` linter + worked example |
-| C6 | Domain-agnostic mastery | 17/18 | universal core + 13 plug-in domain packs + unknown-domain derivation + `cpp_domain_detect.sh` |
+| C6 | Domain-agnostic mastery | 16/18 | universal core + 14 plug-in domain packs + unknown-domain derivation + `cpp_domain_detect.sh` (≈80% primary-accurate across the 50-repo gauntlet; DB/test-fw/codec ranking gaps tracked) |
 | Q1 | Machine-checkable enforcement | 7.5/8 | profile-derived evidence checker, scope-derived profiles, portable CI drop-in |
-| Q2 | Empirical validation | 11/12 | the 50-repo gauntlet (see below); capped until it completes |
+| Q2 | Empirical validation | 11.5/12 | the 50-repo gauntlet, now COMPLETE (see below); capped by the blind-agent ceiling |
 
 Caps are honest: design work alone tops out near 78. The remaining points require real fresh-repo evidence.
 
@@ -49,10 +51,13 @@ Caps are honest: design work alone tops out near 78. The remaining points requir
 The skill is being validated by applying it to 50 maximally different fresh C/C++ repositories, documenting each,
 and folding the observed weaknesses back into the tools.
 
-- **37 / 50 repositories carded** so far, spanning JSON/XML/INI/HTTP parsers, crypto (mbedtls, libsodium, BLAKE2),
-  interpreters/compilers (lua, chibicc, tinycc, wren), databases (leveldb), async I/O (libuv), an RTOS kernel
-  (FreeRTOS), an embedded filesystem (littlefs), SIMD math (cglm, xsimd), audio (miniaudio), regex (re2, pcre2),
-  compression (zlib, lz4), and **real flight software (NASA cFE and F´)**.
+- **50 / 50 repositories carded (gauntlet complete, 0 clone failures)**, spanning JSON/XML/INI/HTTP/SIMD parsers,
+  crypto (mbedtls, libsodium, BLAKE2), interpreters/compilers/VMs (lua, chibicc, tinycc, wren, duktape, quickjs),
+  databases (leveldb, sqlite, redis), async I/O + servers (libuv, nginx, libzmq, nng), an RTOS (FreeRTOS, zephyr),
+  an embedded filesystem (littlefs), SIMD math (cglm, xsimd, highway), audio (miniaudio), regex (re2, pcre2),
+  compression/codecs (zlib, lz4, libjpeg-turbo, libpng), a test framework (Catch2), and **real flight software
+  (NASA cFE and F´)**. Across all 50 the domain detector picks the right primary pack ~80% of the time; the
+  remaining ranking gaps (databases, test frameworks, SIMD-heavy codecs) are tracked findings being folded back.
 - **Domain-agnostic claim validated on satellites**: with no special briefing, the domain detector classified
   NASA cFE (the core Flight Executive) as the space/satellite pack (14,398 matching signals) and selected the
   matching gate set — evidence the skill plugs into a domain it was never told about.
@@ -203,8 +208,10 @@ The GitHub workflow runs the portable checks and evidence-checker fixtures on pu
 ## Limitations
 
 - The evidence checker validates report shape, not the truth of command output.
-- The empirical gauntlet is 25/50 repositories in, so the 0-100 score is capped and still climbing. Blind-agent
-  trials, a second outcome-lift in another domain, and broader OS/compiler/platform coverage are tracked work.
+- The 50-repo gauntlet is complete, but the score remains capped below 100. The domain detector's primary
+  accuracy is ~80% (database/test-framework/codec ranking gaps are being folded back), and a genuinely
+  blind-agent trial plus a "validate command-output truth, not just shape" enforcement mode are structurally
+  hard for an author-driven loop to self-certify. The skill states these caps plainly rather than inflate the score.
 - No license has been selected in this repository yet.
 - The skill does not replace project maintainers, project CI, or domain-specific safety certification.
 - Some gates are intentionally expensive. Agents should mark unavailable or skipped gates honestly rather than pretending they passed.

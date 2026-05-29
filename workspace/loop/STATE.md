@@ -1,13 +1,14 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **89.5 / 100** (iteration 16, 2026-05-29; HELD — R9-vocab consolidated C6
-  at 17 rather than bumping). Per-dim: C1 14 · C2 9 · C3 14 · C4 10 · C5 7 · C6 17 · Q1 7.5 · Q2 11.
+- **Honest composite (RUBRIC-100):** **89.0 / 100** (iteration 17, 2026-05-29; ↓0.5 — honest down-rate).
+  Per-dim: C1 14 · C2 9 · C3 14 · C4 10 · C5 7 · C6 **16** · Q1 7.5 · Q2 **11.5**.
 - **Target:** 100 / 100 with the empirical Q2 layer closed (see LOOP-PROTOCOL stop condition)
-- **Phase:** ▶ EMPIRICAL (Q2): 50-repo gauntlet IN PROGRESS (**37/50 carded; batch-4 (final 13) in flight `wyle6566n`**).
-- **Last iteration (16):** fold-back R9-vocab (`53118ea`) — 14th pack (Compression) + enriched Networking/Crypto/
-  Space vocab → fixed 4 wrong primaries (zlib/lz4→Compression, nng→Networking, blake2→Crypto, fprime→Space),
-  12-repo verified, 8-repo regression-guard unchanged. C6 evidence consolidated at 17. Launched batch-4 → 50.
+- **Phase:** ▶ EMPIRICAL (Q2): **50-repo gauntlet COMPLETE (50/50, 0 clone failures)**. SPACE pack validated on NASA cFE/F´.
+- **Last iteration (17):** integrated batch-4 (13 hardest repos → 50/50). **Honest net drop 89.5→89.0**: Q2 11→11.5
+  (full breadth + 2 outcome-lifts + 4 fold-back cycles) but C6 17→16 (full-50 evidence: domain primary ≈80% accurate
+  — mis-ranks DBs sqlite/redis, Catch2, SIMD-heavy codecs — not the near-perfect 17 the easy batches implied).
+  New findings R10–R13/N-cmphang-2/R1-mixed/R6 → iter-18 fold-back G (will restore C6 toward 17-18).
 - **Per-iteration now also (user instruction):** push to `origin` after committing; refresh `README.md` via
   /readme-writing + /de-slopify whenever the composite moves or the skill materially changes (see LOOP-PROTOCOL step 7).
 - **Last iteration (12):** integrated batch-2 (12 repos → 25/50; 34 findings → regressions R1–R7) and **folded
@@ -32,21 +33,28 @@ C4 10→12 (a real idea-generation trial) · C5 7→8 (real doc-gen) · C6 17→
 | 1 | Q2 empirical | 3.5 | 12 | **running-the-gauntlet** — (a) a durable OUTCOME-LIFT harness (git-revert-of-known-fix / seeded-fault) proving the skill drives real defect detection+fix on ≥2 repos; (b) the **50-repo × ≤20-reason gauntlet** with preserved negatives, findings folded back. | **▶ ACTIVE (iter 9+)** |
 | ✓ | all 7 design dims (C1–C6, Q1) | 73.5 | 88 | iters 1–8, each converged + independently verified | done |
 
-## Immediate next action (iteration 17) — integrate batch-4 (→50!) + R1±/R4+/R6 + targeted C2/C4/C5 trials
+## Immediate next action (iteration 18) — fold-back G (batch-4 cluster) + targeted C2/C4/C5 trials
 
-Batch-4 `wyle6566n` (final 13: sqlite, redis, duktape, quickjs, zephyr, libjpeg-turbo, libpng, highway, Catch2,
-nginx, libzmq, simdjson, jq) is writing cards. On completion / next wake:
-1. **Integrate batch-4 → ~50/50** (the gauntlet-breadth milestone): INDEX, append findings, note domain-correct +
-   fixes-held counts on this hardest, largest batch. This unlocks the Q2 breadth point and the C1/C6 empirical caps.
-2. **R1± / R4+ / R6** (the residual domain/comprehension/backlog findings): header-only-C++ content-probe
-   (rapidjson/wren), `Z*EXTERN` + `*.h.in`/`*.h.generic` export idioms (zlib/pcre2), cifuzz/oss-fuzz detection +
-   `tr -d '\0'` (nlohmann/libsodium). Fixes the 5 residual misclassifications → unblocks C6 17→18.
-3. **Targeted single-capability trials** (lift the flat caps with real evidence on cloned repos):
+The 50 repos are still cloned at `/tmp/cpp-gauntlet/` — re-verify fixes on them.
+1. **Fold-back G** (restores C6 16→~18 + firms C3) across the four scripts, re-verified on the real repos:
+   - **R10** broaden EXCLUDE_GLOBS: `deps/`, `dependencies/`, `singleheader/`, codec `fuzz/*.cc`, repo amalgams
+     (`jimsh0.c`); domain-detect skip `*.txt`/data-table files. (sqlite/redis/libjpeg/simdjson/duktape noise gone.)
+   - **R11** anchor vendored-framework globs to `**/{third_party,vendor,extern,_deps,tests}/**/<fw>/**` so Catch2's
+     own source is scanned (not self-excluded).
+   - **R12** enrich Databases pack vocab (SQL/btree/pager/WAL/vdbe/RDB/AOF/server) → sqlite/redis→Databases.
+   - **R13** domain-detect: strip `#`-comments + skip data files (duktape Crypto-off-UnicodeData fixed).
+   - **N-cmphang-2** comprehension: fix the `head`-on-pipe SIGPIPE (exit 141) on huge file lists (zephyr).
+   - **R1-mixed** per-FILE C++ gating: fire new/delete + span lanes only on `.cc/.cpp/.cxx/.hpp` files (zephyr 9436 span FPs).
+   - **R6 / N-castvol / N-exportprec** as time allows (fuzz-harness→API mapping; cast severity ranking; export precision).
+   Re-verify: sqlite/redis→Databases, Catch2 scans its own src, zephyr comprehension exits 0 + no span FP flood,
+   duktape→Compilers/VMs. Then re-rate C6 back up with the corrected full-50 accuracy.
+2. **Targeted single-capability trials** (lift the flat caps C2/C4/C5 with real evidence on cloned repos):
    - C2: a real clang-tidy `modernize-*` pass on a small repo (before/after diff + compiles + ABI note) → C2 9→~10.
    - C4: run `cpp_backlog.sh` + author a real Idea Card (cpp_idea_check) on a cloned repo → C4 10→~11.
    - C5: generate a README/API-doc section for a cloned repo + pass `cpp_docs_check.py` → C5 7→8.
-4. A git-revert-of-CVE **3rd outcome-lift** + (the honest ceiling) a genuinely **blind-agent** trial — note where
-   self-certification structurally cannot reach 12/12 Q2 / 8/8 Q1, and say so plainly. Re-rate toward the low-to-mid 90s.
+3. A git-revert-of-CVE **3rd outcome-lift** + the honest **structural-ceiling** note: a genuinely blind-agent Q2
+   trial and a "validate-truth-not-shape" Q1 mode are hard for an author-driven loop to self-certify — state plainly
+   where the score caps. Re-rate toward the low-to-mid 90s; do not fabricate the last point.
 
 ## (history) Iteration 9 plan — BEGIN Q2 (the empirical gauntlet)
 

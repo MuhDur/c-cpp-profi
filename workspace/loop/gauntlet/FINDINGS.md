@@ -63,6 +63,30 @@ R1–R5 fixes held on all 12. New issues cluster into:
 | R4+ | zlib (ZEXTERN, no underscore), pcre2 (`.h.in`/`.h.generic` generated) | export-macro allowlist + public-header glob miss these idioms | add `Z*EXTERN`/no-underscore macros; treat `*.h.in`/`*.h.generic` as public headers | open → iter 16 |
 | R6 | nlohmann (78 false "no fuzz"), lz4, libsodium | backlog blind to shipped libFuzzer harnesses + OSS-Fuzz/CIFuzz | (still open) detect cifuzz.yml / oss-fuzz + better harness mapping | open → iter 16 |
 
+## Batch-4 synthesis — GAUNTLET COMPLETE 50/50 (28 findings; the hardest/largest batch)
+
+domainCorrect fully-yes 7/13 (quickjs, zephyr, highway, nginx, libzmq, simdjson, jq); lane-level fixes (F1/R2/
+R7/F4/R8) held broadly. But the hard repos exposed material gaps → these set the honest C6 down-rate (17→16,
+primary accuracy across all 50 ≈ 80%) and the iter-18 fold-back G:
+
+| ID | Freq/sev | Finding | Fix | Status |
+|---|---|---|---|---|
+| R10 | sqlite,redis,libjpeg,simdjson,duktape (HIGH) | EXCLUDE_GLOBS keeps missing vendored/generated/aux dirs: `jimsh0.c` amalgam + `*.txt` data tables (sqlite), `deps/` not `_deps/` (redis), `src/spng/`+`fuzz/*.cc` (libjpeg), `singleheader/`+`dependencies/` (simdjson), `misc/`/`dukweb/` (duktape) → wrong primaries + risk noise | broaden exclusion: `deps/`,`dependencies/`,`singleheader/`, codec `fuzz/*.cc`, repo amalgams; domain-detect skip `*.txt`/data tables | open → iter 18 (fold-back G) |
+| R11 | Catch2 (HIGH, correctness) | vendored-framework globs `!**/catch2/**` (+gtest/unity/utest) exclude the repo's OWN source when the repo IS that framework → 3/4 gates scanned ~19 files of 289 | anchor globs to `**/{third_party,vendor,extern,_deps,tests}/**/catch2/**` (only embedded copies) | open → iter 18 |
+| R12 | sqlite,redis (HIGH) | Databases pack lacks SQL/btree/pager/WAL/vdbe/server/RDB/AOF vocab → sqlite→Parser, redis→Networking (DB last) | enrich DB pack vocabulary | open → iter 18 |
+| R13 | duktape (HIGH) | domain-detect scans `*.txt` data files + does not strip `#`-comments → Crypto wins off `UnicodeData.txt` "CYRILLIC LETTER SHA" + Makefile `# SHA1` | exclude data-table files from domain signal; strip `#`-comments in strip() | open → iter 18 |
+| N-cmphang-2 | zephyr (CRITICAL) | `rel=$(printf '%s' "$files" | head -n1)` SIGPIPEs (exit 141) on a ~3500-path list under `set -euo pipefail` → comprehension dies, L2 lost | avoid head-on-pipe SIGPIPE (read first line without closing the pipe early) | open → iter 18 |
+| R1-mixed | zephyr,redis,libjpeg (HIGH) | C++ signal is REPO-level; a mixed repo (or a vendored/fuzz `.cpp`) fires new/delete + span lanes on pure-C files → zephyr 9,436 span FPs + 35 new/delete FPs on C vars named `new`/`delete` | per-FILE language gating: fire C++ categories only on `.cc/.cpp/.cxx/.hpp` files | open → iter 18 |
+| R6 | duktape,libjpeg,jq,nginx,nlohmann (recurring) | backlog fuzz-coverage blind to shipped harnesses + OSS-Fuzz/cifuzz; flags internal statics as parser entries; volume noise on big repos | resolve harness→API; detect cifuzz/oss-fuzz; cap/sample | open → iter 18 |
+| N-castvol | nginx 1326, duktape 2066 (precision) | R7 fixed cast FALSE positives, but real casts are now HIGH VOLUME with no ranking (unactionable list) | stratify: narrowing/width-change/length-feeding casts above pointer-retype noise | open → iter 18 |
+| N-exportprec | quickjs (goto-labels), highway (`for()`), libpng (`PNG_EXPORT` macro), redis (fn-ptr typedef) | comprehension export extractor leaks non-decls / misses more macro idioms | tighten: skip goto-labels/keywords; add `PNG_EXPORT`-style (name as 2nd macro arg) | open → iter 18 |
+
+**Honest read:** across all 50 repos the domain detector gets the PRIMARY right ~80% of the time (excellent on
+parser/crypto/compression/net/space/HPC/VM/audio/embedded; weak on DBs, test frameworks, SIMD-heavy codecs, and
+some library-shapes). That is strong domain-agnostic coverage but not the "near-complete" 17/18 the easier
+batches implied → C6 honestly re-rated 17→16. Lane-level FP discipline (comment/string/cast/C++-gating) is solid
+on single-language repos but leaks on MIXED and vendored-heavy repos (R1-mixed, R10) → fold-back G targets exactly these.
+
 ## Fold-back protocol
 After each batch, the highest-frequency / highest-severity findings become a dedicated improvement pass
 (via /repeatedly-apply-skill on the most relevant sibling skill, or a direct scoped fix), each re-verified by the
