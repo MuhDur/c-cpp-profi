@@ -502,4 +502,29 @@ C2/C4/C5 real-repo trials + batch-3.
 **Next:** iteration 14 → R6/R7/F8 (lower-frequency findings) + a 2nd outcome-lift in a new domain + targeted
 C2/C4/C5 real-repo trials + batch-3 (→ ~37/50). Push + README-refresh now run every iteration.
 
-**Commits:** `8e83618` (fold-back E), `ca14b2a` (README + re-rate) + this loop-integration commit + push.
+**Commits:** `8e83618` (fold-back E), `ca14b2a` (README + re-rate), `251a6a2` (loop publish-integration) + push (`ebf22de..251a6a2`).
+
+---
+
+## Iteration 14 — 2026-05-29 — 2nd outcome-lift (jsmn) + batch-3 launch
+
+**Did:**
+- **2nd outcome-lift** on jsmn @ 25647e6 (a different, independently-written length-bounded C JSON parser):
+  deterministic ASan harness (exact-size heap input), seeded off-by-one at `jsmn.h:203` → ASan
+  heap-buffer-overflow in `jsmn_parse_string`; clean baseline returned a normal parse error; restored. Proves
+  the gate is not cJSON-specific (two codebases now).
+- **Honest negative evidence preserved**: two seed attempts (tinyxml2:286 `p<_end`, jsmn:143 object-loop) were
+  MASKED by internal NUL-termination / object-balance — recorded in OUTCOME-LIFT.md as a target property, not a
+  gate pass. Method lesson folded in: a seeded-fault lift must drive an input that reaches the unguarded read.
+- **Launched batch-3** (`w4qh703zz`): 12 repos incl. NASA **cFE** + **F´** (to exercise the SPACE pack on real
+  flight software — directly relevant to the brief's satellite emphasis), zlib/lz4 (compression), nlohmann/
+  rapidjson (C++ JSON), fmt, pcre2 (regex), wren/tinycc (VM/compiler), nng (net), BLAKE2 (crypto). Read-only-gate
+  cards + regression-check that the iter-12/13 fixes hold on fresh repos.
+- README headline kept in sync with RUBRIC (87.5→88.5, Q2 9→10, two-codebase outcome-lift) per LOOP-PROTOCOL step 7.
+
+**Rubric movement:** 87.5 → **88.5/100** (Q2 9→10).
+
+**Next:** iteration 15 → integrate batch-3 (→ ~37/50; note whether the SPACE pack fired for cFE/F´), fold any new
+findings, R6/R7/F8, targeted C2/C4/C5 real-repo trials, then batch-4 (→50).
+
+**Commits:** this iteration's commit + push.

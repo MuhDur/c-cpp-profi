@@ -29,7 +29,7 @@ The skill is scored against the six capabilities an agent wielding it should hav
 empirical layers. The score is earned with evidence, not asserted; it dropped to 41 once when an adversarial
 re-grade showed the earlier number was inflated, and it stays capped until the empirical gauntlet finishes.
 
-**Composite: 87.5 / 100** (seven design dimensions 78.5/88; empirical layer Q2 9/12, still climbing).
+**Composite: 88.5 / 100** (seven design dimensions 78.5/88; empirical layer Q2 10/12, still climbing).
 
 | Dim | Capability | Score | Earned by |
 |---|---|---:|---|
@@ -40,7 +40,7 @@ re-grade showed the earlier number was inflated, and it stays capped until the e
 | C5 | Document | 7/8 | `DOCUMENTATION.md` + `cpp_docs_check.py` linter + worked example |
 | C6 | Domain-agnostic mastery | 17/18 | universal core + 13 plug-in domain packs + unknown-domain derivation + `cpp_domain_detect.sh` |
 | Q1 | Machine-checkable enforcement | 7.5/8 | profile-derived evidence checker, scope-derived profiles, portable CI drop-in |
-| Q2 | Empirical validation | 9/12 | the 50-repo gauntlet (see below); capped until it completes |
+| Q2 | Empirical validation | 10/12 | the 50-repo gauntlet (see below); capped until it completes |
 
 Caps are honest: design work alone tops out near 78. The remaining points require real fresh-repo evidence.
 
@@ -52,8 +52,11 @@ and folding the observed weaknesses back into the tools.
 - **25 / 50 repositories carded** so far, spanning JSON/XML/INI/HTTP parsers, crypto (mbedtls, libsodium),
   interpreters/compilers (lua, chibicc), databases (leveldb), async I/O (libuv), an RTOS kernel (FreeRTOS),
   an embedded filesystem (littlefs), SIMD math (cglm, xsimd), audio (miniaudio), a regex engine (re2), and more.
-- **Outcome-lift proven**: on a fresh cJSON, the skill's libFuzzer + ASan gate caught a seeded one-character
-  bounds bug (heap-buffer-overflow, 5-byte reproducer) while the clean tree survived 1.27M executions.
+- **Outcome-lift proven on two codebases**: on a fresh cJSON, the skill's libFuzzer + ASan gate caught a seeded
+  one-character bounds bug (heap-buffer-overflow, 5-byte reproducer) while the clean tree survived 1.27M
+  executions; the same was reproduced on jsmn (an independently-written JSON parser) with a deterministic ASan
+  harness. Two seed attempts that were masked by a target's internal null-termination are recorded as honest
+  negative evidence, not hidden.
 - **Two find -> fix -> verify cycles**: running the gates on real repos surfaced 100 weakness observations,
   which were folded back into the scripts and re-verified on the same repos (for example, comment/string-literal
   false positives dropped from 233 to 1 on cglm, and domain detection was corrected for crypto, databases,

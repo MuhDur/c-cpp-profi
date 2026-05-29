@@ -1,8 +1,8 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **87.5 / 100** (iteration 13, 2026-05-29). Trail: …→ 77 (design ceiling)
-  → 79.5 → 84.5 → 85.5 → 86.5 → 87.5 (R4 fold-back E → C1 14; README refreshed; pushed to origin).
+- **Honest composite (RUBRIC-100):** **88.5 / 100** (iteration 14, 2026-05-29). Trail: …→ 86.5 → 87.5 (R4 + README + push)
+  → 88.5 (2nd outcome-lift on jsmn → Q2 10). Per-dim: C1 14 · C2 9 · C3 14 · C4 10 · C5 7 · C6 17 · Q1 7.5 · Q2 10.
 - **Target:** 100 / 100 with the empirical Q2 layer closed (see LOOP-PROTOCOL stop condition)
 - **Phase:** ▶ EMPIRICAL (Q2): 50-repo gauntlet IN PROGRESS (**25/50 carded**).
 - **Per-iteration now also (user instruction):** push to `origin` after committing; refresh `README.md` via

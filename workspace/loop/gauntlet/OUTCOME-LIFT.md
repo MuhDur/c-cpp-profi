@@ -49,6 +49,41 @@ distinguishes a real memory defect from a clean tree — reproducibly, with exac
 - DOES NOT (yet): breadth across 50 diverse repos; a *blind* agent (not the skill author) achieving the lift;
   git-revert of a historical CVE (seeded-fault is the sanctioned proxy used here). Those are the remaining Q2 work.
 
-## Planned Trial 2+ (next iterations)
-- git-revert-of-known-fix on ≥1 repo with a historical sanitizer-visible bug (stronger than a seed).
-- Repeat the harness on a second domain (e.g. a parser/decoder or compression lib) to show it is not cJSON-specific.
+## Trial 2 — jsmn @ 25647e6 (seeded off-by-one in a SECOND, independent parser) — 2026-05-29
+
+Goal: show the gate is not cJSON-specific. jsmn is a different codebase (a strictly length-bounded C JSON
+parser, no null-termination assumption). Deterministic ASan harness: exact-size heap input (no trailing NUL),
+so `buf[len]` is an ASan red-zone.
+
+**Baseline (clean tree).** `clang -fsanitize=address,undefined` harness on an unterminated string `"abcdefgh`:
+returns JSMN_ERROR_PART (exit 253), no ASan trip — honest clean baseline.
+
+**Seeded fault** (one char, the same off-by-one bug class): `jsmn.h:203` string-parser loop
+`parser->pos < len` → `parser->pos <= len`.
+
+**Result.**
+```
+==ERROR: AddressSanitizer: heap-buffer-overflow  READ of size 1
+  #0 jsmn_parse_string  jsmn.h:203:32
+SUMMARY: AddressSanitizer: heap-buffer-overflow jsmn.h:203:32 in jsmn_parse_string
+```
+`git checkout jsmn.h` restored; rebuild → baseline clean again.
+
+**Verdict: OUTCOME LIFT CONFIRMED on a second codebase.** The gate (ASan + UBSan, deterministic harness) caught
+a real injected memory-safety defect in an independently-written parser; the clean tree is honestly clean.
+
+### Honest negative evidence (masked seeds — informative)
+Two seed attempts did NOT crash, and that is useful data, preserved here rather than hidden:
+- **tinyxml2 `tinyxml2.cpp:286`** (`p < _end` → `p <= _end`): NOT caught. tinyxml2 copies input into an
+  internally NUL-terminated `_charBuffer`, so the off-by-one reads the valid trailing `\0` — masked. (A real
+  robustness property of tinyxml2, not a gate failure; an unmasked bug in its entity buffer would be needed.)
+- **jsmn object-loop `jsmn.h:143`** (`<` → `<=`) on a balanced `{...}`: NOT caught — jsmn balances the object
+  and does not re-evaluate `js[len]` for that input. The string-loop seed (203) with an *unterminated* input is
+  the path that actually reaches end-of-buffer.
+Lesson folded into method: a seeded-fault outcome-lift must drive an input that reaches the unguarded read; a
+masked seed is a property of the target, not a pass. Two confirmed lifts (cJSON fuzz-based, jsmn deterministic)
+across two codebases now stand.
+
+## Planned (next)
+- A git-revert-of-known-fix (historical CVE) for a 3rd, stronger demonstration.
+- A blind-agent trial (an agent that is not the skill author) on an unseen repo.
