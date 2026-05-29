@@ -370,4 +370,43 @@ because breadth (1/50), fold-back, and blind-agent/git-revert-of-CVE remain). De
 **Next:** iteration 10 → integrate batch-1 cards, FOLD FINDINGS BACK into the skill (fix domain-detect/backlog),
 re-rate Q2 with breadth + begin lifting design caps, launch batch-2 (+ a 2nd outcome-lift via git-revert).
 
-**Commits:** this iteration's gauntlet-bootstrap commit (infra + outcome-lift ledger + cJSON card + findings).
+**Commits:** `06e7d4c` (gauntlet bootstrap: infra + outcome-lift ledger + cJSON card + findings).
+
+---
+
+## Iteration 10 — 2026-05-29 — batch-1 integration + fold-back (the gauntlet IMPROVES the skill)
+
+**Woken by:** task-notification (batch-1 workflow `wzfbbf1dt` completed: 12/12 cloned+carded, 0 failures).
+
+**Did:**
+- **Integrated batch-1** (`6d80431`): 12 cards (tinyxml2, inih, jsmn, sds, klib, uthash, utf8h, logc,
+  picohttpparser, littlefs, cglm, dr_libs); synthesized 66 weakness observations → 7 recurring findings F1–F7.
+- **Fold-back A** (`dca0f16`) — risk-scan/backlog false-positive killer (F1/F3/F4/F6/F7): comment/string-literal
+  exclusion, call-token (`\bfn\s*\(`) matching, C++-category gating behind a C++ signal, tests/vendored exclusion,
+  exit-0 fix, `.github/workflows` CI detection, shipped-fuzz-harness recognition. Extended cpp_backlog --self-test.
+- **Fold-back B** (`07bad20`) — domain-detect (F2): fixed the real `rg -e`/`-ffast-math` bug, added Parser and
+  Generic-library packs (13 total), excluded tests/docs/vendored, ranked packs by code-match count.
+  Extended --self-test 7→13.
+- **Re-verified every fix on the REAL cloned repos** (orchestrator, not trusting subagents): risk-scan FPs cglm
+  233→1, uthash 460→70, dr_libs 127→38, with NO over-correction (real strcpy/strcat in klib still flag; C++
+  category still fires on tinyxml2); domain-detect now classifies 5 parsers + cglm(HPC) + klib/uthash/sds(generic)
+  correctly, littlefs stays Filesystems. Self-tests + validators PASS throughout (refs=20 examples=10 assets=11).
+
+**Found / weak spots observed (feed next loop):**
+- F5 (comprehension exported-API gap) still open → iteration 11 fold-back C.
+- A genuine real bug the tool MISSED (klib knetfile.c:173 LP64 aliasing/over-read) → motivates an aliasing/cast-width risk lane (future).
+- Residual: multi-line comment bodies aren't stripped (line-based filter); risk-scan `runners/` not excluded (minor).
+
+**Rubric movement:** 79.5 → **84.5/100**. Honest cap lifts from REAL evidence: Q2 6→8 (13-repo breadth +
+outcome-lift + *verified* finding-driven improvement); C6 16→17 (domain-detect was broken for the most common
+surface — parsers — now fixed + validated + 2 packs); C3 13→14 (risk-scan/backlog precision); C1 11→12
+(comprehension validated on 13 repos; F5 remains). Still capped: 13/50 repos, no 2nd outcome-lift/blind-agent,
+C2/C4/C5 lack their own empirical trials.
+
+**This iteration is the heart of the brief**: the gauntlet found 66 real weaknesses on real code and the loop
+folded the recurring ones back, measurably improving the skill (verified false-positive reductions + correct
+classifications). The skill is now genuinely better *because of* the empirical trials, not just bigger.
+
+**Next:** iteration 11 → fold-back C (comprehension F5) + batch-2 (uncovered packs) + a 2nd (git-revert) outcome-lift.
+
+**Commits:** `6d80431` (integrate), `dca0f16` (fold-back A), `07bad20` (fold-back B) + this artifact-update commit.
