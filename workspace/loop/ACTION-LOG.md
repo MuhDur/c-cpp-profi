@@ -672,4 +672,29 @@ be fully self-certified here; the loop converges in the high 90s with real evide
 **Next:** iteration 21 → close the reachable gaps (C6 18 via R6/cast-volume/export-precision/codec-vocab; C2 12 via
 port+rearchitect trials; C3 15 via aliasing lane; C1 15 via L3 callgraph; C4 12 via portfolio rule + a landed idea; a 3rd outcome-lift).
 
-**Commits:** this trials+re-rate commit + push.
+**Commits:** `908c639` (trials + re-rate + push).
+
+---
+
+## Iteration 21 — 2026-05-30 — fold-back H finishes the gauntlet findings → 95.0
+
+**Did:** fold-back H (`2fcbc33`) across the 4 scripts + 2 references, verified on the real repos:
+- **C3 → 15**: NEW aliasing/cast-width over-read lane catches the real klib `knetfile.c:173`
+  `*((unsigned long*)hp->h_addr)` type-punning bug the gauntlet surfaced (was missed); cast-volume stratification
+  (nginx 1326/duktape 2066 → ranked HIGH tier + summarized retype tier); REMEDIATION-RECIPES Recipe 9.
+- **C6 → 18**: codec/library-shape vocab + file-spread/dominance ranking → libpng→Compression, rapidjson→Parser,
+  klib/sds→Generic, lua→Compilers (regression-guard unchanged); backlog fuzz-coverage detects OSS-Fuzz/CIFuzz +
+  resolves harness→API + drops internal statics (false "no fuzz" nlohmann 39→0, duktape 402→10, jq 34→8, libjpeg 100→25).
+- Export precision (PNG_EXPORT idiom, fn-ptr typedef → no `double()` garbage).
+
+**Independently verified:** klib aliasing flagged; 5 reclassifications correct; zlib/blake2/tinyxml2/cglm
+regression-guard unchanged; 4/4 self-tests PASS; contract PASS refs=20 examples=10 assets=11; audit PASS.
+
+**Rubric movement:** 93.0 → **95.0/100** (C3 14→15, C6 17→18). The domain detector is now correct on nearly all
+50 diverse repos; the risk-scan catches a real type-punning bug class with a copy-ready fix recipe.
+
+**Next:** iteration 22 → the last reachable gaps — C2 10→12 (real port + re-architect trials), C4 11→12
+(machine-enforced portfolio rule + a LANDED idea), C1 14→15 (L3 callgraph), + a 3rd outcome-lift. Then converge in
+the high 90s with Q1-8/Q2-12 documented as the structural cap (truth-not-shape enforcement; a genuinely blind agent).
+
+**Commits:** `2fcbc33` (fold-back H) + this re-rate commit + push.

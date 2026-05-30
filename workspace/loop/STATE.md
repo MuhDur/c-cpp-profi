@@ -1,15 +1,15 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **93.0 / 100** (iteration 20, 2026-05-29).
-  Per-dim: C1 14 · C2 **10** · C3 14 · C4 **11** · C5 **8** · C6 17 · Q1 7.5 · Q2 11.5.
+- **Honest composite (RUBRIC-100):** **95.0 / 100** (iteration 21, 2026-05-30).
+  Per-dim: C1 14 · C2 10 · C3 **15** · C4 11 · C5 8 · C6 **18** · Q1 7.5 · Q2 11.5.
 - **Target:** 100 / 100 with the empirical Q2 layer closed (see LOOP-PROTOCOL stop condition)
-- **Phase:** ▶ EMPIRICAL — gauntlet complete + cap-lift trials done; now closing reachable gaps toward the high 90s.
-- **Last iteration (20):** the C2/C4/C5 real-repo trials (workflow `wi79lyedk`) each PASSED the skill's own checker
-  on a real repo (C2 modernize on tinyxml2 w/ byte-identical symbol-table ABI proof; C4 backlog + 2 Idea Cards on
-  cJSON; C5 README+API for inih + docs-as-test snippet ran). C2 9→10, C4 10→11, C5 7→8. Composite 90.0→93.0.
-- **Structural ceiling (honest):** Q1 8 ("validate output truth not shape") + Q2 12 (a BLIND agent) can't be fully
-  self-certified by an author-driven loop. The loop converges in the high 90s with real evidence, not a faked 100.
+- **Phase:** ▶ closing the last reachable gaps (C1 15, C2 12, C4 12) toward the high 90s; Q1-8/Q2-12 are the structural cap.
+- **Last iteration (21):** fold-back H (`2fcbc33`) finished the gauntlet findings — NEW aliasing/cast-width lane
+  catches the real klib type-punning bug (C3→15), codec/library-shape vocab + ranking fixed libpng/rapidjson/klib/
+  sds/lua + fuzz-coverage OSS-Fuzz detection (C6→18). Composite 93.0→95.0.
+- **Structural ceiling (honest):** Q1 8 ("validate output truth not shape") + Q2 12 (a BLIND agent, not the author)
+  can't be fully self-certified by an author-driven loop. The loop converges in the high 90s with real evidence, not a faked 100.
 - **Per-iteration now also (user instruction):** push to `origin` after committing; refresh `README.md` via
   /readme-writing + /de-slopify whenever the composite moves or the skill materially changes (see LOOP-PROTOCOL step 7).
 - **Last iteration (12):** integrated batch-2 (12 repos → 25/50; 34 findings → regressions R1–R7) and **folded
@@ -34,22 +34,21 @@ C4 10→12 (a real idea-generation trial) · C5 7→8 (real doc-gen) · C6 17→
 | 1 | Q2 empirical | 3.5 | 12 | **running-the-gauntlet** — (a) a durable OUTCOME-LIFT harness (git-revert-of-known-fix / seeded-fault) proving the skill drives real defect detection+fix on ≥2 repos; (b) the **50-repo × ≤20-reason gauntlet** with preserved negatives, findings folded back. | **▶ ACTIVE (iter 9+)** |
 | ✓ | all 7 design dims (C1–C6, Q1) | 73.5 | 88 | iters 1–8, each converged + independently verified | done |
 
-## Immediate next action (iteration 21) — close the reachable gaps toward the high 90s
+## Immediate next action (iteration 22) — the last reachable gaps (C1 15, C2 12, C4 12) + a 3rd outcome-lift
 
-The C2/C4/C5 trials are DONE (93.0). Remaining reachable points (the structural ceiling Q1-8/Q2-12 aside):
-1. **C6 17→18** — fold-back the last gauntlet findings: R6 (fuzz-harness→API resolution + cifuzz/oss-fuzz
-   detection), cast-volume stratification (nginx/duktape — rank narrowing/width casts above pointer-retype),
-   export-precision (goto-labels, `PNG_EXPORT` name-as-2nd-arg macro, fn-ptr typedefs), and the codec/library-shape
-   vocab (libpng→Compression; jsmn/rapidjson/klib/sds/lua). Re-verify on the cloned repos.
-2. **C2 10→12** — real **port** trial (cross-target: build a small lib for aarch64 via qemu or a glibc→musl
-   differential oracle) + real **re-architect** trial (a bounded structural change with a migration ledger), each
-   passing `--profile port` / `--profile rearchitect`.
-3. **C3 14→15** — add an aliasing/cast-width risk lane (catch the real klib `knetfile.c:173` `*(unsigned long*)`
-   over-read the gauntlet found) + cast-volume ranking + a numeric perf-proof (`cpp_perf_proof`/`--strict-numeric`).
-4. **C1 14→15** — auto-draw the L3 touched-path callgraph in `cpp_comprehension_map.sh` (cscope/clangd) + cap refinement.
-5. **C4 11→12** — machine-enforce the portfolio rule (≥1 radical) in `cpp_idea_check`/a pass + LAND one idea
-   (implement the accretive cJSON_Utils fuzz harness + show its behavior oracle).
-6. A **3rd outcome-lift** (git-revert-of-CVE). Each step re-rated with evidence; Q1-8/Q2-12 documented as the structural cap.
+C6 18 and C3 15 are DONE (fold-back H, 95.0). Remaining reachable (structural Q1-8/Q2-12 aside):
+1. **C2 10→12** (a Workflow of 2 trials, like iter-19): a real **port** trial (cross-compile a small lib for
+   aarch64 via qemu OR a glibc→musl differential oracle — origin+target triple, corpus) passing `--profile port`;
+   a real **re-architect** trial (a bounded structural change with a migration ledger + caller census) passing
+   `--profile rearchitect`. Commit the artifacts under `workspace/loop/trials/`.
+2. **C4 11→12** — machine-enforce the portfolio rule (a pass that requires ≥1 `kind: radical` card) + LAND the
+   accretive idea from the C4 trial (actually implement the cJSON_Utils fuzz harness on a copy + show it builds/runs).
+3. **C1 14→15** — auto-draw the L3 touched-path callgraph in `cpp_comprehension_map.sh` (cscope/clangd/`rg` call
+   edges for a chosen entry) + the cap refinement for huge APIs.
+4. A **3rd outcome-lift** (git-revert of a historical sanitizer-visible fix on a cloned repo) to firm Q2.
+Each re-rated with evidence; once these land (~99), state Q1-8/Q2-12 as the explicit structural cap and converge.
+
+## (history) Iteration 21 plan — close reachable gaps (C6 18, C3 15 done via fold-back H)
 
 ## (history) Iteration 19 plan — targeted C2/C4/C5 real-repo trials
 
