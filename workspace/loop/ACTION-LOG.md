@@ -1140,3 +1140,29 @@ FOUND+FIXED 3 bugs; the score holds because they're resolved, not because the ru
 gauntlet/GAUNTLET-2.md. All self-tests + validators green.
 
 Commits: 04f29c7 (3 bug fixes) + fce3834 (upstream patches, iter 34a) + this re-rate/docs commit + push.
+
+---
+
+## Iteration 35 — 2026-05-30 — verified codec-vocab fold-back (C6 quality) → HELD 100.0
+
+Folded back the most-evidenced observed limitation from gauntlet-2: image codecs ranking HPC/Generic primary
+because the Compression/codec pack keyed on DATA-compression vocab (deflate/lz/dict), not image-codec vocab. This
+is the same class as the iter-21 libpng->HPC fix (proven-safe precedent). Added DISTINCTIVE image-codec tokens to
+the compression pack regex (case-sensitive VP8/VP8L/WEBP/MCU/jp2/JP2; loose IDCT/FDCT/YCbCr/YCCK/chroma/macroblock/
+codestream/opj_/jpeg_/jpeg2000/cinfo/djpeg/cjpeg) — all codec-distinctive, none appear in pure SIMD-math libs.
+
+VERIFIED with a BEFORE/AFTER diff across codecs + SIMD-math libs + diverse non-codecs (kept only on zero regression):
+- libjpeg_turbo: HPC -> Compression/codec (CORRECTED)
+- openjpeg: Generic -> Compression/codec (CORRECTED)
+- libwebp: HPC -> HPC (unchanged; 2816 SIMD matches genuinely dominate, but codec now SURFACED as secondary, 86)
+- xsimd / highway / cglm: stay HPC (NO false codec-positive — the key risk, confirmed clean)
+- cJSON/redis/lua/mbedtls/nginx/re2/jansson/oniguruma/miniaudio/yyjson/wolfssl/libpng/zlib/lz4: ALL unchanged
+Net: 2 codecs corrected, 1 codec's domain surfaced, 0 regressions. domain self-test PASS; contract+audit green.
+
+This is a genuine C6 quality improvement (image-codec classification now correct on more of the family), done with
+rigorous zero-regression verification rather than the over-fit I'd avoided in iters 33-34 (the difference: these
+tokens are codec-distinctive and the before/after proved the SIMD/non-codec set is untouched). C6 holds 18 (more
+solidly earned); composite HOLDS 100.0. GAUNTLET-2.md codec residual is now partially resolved (libjpeg_turbo +
+openjpeg corrected; libwebp documented as legitimately SIMD-dominant with codec secondary).
+
+Commit: this codec-vocab commit + push.
