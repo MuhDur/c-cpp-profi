@@ -50,6 +50,14 @@ Use `--require-analyzer-review` for release, parser, memory, security, and revie
 
 Use `--require-performance-proof` for every optimization claim. With that flag, a passed performance gate must include baseline or before data, profile or hotspot evidence, an opportunity score, a behavior oracle or isomorphism proof, and after or result data. The checker verifies that the packet is self-contained; it does not verify that the benchmark methodology is strong enough. `--strict-numeric` is an alias for `--require-performance-proof`.
 
+Use `--verify-evidence` to check the *truth* of cited artifacts, not just the *shape* of the report. The flags above confirm a gate is marked passed with non-placeholder command and evidence; they do not confirm the evidence is real. When a gate produces a persisted artifact (a build log, a fuzz reproducer, cross-arch output files, an ABI dump, a golden image), embed a machine-checkable assertion in the evidence cell and the checker re-checks it independently — it cannot be satisfied by writing the wrong value:
+
+- `@verify-exists{path}` — the artifact must exist.
+- `@verify-sha256{hex}{path}` — the checker recomputes `sha256(path)` and it must equal `hex`.
+- `@verify-contains{path}{substring}` — the artifact must contain the substring (bytes).
+
+Paths resolve against `--verify-base` (default: the report's directory). Example: `cpp_evidence_check.py gate-report.md --profile port --require-transform-proof --verify-evidence --verify-base ./build`. A flipped digit in a claimed digest now fails the report instead of passing it. This closes the artifact-integrity slice of "validate output, not shape"; it does not re-run arbitrary commands (side-effecting and context-dependent), so output with no persisted artifact still rests on the honest-reporting contract. `cpp_evidence_check.py --self-test` exercises the verifier on a real temp file (correct claims pass, tampered claims fail).
+
 Use `--derive-profiles` to make profile selection derived rather than self-attested. With that flag, the checker reads the `## Change Scope` yes/no answers and computes the minimum required profile set, unions it with any explicit `--profile`, and enforces it:
 
 - `Parser/input/security boundary touched: yes` adds `parser` and `security`.

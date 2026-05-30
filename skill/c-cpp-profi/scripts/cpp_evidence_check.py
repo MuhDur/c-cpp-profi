@@ -9,6 +9,7 @@ claim completion while leaving applicable gates blank or "not run".
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -417,9 +418,106 @@ def check_report(
     return errors, profiles
 
 
+# --- Evidence TRUTH verification (vs. report SHAPE) ----------------------------
+# The shape checks above confirm a gate is marked passed with a non-placeholder
+# command + evidence. They do NOT confirm the evidence is true. `--verify-evidence`
+# closes part of that gap WITHOUT re-running arbitrary (side-effecting) commands:
+# the report author embeds machine-checkable assertions about the artifacts a gate
+# produced, and the checker re-checks them independently. An agent then cannot
+# claim a digest or artifact that does not actually exist/match.
+#
+#   @verify-exists{<path>}              -- path must exist (relative to --verify-base)
+#   @verify-sha256{<hex>}{<path>}       -- sha256(path) must equal <hex>
+#   @verify-contains{<path>}{<substr>}  -- path must exist and contain <substr> (bytes)
+#
+# Paths resolve against --verify-base (default: the report's directory).
+VERIFY_EXISTS_RE = re.compile(r"@verify-exists\{([^{}]+)\}")
+VERIFY_SHA256_RE = re.compile(r"@verify-sha256\{([0-9a-fA-F]{64})\}\{([^{}]+)\}")
+VERIFY_CONTAINS_RE = re.compile(r"@verify-contains\{([^{}]+)\}\{([^{}]*)\}")
+
+
+def verify_evidence(text: str, base: Path) -> tuple[list[str], int]:
+    """Independently re-check @verify-* directives. Returns (errors, n_checks)."""
+    errors: list[str] = []
+    checks = 0
+
+    def resolve(p: str) -> Path:
+        q = Path(p)
+        return q if q.is_absolute() else (base / q)
+
+    for rel in VERIFY_EXISTS_RE.findall(text):
+        checks += 1
+        if not resolve(rel).exists():
+            errors.append(f"verify-evidence: @verify-exists path not found: {rel}")
+
+    for hexdigest, rel in VERIFY_SHA256_RE.findall(text):
+        checks += 1
+        path = resolve(rel)
+        if not path.is_file():
+            errors.append(f"verify-evidence: @verify-sha256 file not found: {rel}")
+            continue
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        if actual.lower() != hexdigest.lower():
+            errors.append(
+                f"verify-evidence: @verify-sha256 mismatch for {rel}: "
+                f"claimed {hexdigest.lower()}, actual {actual}"
+            )
+
+    for rel, needle in VERIFY_CONTAINS_RE.findall(text):
+        checks += 1
+        path = resolve(rel)
+        if not path.is_file():
+            errors.append(f"verify-evidence: @verify-contains file not found: {rel}")
+            continue
+        if needle.encode() not in path.read_bytes():
+            errors.append(
+                f"verify-evidence: @verify-contains: {rel} does not contain {needle!r}"
+            )
+
+    return errors, checks
+
+
+def run_self_test() -> int:
+    """Exercise verify_evidence on a real temp file: correct claims pass, tampered fail."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as d:
+        base = Path(d)
+        (base / "out.txt").write_text("hello cross-arch world\n", encoding="utf-8")
+        good_sha = hashlib.sha256((base / "out.txt").read_bytes()).hexdigest()
+
+        ok_report = (
+            "@verify-exists{out.txt} "
+            f"@verify-sha256{{{good_sha}}}{{out.txt}} "
+            "@verify-contains{out.txt}{cross-arch}"
+        )
+        errs, n = verify_evidence(ok_report, base)
+        if errs or n != 3:
+            print(f"cpp_evidence_check self-test: FAIL (good report: errs={errs}, n={n})")
+            return 1
+
+        bad_sha = "0" * 64
+        bad_report = (
+            f"@verify-sha256{{{bad_sha}}}{{out.txt}} "
+            "@verify-exists{missing.txt} "
+            "@verify-contains{out.txt}{NOT_PRESENT}"
+        )
+        errs, n = verify_evidence(bad_report, base)
+        if n != 3 or len(errs) != 3:
+            print(f"cpp_evidence_check self-test: FAIL (bad report should give 3 errors: errs={errs}, n={n})")
+            return 1
+
+    print("cpp_evidence_check self-test: PASS")
+    return 0
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("report", help="filled cpp_gate_report Markdown path, or '-' for stdin")
+    parser.add_argument(
+        "report",
+        nargs="?",
+        help="filled cpp_gate_report Markdown path, or '-' for stdin",
+    )
     parser.add_argument(
         "--profile",
         action="append",
@@ -490,12 +588,36 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="alias for --require-performance-proof",
     )
+    parser.add_argument(
+        "--verify-evidence",
+        action="store_true",
+        help=(
+            "independently re-check @verify-exists{}/@verify-sha256{}{}/"
+            "@verify-contains{}{} directives embedded in the evidence (artifact "
+            "TRUTH, not just report shape); any mismatch fails the report"
+        ),
+    )
+    parser.add_argument(
+        "--verify-base",
+        default=None,
+        help="base directory for @verify-* relative paths (default: the report's directory)",
+    )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="run the evidence-verification self-test and exit",
+    )
     parser.add_argument("--json", action="store_true", help="emit JSON result")
     return parser.parse_args(argv)
 
 
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
+    if args.self_test:
+        return run_self_test()
+    if not args.report:
+        print("error: report path required (or '-' for stdin), unless --self-test", file=sys.stderr)
+        return 2
     # When --derive-profiles is set, --profile is a seed the scope answers extend;
     # without it the explicit profile set wins, defaulting to basic as before.
     explicit_profiles = args.profile or ([] if args.derive_profiles else ["basic"])
@@ -513,6 +635,17 @@ def main(argv: list[str]) -> int:
         args.derive_profiles,
     )
 
+    verify_checks = 0
+    if args.verify_evidence:
+        if args.verify_base is not None:
+            base = Path(args.verify_base)
+        elif args.report == "-":
+            base = Path.cwd()
+        else:
+            base = Path(args.report).resolve().parent
+        verify_errors, verify_checks = verify_evidence(text, base)
+        errors = list(errors) + verify_errors
+
     if args.json:
         print(
             json.dumps(
@@ -525,6 +658,8 @@ def main(argv: list[str]) -> int:
                     "require_performance_proof": require_performance_proof,
                     "require_transform_proof": args.require_transform_proof,
                     "require_warning_clean": args.require_warning_clean,
+                    "verify_evidence": args.verify_evidence,
+                    "verify_checks": verify_checks,
                     "errors": errors,
                 },
                 indent=2,
@@ -538,6 +673,8 @@ def main(argv: list[str]) -> int:
     else:
         print("c-cpp-profi evidence check: PASS")
         print("profiles=" + ",".join(profiles))
+        if args.verify_evidence:
+            print(f"verify-evidence: {verify_checks} artifact assertion(s) re-checked OK")
 
     return 1 if errors else 0
 
