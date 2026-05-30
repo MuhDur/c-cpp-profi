@@ -93,7 +93,7 @@ Never commit the first idea. Compete them, steelman, refute, then score.
 
    The accretive score deliberately punishes low confidence; the radical EV deliberately does not, so a high-upside/high-uncertainty bet is not auto-killed by the perf-style scorer. Score every backlog row with **both**.
 
-5. **Portfolio rule**: each ideation pass must carry at least one `kind=radical` candidate forward even when accretive items dominate by raw score. This is the mechanism that stops the engine from only ever proposing safe cleanups.
+5. **Portfolio rule**: each ideation pass must carry at least one `kind=radical` candidate forward even when accretive items dominate by raw score. This is the mechanism that stops the engine from only ever proposing safe cleanups. Machine-enforced: `cpp_idea_check.py <cards.md> --require-radical` fails unless at least one card is `Kind: radical`.
 
 | Dimension | 5 | 3 | 1 |
 |---|---|---|---|

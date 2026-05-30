@@ -34,3 +34,4 @@ venv/
 
 # NTM local runtime state
 .ntm/
+trials/c2-build/

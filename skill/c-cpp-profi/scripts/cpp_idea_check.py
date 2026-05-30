@@ -186,13 +186,23 @@ def check_card(index: int, fields: dict[str, str]) -> list[str]:
     return errors
 
 
-def check_doc(text: str) -> tuple[int, list[str]]:
+def check_doc(text: str, require_radical: bool = False) -> tuple[int, list[str]]:
     blocks = extract_cards(text)
     if not blocks:
         return 0, ["no Idea Card found (expected a '## Idea Card' section or an 'Idea:' fenced block)"]
     errors: list[str] = []
+    kinds: list[str] = []
     for index, block in enumerate(blocks, start=1):
-        errors.extend(check_card(index, parse_card_fields(block)))
+        fields = parse_card_fields(block)
+        kinds.append(normalize(fields.get("Kind", "")))
+        errors.extend(check_card(index, fields))
+    # Portfolio rule (Innovation Engine): an ideation pass must carry at least one
+    # radical bet, not only safe accretive cleanups. Opt-in via --require-radical.
+    if require_radical and "radical" not in kinds:
+        errors.append(
+            "portfolio rule: at least one card must be Kind: radical "
+            "(carry a radical bet, not only accretive cleanups)"
+        )
     return len(blocks), errors
 
 
@@ -200,13 +210,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("card", help="markdown file with one or more Idea Cards, or '-' for stdin")
     parser.add_argument("--json", action="store_true", help="emit JSON result")
+    parser.add_argument(
+        "--require-radical",
+        action="store_true",
+        help="portfolio rule: require at least one Kind: radical card in the file",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
     text = read_doc(args.card)
-    cards, errors = check_doc(text)
+    cards, errors = check_doc(text, require_radical=args.require_radical)
 
     if args.json:
         print(
