@@ -60,18 +60,22 @@ C4 10→12 (a real idea-generation trial) · C5 7→8 (real doc-gen) · C6 17→
 | 1 | Q2 empirical | 3.5 | 12 | **running-the-gauntlet** — (a) a durable OUTCOME-LIFT harness (git-revert-of-known-fix / seeded-fault) proving the skill drives real defect detection+fix on ≥2 repos; (b) the **50-repo × ≤20-reason gauntlet** with preserved negatives, findings folded back. | **▶ ACTIVE (iter 9+)** |
 | ✓ | all 7 design dims (C1–C6, Q1) | 73.5 | 88 | iters 1–8, each converged + independently verified | done |
 
-## Immediate next action (iteration 25+) — CONVERGED; maintenance-only
+## Immediate next action (iteration 30+) — the one remaining reachable lever: C1 exact callgraph via clang IR
 
-Iteration 24 reached the honest ceiling (97.5). C1 14→14.5 (L3 callgraph) and the 3rd outcome-lift (lz4) are DONE.
-The remaining 2.5 pts are documented caps (see header), not reachable by self-certification. **Do NOT chase score.**
+At 99.25. Residual 0.75 = C1 0.5 + Q1 0.25. The honest next lever is **C1 via the installed clang** (cflow/clangd/
+cscope are absent, but `clang -emit-llvm` is not):
+- Add an OPTIONAL exact direct-call-graph path to `cpp_comprehension_map.sh`: when a TU compiles, emit LLVM IR
+  (`clang -g -emit-llvm -S <flags> tu.c -o -`) and extract `call`/`invoke @symbol` edges — a precise direct-call
+  graph (resolves what the token heuristic guesses). Keep the heuristic as the always-on fallback; gate the exact
+  path on clang availability + a TU that compiles (single-header/single-TU libs like cJSON/qoi/cgltf are easy;
+  multi-TU needs compile_commands.json). Indirect (fn-ptr/vtable) calls remain unresolved — that is fundamental to
+  static analysis, not a skill gap, so it should not block C1 15 once the exact DIRECT graph + honest indirect
+  caveat are in place. Demonstrate on cJSON (exact `cJSON_ParseWithOpts -> parse_value -> parse_string/...`).
+- Q1 0.25 (arbitrary command-output re-exec) stays on the honest-reporting contract; do not chase with unsafe
+  re-exec. Only the artifact-integrity slice was safely closeable (done iter 29).
 
-On future wakeups, do maintenance/genuine-improvement only — and ONLY if a real, non-score-driven improvement is
-found. Candidates (each must be a true gain, independently verified, validators kept green, committed + pushed):
-- If a cross-arch toolchain ever becomes installable (`apt`/network/root), do the true cross-arch port → C2 12.
-- If clangd + per-repo `compile_commands.json` can drive an EXACT callHierarchy graph, wire it as the L3 exact path
-  (heuristic stays as fallback) → C1 15.
-- Otherwise: keep validators green, keep README/RUBRIC/STATE honest, fix any real regression the gauntlet surfaces.
-Re-arm the loop at a SLOW heartbeat (≈1800s). Stop only if the user ends it. Never fabricate the last 2.5 pts.
+Each must be a true gain, independently verified, validators green, committed + pushed. Re-arm at ≈1800s. Stop only
+if the user ends it. Never fabricate the residual.
 4. **Converge**: after C1 15 (~98), write a final honest summary in RUBRIC/STATE — the loop has reached its
    evidence-supported ceiling; the residual 2 points (C2 cross-arch = environment, Q1-8 truth-not-shape + Q2-12
    blind-agent = structural self-certification limits) are documented, not faked. Continue only if a genuinely
