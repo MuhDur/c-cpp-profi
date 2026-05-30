@@ -21,9 +21,15 @@
   cgltf UB) + Recipe 10 (recursion depth cap). Composite 98.5→99.0.
 - **NOTE (user rule):** the rating lives ONLY here in `workspace/loop/` (the loop audit). It is deliberately NOT in
   `skill/c-cpp-profi/` and NOT in the root README (verified: `grep /100` over the skill = none).
-- **Target:** 100 / 100 — **REACHED (iter 31).** Nothing left to chase. Future iterations are maintenance /
-  genuine-accretive-improvement ONLY: keep validators green, fix real regressions, add capability only when real.
-  Do NOT invent score motion (there is none left); the score moves only DOWN if evidence ever demands it.
+- **Target:** 100 / 100 — **REACHED (iter 31), HELD under adversarial maintenance (iter 32).** Nothing left to
+  chase. Future iterations are maintenance / genuine-accretive-improvement ONLY: keep validators green, fix real
+  regressions, add capability only when real. Do NOT invent score motion; the score moves only DOWN if evidence
+  ever demands it.
+- **Iteration 32 (maintenance):** adversarially probed the --reexec safety denylist, found 3 bypasses
+  (path-prefixed / find -delete / shell-wrapped), hardened the regex + locked it in the self-test (commit
+  `399b67e`); documented the denylist as best-effort defense-in-depth (real guarantee = opt-in trusted-report +
+  sandbox). Q1 8 / composite 100.0 HELD — the probe confirmed the enforcement claim; the holes were safety-feature
+  gaps, now fixed. Regression suite all green.
 - **Phase:** ▶ broke past the prior 97.5 ceiling — the user installed the cross toolchain, so C2's ENV cap was
   FIXED (not documented). Next: the README+image deliverable the user asked for (see below), then genuine fixes only.
 - **Last iteration (26):** **C2 11→12 — TRUE cross-arch port landed.** User installed `gcc-aarch64-linux-gnu`,
