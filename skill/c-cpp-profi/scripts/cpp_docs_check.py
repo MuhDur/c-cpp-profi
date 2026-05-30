@@ -105,9 +105,24 @@ def normalize(value: str) -> str:
 
 
 def read_doc(path: str) -> str:
+    # G15: clean one-line error + non-zero exit on binary/non-UTF-8/missing input.
     if path == "-":
-        return sys.stdin.read()
-    return Path(path).read_text(encoding="utf-8")
+        try:
+            return sys.stdin.read()
+        except UnicodeDecodeError:
+            print("error: stdin is not valid UTF-8 text", file=sys.stderr)
+            sys.exit(2)
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        print(f"error: file not found: {path}", file=sys.stderr)
+        sys.exit(2)
+    except (IsADirectoryError, PermissionError, OSError) as exc:
+        print(f"error: cannot read {path}: {exc}", file=sys.stderr)
+        sys.exit(2)
+    except UnicodeDecodeError:
+        print(f"error: {path} is not valid UTF-8 text (binary file?)", file=sys.stderr)
+        sys.exit(2)
 
 
 def is_placeholder(value: str) -> bool:

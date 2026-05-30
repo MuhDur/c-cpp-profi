@@ -63,8 +63,21 @@ FEELING_PHRASES = {
 }
 
 # Anchor tokens that make problem-evidence measurable rather than a feeling.
-ANCHOR_TOKENS = ("crash", "cve", "coverage")
-ANCHOR_RE = re.compile(r"\d|%|/")
+ANCHOR_TOKENS = (
+    "crash", "cve", "coverage", "leak", "use-after-free", "uaf", "overflow",
+    "regression", "timeout", "deadlock", "data race", "ub ", "undefined behavior",
+)
+# G20 (150-repo gauntlet): a BARE digit / % / slash is not a measurable anchor — it
+# passed "version 2", "100/100 vibes", "TODO/later". Require a number ADJACENT to a
+# unit/metric (or a CVE/issue id). The ANCHOR_TOKENS above + the FEELING_PHRASES
+# guard remain as the qualitative-metric backstop.
+ANCHOR_RE = re.compile(
+    r"\d+(?:\.\d+)?\s*"
+    r"(?:%|x\b|ms|us|µs|ns|s\b|sec|min|mb|gb|kb|kib|mib|gib|fps|ops|op/s|/s|"
+    r"bytes?|kbytes?|cycles|iters?|loc|lines?|×|c[ve]+-?\d)"
+    r"|cve-\d{4}|gh-\d+|#\d{2,}",
+    re.IGNORECASE,
+)
 
 
 def normalize(value: str) -> str:
@@ -72,9 +85,24 @@ def normalize(value: str) -> str:
 
 
 def read_doc(path: str) -> str:
+    # G15: clean one-line error + non-zero exit on binary/non-UTF-8/missing input.
     if path == "-":
-        return sys.stdin.read()
-    return Path(path).read_text(encoding="utf-8")
+        try:
+            return sys.stdin.read()
+        except UnicodeDecodeError:
+            print("error: stdin is not valid UTF-8 text", file=sys.stderr)
+            sys.exit(2)
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        print(f"error: file not found: {path}", file=sys.stderr)
+        sys.exit(2)
+    except (IsADirectoryError, PermissionError, OSError) as exc:
+        print(f"error: cannot read {path}: {exc}", file=sys.stderr)
+        sys.exit(2)
+    except UnicodeDecodeError:
+        print(f"error: {path} is not valid UTF-8 text (binary file?)", file=sys.stderr)
+        sys.exit(2)
 
 
 def is_placeholder(value: str) -> bool:
