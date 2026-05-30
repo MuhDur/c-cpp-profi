@@ -1276,3 +1276,49 @@ and makes the new paradigm reference actionable, not just prose. Quality enhance
 a new one; honestly framed (heuristic signal report, calibrated + verified).
 
 Commit: paradigm-lane commit + this log + push.
+
+---
+
+## Iteration 40 — 2026-05-30 — 160-repo gauntlet + deep gap audit → 100 DISPROVEN, repaired to 97.5
+
+User: "make sure you check and verify and close remaining gaps. use workflows to fully cover also in depth and
+test the skill on a total of 150 repositories." Ran workflow `w7rkgwd24` (22 agents, ~1.6M tokens, ~33 min):
+160 maximally-diverse repos cloned (0 clone fails) + the full current tool suite per repo, alongside 6 deep
+adversarial auditors. Synthesis deduped 74 anomalies + 34 audit findings → 26 ranked gaps.
+
+KEY INSIGHT (why this mattered): the iter-39 paradigm-signal lane, the 3 iter-37 references, and the iter-34/35
+codec + large-repo guards all landed AFTER the last scale test, so they were never adversarially validated at
+150-repo scale. The gauntlet found exactly the latent defects that creates.
+
+HIGH-severity found (the 100 was not robust): G1 comprehension `--exact` crashed the whole script on header-
+only/huge repos; G2/G3 the `@reexec` destructive-command denylist was bypassable (backtick/here-string + glued/
+versioned interpreters) — ran real `rm` while reporting PASS; G4 the contract validator `bash -n`'d only the
+FIRST of 8 shell helpers (false PASS); G5 the proof gates were label-presence only (prose passed
+`--require-*-proof`); G8/G9 risk_scan + domain_detect had no large-repo guard (87s / exit-124 timeouts). Plus
+G6 test-suite headers leaked past the `[scope]` banner.
+
+FIXED + VERIFIED (each on the offending repo, all committed + pushed):
+- C1 / comprehension: G1 (`|| true` + awk truncation; jsmn/json.h/utf8.h exit 0), G12/G13 (whole-file comment/
+  string strip + test/vendored/contrib exclusion; miniz 911→11, zlib/NNPACK→C-OOP, sljit/cglm/jsmn→procedural,
+  tinyxml2/fmt/abseil stay OOP), G14 (>=2-marker threshold), G21 (lambda vs operator[]).
+- Q1 / enforcement: G2/G3 (`@reexec` nested-exec + interpreter-basename refusal — all bypasses now REFUSED,
+  sentinel survives), G5 (anchor/number/count proof validators — prose FAILS, anchored PASSES), G4 (per-file
+  bash -n — non-first script error now caught), G16 (argparse + clean bad-dir FAIL), G17 (empty-needle +
+  malformed-sha256 now error), G19 (verify-* base containment), G23 (CRLF frontmatter).
+- C6 / domain + scope: G6 (test-header globs; secp256k1 leak 88→1), G7 (anchored test-source; attestation.c/
+  bench.h scanned again), G8 (risk_scan guard; nuttx 87s→1s), G9 (tutorials/ exclusion + evenly-sampled
+  line-capped strip-once corpus; mongoose/nuttx/betaflight/wolfssl all complete ≤26s), G10 (Find*.cmake
+  excluded), G11 (third-party/3rdparty + SWIG excluded; mold/mgba reclassified), G24-FP (gperftools→Generic,
+  cFE/fprime stay Space).
+- C4/C5: G20 (idea-card anchor must be number+unit), G15 (idea/docs checkers clean-error on bad input), G18
+  (aligned_alloc DR460 correction), G26 (SKILL.md: checker lints paperwork, not code correctness).
+
+DEFERRED / DOCUMENTED residuals (honest): G22 (// + `\`-continuation strip edge — calibration-sensitive
+shared awk, not worth the risk), G24 missing packs (linker/emulator/benchmark/GPU-runtime — additive backlog),
+protocol-lib Crypto-primary imprecision (secondary pack present → gates apply), G25 (fundamental IR-sparseness
+limit). 
+
+RATING: composite 100 → **97.5** (C1 14.5, C6 16.5, Q1 7.5 dropped; the rest hold). The drop is the honesty
+contract working: the 100 was disproven by adversarial scale-testing; the climb back to 97.5 is earned by real
+fixes; the residual 2.5 is genuine + documented, not faked. Validators + 6 self-tests + completion audit green;
+no regression. 12 commits pushed. README gauntlet badge 50→160. See gauntlet/GAUNTLET-3-150.md.

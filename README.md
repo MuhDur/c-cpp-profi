@@ -6,7 +6,7 @@
   <a href="https://github.com/MuhDur/c-cpp-profi/actions/workflows/skill-validate.yml"><img src="https://github.com/MuhDur/c-cpp-profi/actions/workflows/skill-validate.yml/badge.svg" alt="skill-validate"></a>
   <img src="https://img.shields.io/badge/references-23-14b8a6" alt="23 references">
   <img src="https://img.shields.io/badge/scripts-16-14b8a6" alt="16 scripts">
-  <img src="https://img.shields.io/badge/gauntlet-50%20repos-fb7185" alt="validated on 50 repos">
+  <img src="https://img.shields.io/badge/gauntlet-160%20repos-fb7185" alt="validated on 160 repos">
 </p>
 
 <p align="center"><b>Point an agent at any C or C++ repository and have it work like a senior engineer: read the code at every level, change it safely, harden it, and hand back machine-checkable proof.</b></p>

@@ -157,3 +157,32 @@ After iteration 8 the seven design dimensions (C1–C6, Q1) are as high as hones
 50-repo gauntlet — which both scores Q2 directly AND lifts the empirical caps currently holding C1(11→~14),
 C2(9→~11), C3(13→~14), C4(10→12), C5(7→8), C6(16→~18). No further design polish can reach 100; only real
 fresh-repo evidence can. Iteration 9 begins Q2.
+
+---
+
+## Iteration 40 re-rate — 100 → 97.5 (160-repo gauntlet + deep audit disproved 100, then repaired)
+
+The honesty contract in action. A 160-repo re-validation (workflow `w7rkgwd24`) + 6 deep auditors found that
+the post-iter-34 additions (paradigm lane, 3 new references, codec/large-repo guards) were never adversarially
+scale-tested and carried **7 high-severity latent defects** (G1 comprehension crash, G2/G3 reexec safety
+bypasses, G4 false-pass validator, G5 label-only proof gates, G8/G9 unguarded large-repo timeouts) + a
+test-header scope leak (G6). 100 was NOT supported. All were fixed and verified on the offending repo; the
+score climbs back to a defensible-but-honest 97.5, not a re-asserted 100.
+
+| Dim | iter-39 | iter-40 | Why it moved |
+|---|---:|---:|---|
+| C1 understand | 15 | **14.5** | `--exact` crashed on real inputs (G1, fixed); paradigm lane had comment/scope FPs (G12–14/G21, fixed) but retains documented heuristic blend residuals (e.g. openjpeg's bundled wx GUI). Strong + now 160-repo-validated, but the crash showed 15 was overstated. |
+| C2 transform | 12 | 12 | not implicated by the gauntlet findings. |
+| C3 improve | 15 | 15 | not implicated. |
+| C4 ideate | 12 | 12 | idea-anchor gate tightened (G20) — net improvement, holds. |
+| C5 document | 8 | 8 | docs checker robustness (G15) + aligned_alloc accuracy (G18) — holds. |
+| C6 domain-agnostic | 18 | **16.5** | domain_detect timed out on 4 repos (G9, fixed) and had build-infra/vendored/space misclassifications (G10/G11/G24, fixed), but a REAL coverage gap remains: no packs for linker/emulator/benchmark/GPU-runtime/windowing domains (mold/mgba/glfw → no-pack fallbacks), and crypto-heavy protocol libs mis-primary to Crypto (secondary pack still fires gates). 18 was overstated. |
+| Q1 enforcement | 8 | **7.5** | the validator checked only 1/8 scripts (G4) and the proof gates + reexec denylist had real holes (G2/G3/G5) — all fixed, but the reexec denylist is fundamentally best-effort and the proof-anchor validation is lightweight (presence of an anchor/number, not its truth), so 8 was overstated. |
+| Q2 empirical | 12 | 12 | this 160-repo find→fix→verify pass IS the empirical rigor Q2 rewards — holds. |
+| **Composite** | **100** | **97.5** | |
+
+The residual 2.5 is genuine and documented in `gauntlet/GAUNTLET-3-150.md` (C6 missing packs + protocol-lib
+primary imprecision; the deferred G22 line-continuation strip edge; the best-effort reexec denylist +
+lightweight proof-anchor validation). It is NOT faked back to 100. Path to higher: add the missing domain
+packs (additive, needs new reference packs + validator updates), land G22, and deepen proof-anchor validation
+toward truth-not-shape — each a real, evidence-backed gain, not score motion.

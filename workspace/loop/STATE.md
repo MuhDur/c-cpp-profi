@@ -1,8 +1,24 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **100.0 / 100** (iteration 31; HELD through iter 34 @ 150 repos).
-  Per-dim: C1 **15** · C2 12 · C3 15 · C4 12 · C5 8 · C6 18 · Q1 **8** · Q2 12. ALL EIGHT dims at full marks.
+- **Honest composite (RUBRIC-100):** **97.5 / 100** (iteration 40 — dropped from 100 after a 160-repo
+  re-validation + deep audit DISPROVED the 100; then repaired). Per-dim: C1 14.5 · C2 12 · C3 15 · C4 12 ·
+  C5 8 · C6 16.5 · Q1 7.5 · Q2 12.
+- **Iteration 40 (user: "check, verify, close remaining gaps; workflows; 150 repos"):** workflow `w7rkgwd24`
+  (22 agents) ran a 160-repo gauntlet (0 clone fails) + 6 deep auditors → 26 ranked gaps. It found the iter-39
+  paradigm lane + the 3 new refs + the large-repo guards had NEVER been scale-tested, and surfaced **7
+  high-severity issues** (a comprehension `--exact` crash G1; two `@reexec` safety bypasses G2/G3; a contract
+  validator that checked only 1/8 scripts G4; label-only proof gates G5; risk/domain large-repo timeouts
+  G8/G9) plus a test-header scope leak (G6). 100 was NOT supported → honestly dropped to ~84, then climbed to
+  **97.5** as ALL high-severity (G1–G9) + med real-bugs/accuracy (G6,G7,G10–G17) were fixed + verified on the
+  offending repo. Residual 2.5 is genuine + documented (C6 missing packs for linker/emulator/benchmark domains
+  + protocol-lib Crypto-primary imprecision; deferred G22; best-effort reexec denylist + lightweight proof-
+  anchor validation in Q1). Self-tests + contract + completion audit all green; no regression (cJSON/secp256k1/
+  zlib/lua/cFE/fprime controls hold). 12 commits, all pushed. See `gauntlet/GAUNTLET-3-150.md`.
+- **HONESTY NOTE:** 100 was held iters 31–39 on the *then-current* tooling, but iter-35..39 added new surface
+  (paradigm lane, 3 refs, codec/guard changes) that was never adversarially scale-tested until iter-40 — which
+  is exactly why the gauntlet found latent defects. The score moving DOWN then back up is the honesty contract
+  working as designed, not a failure of it.
 - **Iteration 34 (user: fix bugs + 100 more repos, via workflows):** (a) fixed + author-verified the 3 blind-trial
   upstream bugs (cgltf UB / tinyexpr+tomlc99 DoS; patches in `gauntlet/upstream-fixes/`). (b) **Gauntlet-2** (100
   new repos → 150 total) held quality at 2× scale AND found 3 latent tool bugs — backlog hang on s2n-tls (→9s),
