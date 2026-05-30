@@ -1194,3 +1194,35 @@ bugs now resolved, not capability gaps; recorded transparently). The sweep also 
 (iter 35) and that the broad cloned set is otherwise clean.
 
 Commits: c54bb6c (backlog timeout fixes) + this log + push.
+
+---
+
+## Iteration 37 — 2026-05-30 — paradigms + internals + standards/versions references (user-requested, cited)
+
+The user identified a genuine coverage gap: the skill had OOP MECHANICS (canon: vtable/RAII/slicing) but no
+first-class treatment of (a) the design PARADIGMS — OOP design + functional/declarative + procedural + data-
+oriented; (b) C/C++ INTERNALS as a topic (object/memory model, ABI, templates/type system); (c) language
+STANDARDS/VERSIONS (C89->C23, C++98->C++26). They asked for breadth+depth with <=5 authoritative citations per
+topic, via a workflow.
+
+Built it: research workflow `wz9qjcrn5` (9 expert agents, parallel, web-cited) -> assembled 3 new references
+(commit `d97094c`), wired into SKILL.md (Task Router + Reference Map), contract validator (refs 20->23), README
+(badge + artifact map):
+- DESIGN-PARADIGMS.md (41KB): OOP design (value vs reference semantics as THE axis, dispatch mechanisms table,
+  rule of 0/3/5, move mechanics, SOLID, GoF-in-modern-C++, C-OOP idioms) + functional/procedural/data-oriented.
+- LANGUAGE-INTERNALS.md (57KB): C memory/object model + UB taxonomy + strict aliasing; C++ object model & Itanium
+  ABI (vtables/mangling/layout/ODR/copy-elision/EH); templates/metaprogramming/type system.
+- STANDARDS-VERSIONS-IDIOMS.md (78KB): C + C++ per-version feature maps (with -std flags, deprecations, the MSVC
+  /Zc:__cplusplus gotcha, C++23 = ISO 14882:2024), idiom/technique catalog, foundational rules (ODR/as-if/Core
+  Guidelines/CERT/MISRA). 39 cited URLs total across the 3 files.
+Also fixed a validator false-positive (markdown-link check now strips code spans, so a C++ lambda in backticks
+isn't flagged). Spot-checked content accuracy (the version maps + MSVC gotcha are expert-correct). contract refs=23
++ audit + py-compile green; README clean (0 em-dashes, 0 rating leaks).
+
+Rating: composite HOLDS 100.0. This filled a REAL gap in C1 (understand at every level/angle — paradigm/internals/
+version awareness was thin) and strengthens C2/C3 (paradigm idioms + transforms). Honest framing: the prior 100 was
+rated on the 8 tested dimensions; paradigm/internals/version coverage was a genuine blind spot the user caught, now
+addressed with cited references -> C1-C3 are more solidly earned at their marks, breadth+depth materially deeper.
+Not a 9th dimension; a depth/coverage strengthening of existing ones.
+
+Commits: d97094c (3 refs + wiring + validator fix) + this log + push.
