@@ -1086,3 +1086,27 @@ Compression pack under-recognizes pure IMAGE-codec vocabulary; a tiny image code
 can rank Generic-primary. Not worth the regression risk for one tiny repo now.
 
 No commit to the skill (no change). This audit entry is the artifact.
+
+---
+
+## Iteration 34a — 2026-05-30 — fixed the 3 blind-trial bugs (workflow wngfsjvsm), author-verified
+
+User asked to fix the bugs + run a 100-repo gauntlet (both via workflows). Part 1 (bug fixes) done.
+
+Workflow `wngfsjvsm` (3 agents) fixed the 3 real defects the iter-28 blind trial found, each via the matching
+recipe; then I INDEPENDENTLY re-verified every patch (rebuild reproducer -> defect gone; behavior/tests -> no
+regression). A fix counts only if I reproduce it clean:
+- cgltf: misaligned-load UB -> Recipe 9 (memcpy loads). My check: patched UBSan build clean, validate=0,
+  read_float decodes [0,12800,0] correctly (behavior preserved). cgltf test/ suite clean.
+- tinyexpr: unbounded recursion -> Recipe 10 (depth cap 256, fail-closed, decrement all paths). My check:
+  2+3*4=14 (correct); 200k '(' -> err=-1 clean reject, no stack-overflow (ASan clean).
+- tomlc99: unbounded recursion in parse_array/parse_inline_table -> Recipe 10 (shared depth cap 1000). My check:
+  deep REPRO runs 2ms no overflow; sample.toml parses (no regression).
+
+All 3 FIXED + author-verified. Patches saved to workspace/loop/gauntlet/upstream-fixes/{cgltf,tinyexpr,tomlc99}.patch
++ README.md (ready to submit upstream; NOT submitted — no PRs without explicit instruction). This is the full
+find->fix->verify loop on real upstream defects (blind agents found them iter 28; recipes fixed them iter 34).
+Corroborates C3 + the Q2 outcome-lift; does not change the maxed ratings. Composite holds 100.0.
+
+Part 2 (100-repo gauntlet-2, workflow wqm0qf1gs) still running in background; will fold back real systematic
+findings + re-rate honestly when it lands.

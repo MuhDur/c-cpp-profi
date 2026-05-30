@@ -1,0 +1,213 @@
+diff --git a/toml.c b/toml.c
+index e7b878e..264b435 100644
+--- a/toml.c
++++ b/toml.c
+@@ -361,6 +361,12 @@ struct context_t {
+   toml_table_t *root;
+   toml_table_t *curtab;
+ 
++  /* Recursion-depth guard shared by the mutually-recursive parse_array /
++   * parse_inline_table paths. Bounds worst-case stack usage on deeply nested
++   * input (CWE-674); incremented before each recursive descent and decremented
++   * on every return. */
++  int depth;
++
+   struct {
+     int top;
+     char *key[10];
+@@ -368,6 +374,11 @@ struct context_t {
+   } tpath;
+ };
+ 
++/* Maximum nesting depth for arrays / inline tables. Well under any realistic
++ * thread stack, so over-deep input fails closed with a syntax error instead of
++ * overflowing the stack. */
++#define MAX_PARSE_DEPTH 1000
++
+ #define STRINGIFY(x) #x
+ #define TOSTRING(x) STRINGIFY(x)
+ #define FLINE __FILE__ ":" TOSTRING(__LINE__)
+@@ -943,43 +954,60 @@ static inline int eat_token(context_t *ctx, tokentype_t typ, int isdotspecial,
+  * Parse the table.
+  */
+ static int parse_inline_table(context_t *ctx, toml_table_t *tab) {
++  int rc = -1;
++
++  /* Fail closed before descending past the cap; decrement on every return
++   * below (see cleanup label). Shares ctx->depth with parse_array. */
++  if (++ctx->depth > MAX_PARSE_DEPTH) {
++    e_syntax(ctx, ctx->tok.lineno, "nesting too deep");
++    goto cleanup;
++  }
++
+   if (eat_token(ctx, LBRACE, 1, FLINE))
+-    return -1;
++    goto cleanup;
+ 
+   for (;;) {
+-    if (ctx->tok.tok == NEWLINE)
+-      return e_syntax(ctx, ctx->tok.lineno,
+-                      "newline not allowed in inline table");
++    if (ctx->tok.tok == NEWLINE) {
++      e_syntax(ctx, ctx->tok.lineno, "newline not allowed in inline table");
++      goto cleanup;
++    }
+ 
+     /* until } */
+     if (ctx->tok.tok == RBRACE)
+       break;
+ 
+-    if (ctx->tok.tok != STRING)
+-      return e_syntax(ctx, ctx->tok.lineno, "expect a string");
++    if (ctx->tok.tok != STRING) {
++      e_syntax(ctx, ctx->tok.lineno, "expect a string");
++      goto cleanup;
++    }
+ 
+     if (parse_keyval(ctx, tab))
+-      return -1;
++      goto cleanup;
+ 
+-    if (ctx->tok.tok == NEWLINE)
+-      return e_syntax(ctx, ctx->tok.lineno,
+-                      "newline not allowed in inline table");
++    if (ctx->tok.tok == NEWLINE) {
++      e_syntax(ctx, ctx->tok.lineno, "newline not allowed in inline table");
++      goto cleanup;
++    }
+ 
+     /* on comma, continue to scan for next keyval */
+     if (ctx->tok.tok == COMMA) {
+       if (eat_token(ctx, COMMA, 1, FLINE))
+-        return -1;
++        goto cleanup;
+       continue;
+     }
+     break;
+   }
+ 
+   if (eat_token(ctx, RBRACE, 1, FLINE))
+-    return -1;
++    goto cleanup;
+ 
+   tab->readonly = 1;
+ 
+-  return 0;
++  rc = 0;
++
++cleanup:
++  --ctx->depth;
++  return rc;
+ }
+ 
+ static int valtype(const char *val) {
+@@ -1004,12 +1032,21 @@ static int valtype(const char *val) {
+ 
+ /* We are at '[...]' */
+ static int parse_array(context_t *ctx, toml_array_t *arr) {
++  int rc = -1;
++
++  /* Fail closed before descending past the cap; decrement on every return
++   * below (see cleanup label). Shares ctx->depth with parse_inline_table. */
++  if (++ctx->depth > MAX_PARSE_DEPTH) {
++    e_syntax(ctx, ctx->tok.lineno, "nesting too deep");
++    goto cleanup;
++  }
++
+   if (eat_token(ctx, LBRACKET, 0, FLINE))
+-    return -1;
++    goto cleanup;
+ 
+   for (;;) {
+     if (skip_newlines(ctx, 0))
+-      return -1;
++      goto cleanup;
+ 
+     /* until ] */
+     if (ctx->tok.tok == RBRACKET)
+@@ -1028,11 +1065,15 @@ static int parse_array(context_t *ctx, toml_array_t *arr) {
+ 
+       /* make a new value in array */
+       toml_arritem_t *newval = create_value_in_array(ctx, arr);
+-      if (!newval)
+-        return e_outofmemory(ctx, FLINE);
++      if (!newval) {
++        e_outofmemory(ctx, FLINE);
++        goto cleanup;
++      }
+ 
+-      if (!(newval->val = STRNDUP(val, vlen)))
+-        return e_outofmemory(ctx, FLINE);
++      if (!(newval->val = STRNDUP(val, vlen))) {
++        e_outofmemory(ctx, FLINE);
++        goto cleanup;
++      }
+ 
+       newval->valtype = valtype(newval->val);
+ 
+@@ -1043,7 +1084,7 @@ static int parse_array(context_t *ctx, toml_array_t *arr) {
+         arr->type = 'm'; /* mixed */
+ 
+       if (eat_token(ctx, STRING, 0, FLINE))
+-        return -1;
++        goto cleanup;
+       break;
+     }
+ 
+@@ -1056,9 +1097,9 @@ static int parse_array(context_t *ctx, toml_array_t *arr) {
+ 
+       toml_array_t *subarr = create_array_in_array(ctx, arr);
+       if (!subarr)
+-        return -1;
++        goto cleanup;
+       if (parse_array(ctx, subarr))
+-        return -1;
++        goto cleanup;
+       break;
+     }
+ 
+@@ -1071,31 +1112,37 @@ static int parse_array(context_t *ctx, toml_array_t *arr) {
+ 
+       toml_table_t *subtab = create_table_in_array(ctx, arr);
+       if (!subtab)
+-        return -1;
++        goto cleanup;
+       if (parse_inline_table(ctx, subtab))
+-        return -1;
++        goto cleanup;
+       break;
+     }
+ 
+     default:
+-      return e_syntax(ctx, ctx->tok.lineno, "syntax error");
++      e_syntax(ctx, ctx->tok.lineno, "syntax error");
++      goto cleanup;
+     }
+ 
+     if (skip_newlines(ctx, 0))
+-      return -1;
++      goto cleanup;
+ 
+     /* on comma, continue to scan for next element */
+     if (ctx->tok.tok == COMMA) {
+       if (eat_token(ctx, COMMA, 0, FLINE))
+-        return -1;
++        goto cleanup;
+       continue;
+     }
+     break;
+   }
+ 
+   if (eat_token(ctx, RBRACKET, 1, FLINE))
+-    return -1;
+-  return 0;
++    goto cleanup;
++
++  rc = 0;
++
++cleanup:
++  --ctx->depth;
++  return rc;
+ }
+ 
+ /* handle lines like these:

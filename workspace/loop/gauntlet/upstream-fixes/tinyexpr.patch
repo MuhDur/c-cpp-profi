@@ -1,0 +1,72 @@
+diff --git a/tinyexpr.c b/tinyexpr.c
+index 176e8d0..6d8a876 100755
+--- a/tinyexpr.c
++++ b/tinyexpr.c
+@@ -72,8 +72,21 @@ typedef struct state {
+ 
+     const te_variable *lookup;
+     int lookup_len;
++
++    int depth; /* recursion depth guard (CWE-674): bounded by TE_MAX_PARSE_DEPTH */
+ } state;
+ 
++/* Maximum recursive-descent nesting depth. Untrusted input such as a deeply
++ * parenthesized expression ("(((((...") recurses once per nesting level
++ * through the expr->term->factor->power->base->list->expr cycle. Without a
++ * cap, deep input exhausts the stack and crashes the process (stack-overflow
++ * DoS, CWE-674). A constant cap well under any real stack makes the worst-case
++ * stack fixed and known; over-deep input returns a clean parse error instead.
++ */
++#ifndef TE_MAX_PARSE_DEPTH
++#define TE_MAX_PARSE_DEPTH 256
++#endif
++
+ 
+ #define TYPE_MASK(TYPE) ((TYPE)&0x0000001F)
+ 
+@@ -548,22 +561,34 @@ static te_expr *term(state *s) {
+ 
+ static te_expr *expr(state *s) {
+     /* <expr>      =    <term> {("+" | "-") <term>} */
++
++    /* Recursion-depth guard (CWE-674): expr() is re-entered once per nesting
++     * level via the base()->list()->expr() cycle on each '('. Fail closed
++     * BEFORE descending past the cap so deep input returns a clean parse error
++     * instead of overflowing the stack. Every return path below decrements. */
++    if (++s->depth > TE_MAX_PARSE_DEPTH) {
++        --s->depth;
++        s->type = TOK_ERROR;
++        return NULL;
++    }
++
+     te_expr *ret = term(s);
+-    CHECK_NULL(ret);
++    CHECK_NULL(ret, --s->depth);
+ 
+     while (s->type == TOK_INFIX && (s->function == add || s->function == sub)) {
+         te_fun2 t = s->function;
+         next_token(s);
+         te_expr *te = term(s);
+-        CHECK_NULL(te, te_free(ret));
++        CHECK_NULL(te, te_free(ret), --s->depth);
+ 
+         te_expr *prev = ret;
+         ret = NEW_EXPR(TE_FUNCTION2 | TE_FLAG_PURE, ret, te);
+-        CHECK_NULL(ret, te_free(te), te_free(prev));
++        CHECK_NULL(ret, te_free(te), te_free(prev), --s->depth);
+ 
+         ret->function = t;
+     }
+ 
++    --s->depth;
+     return ret;
+ }
+ 
+@@ -667,6 +692,7 @@ te_expr *te_compile(const char *expression, const te_variable *variables, int va
+     s.start = s.next = expression;
+     s.lookup = variables;
+     s.lookup_len = var_count;
++    s.depth = 0;
+ 
+     next_token(&s);
+     te_expr *root = list(&s);
