@@ -35,3 +35,4 @@ venv/
 # NTM local runtime state
 .ntm/
 workspace/loop/trials/c2-build/
+workspace/loop/trials/c2-crossarch/

@@ -65,9 +65,27 @@ Port hazards, each an oracle axis, not an afterthought:
 | Endianness | byte-order of persisted/wire data; `htonl`-free round-trips that worked only on the origin endianness |
 | Layout/alignment | struct padding, bitfield order, alignment-trap faults on strict-alignment arches |
 | UB the origin "defined" | signed overflow, type punning, uninitialized reads the origin compiler happened to make benign |
+| `char` signedness | plain `char` is **signed** on x86-64 (SysV) but **unsigned** on AArch64 (AAPCS64) and RISC-V; `char c=0xFF; c<0` flips between targets. Verified: x86 → `is_negative=1`, aarch64/riscv64 → `is_negative=0` |
 | libc/STL divergence | glibc vs musl vs MSVC STL vs libc++: errno values, locale, `printf` rounding, `qsort` stability |
 | Floating point | x87 80-bit vs SSE, FMA contraction, `-ffast-math` defaults, rounding mode |
 | ABI seam | symbol names, calling convention, struct layout, and ownership transfer across the C boundary (cross-language ports) |
+
+Concrete cross-arch oracle (no hardware needed — install the cross GCC + an emulator, then run the *identical* driver on each target):
+
+```bash
+# toolchains: gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu qemu-user-static
+gcc                   -O2 -I. driver.c lib.c -o d_x86            # origin, native
+aarch64-linux-gnu-gcc -static -O2 -I. driver.c lib.c -o d_a64    # target 1
+riscv64-linux-gnu-gcc -static -O2 -I. driver.c lib.c -o d_rv     # target 2
+while read -r f; do
+  echo "$(basename "$f") $(./d_x86 "$f")"                 >> out_x86.txt
+  echo "$(basename "$f") $(qemu-aarch64-static ./d_a64 "$f")" >> out_a64.txt
+  echo "$(basename "$f") $(qemu-riscv64-static ./d_rv  "$f")" >> out_rv.txt
+done < corpus.lst
+diff out_x86.txt out_a64.txt && diff out_x86.txt out_rv.txt    # any delta blocks the port
+```
+
+`-static` makes the target binaries self-contained (no `-L <sysroot>`); for dynamic builds use `qemu-aarch64-static -L /usr/aarch64-linux-gnu`. QEMU-user is not silicon: it does not model the target's relaxed memory order, so a *concurrent* port still needs real hardware or a memory-model checker — say so in the residual-risk row.
 
 ## Modernize
 

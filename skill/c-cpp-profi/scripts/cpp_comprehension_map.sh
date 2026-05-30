@@ -991,8 +991,12 @@ emit_callgraph_defs() {
                   if (!iskw(tok)) { pendname = tok; pendline = lno }
                 } else if (curname != "") {
                   # a call site inside the current function body
-                  if (!iskw(tok) && tok != curname) {
-                    calls[curname SUBSEP tok] = 1
+                  if (!iskw(tok)) {
+                    # self-recursion is tracked separately (not as a normal edge)
+                    # so the BFS is unaffected, but it is surfaced in the output
+                    # instead of being silently dropped.
+                    if (tok == curname) selfrec[curname] = 1
+                    else calls[curname SUBSEP tok] = 1
                   }
                 }
               }
@@ -1024,7 +1028,7 @@ emit_callgraph_defs() {
             edge[caller] = (edge[caller] == "" ? callee : edge[caller] " " callee)
           }
           for (name in isdef) {
-            printf "%s\t%s\t%d\t%s\n", name, deffile[name], defline[name], (name in edge ? edge[name] : "")
+            printf "%s\t%s\t%d\t%s\t%d\n", name, deffile[name], defline[name], (name in edge ? edge[name] : ""), (name in selfrec ? 1 : 0)
           }
         }
       ' 2>/dev/null \
@@ -1083,6 +1087,7 @@ emit_callgraph() {
           file[$1] = $2
           line[$1] = $3
           callees[$1] = (NF>=4 ? $4 : "")
+          selfrec[$1] = (NF>=5 ? $5 : 0)
         }
         END {
           ns = split(seeds, sarr, "\n")
@@ -1123,12 +1128,17 @@ emit_callgraph() {
             }
             # Record the edge row (caller -> callees). A seed/leaf with no
             # in-repo callees still gets a row so the seed itself is visible.
+            # Self-recursion is surfaced explicitly (it is tracked apart from the
+            # BFS edges) rather than silently dropped as a self-edge.
+            disp = outlist
+            if (selfrec[cur] == "1" || selfrec[cur] == 1)
+              disp = (disp == "" ? cur " (recursive)" : disp ", " cur " (recursive)")
             nedges++
             if (emitted < cap) {
-              if (outlist == "")
+              if (disp == "")
                 printf "callgraph\t%s -> (no in-repo callees)\t%s:%s\n", cur, file[cur], line[cur]
               else
-                printf "callgraph\t%s -> %s\t%s:%s\n", cur, outlist, file[cur], line[cur]
+                printf "callgraph\t%s -> %s\t%s:%s\n", cur, disp, file[cur], line[cur]
               emitted++
             }
           }
@@ -1293,7 +1303,7 @@ emit_text() {
     printf 'none detected\n'
   fi
   printf '\n## L3 touched-path callgraph\n'
-  printf '(heuristic: token scan, not a compiler callgraph — recursion/fn-pointers/overloads/macro-generated calls may be missed; use clangd callHierarchy or cscope for an exact graph)\n'
+  printf '(heuristic: token scan, not a compiler callgraph — self-recursion is marked (recursive), but function-pointer/virtual/overloaded/macro-generated calls may be missed; use clangd callHierarchy or cscope for an exact graph)\n'
   local cg
   cg="$(build_map "$repo" callgraph)"
   if [ -n "$cg" ]; then
@@ -1398,7 +1408,7 @@ MK
   cat >"$tmp/app/main.c" <<'SRC'
 #include "util.h"
 int main(int argc, char **argv) {
-    return util_run(argc);
+    return util_run(argc) + util_rec(argc);
 }
 SRC
   cat >"$tmp/fuzz/t.c" <<'SRC'
@@ -1410,7 +1420,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 SRC
   cat >"$tmp/lib/util.c" <<'SRC'
 #include "util.h"
-int util_run(int n) { return n + 1; }
+int util_run(int n) { return util_rec(n) + 1; }
+/* self-recursive: the callgraph must surface this as `util_rec (recursive)`,
+   not silently drop the self-edge (the cJSON_Delete class). */
+int util_rec(int n) { return n <= 0 ? 0 : util_rec(n - 1); }
 SRC
   cat >"$tmp/include/util.h" <<'SRC'
 #ifndef UTIL_H
@@ -1422,6 +1435,7 @@ SRC
 */
 typedef int (*util_cb)(int n);       /* fn-pointer typedef: not exported API */
 int util_run(int n);                 /* exported API */
+int util_rec(int n);                 /* exported API; self-recursive (callgraph test) */
 const char *util_name(void);         /* exported API */
 static int util_helper(int n);       /* internal linkage: not exported API */
 LIBUTIL_API(int) util_open(const char *path);  /* macro-WRAPPED exported API (cJSON-style) */
@@ -1813,6 +1827,20 @@ SRC
   # R3+ no over-correction: the REAL include/ public API is still surfaced.
   if ! printf '%s\n' "$out1" | grep -qE '^util_run\(\) \| include/util\.h:[0-9]+'; then
     printf 'cpp_comprehension_map self-test: FAIL (R3+ over-correction: real include/ API util_run dropped)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # L3 callgraph: a real caller->callee edge is drawn (main reaches util_rec).
+  if ! printf '%s\n' "$out1" | grep -qE 'util_rec'; then
+    printf 'cpp_comprehension_map self-test: FAIL (L3: callgraph did not reach util_rec from a seed)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # L3 self-recursion: util_rec calls itself; the callgraph must surface this as
+  # `util_rec (recursive)` instead of silently dropping the self-edge (the
+  # cJSON_Delete "no in-repo callees" class). This is the iter-26 fix.
+  if ! printf '%s\n' "$out1" | grep -qE 'util_rec \(recursive\)'; then
+    printf 'cpp_comprehension_map self-test: FAIL (L3: self-recursion not surfaced — util_rec should show "(recursive)")\n'
     printf '%s\n%s\n' '--- map ---' "$out1"
     exit 1
   fi
