@@ -1,14 +1,20 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **97.0 / 100** (iteration 23, 2026-05-30).
-  Per-dim: C1 14 · C2 **11** · C3 15 · C4 **12** · C5 8 · C6 18 · Q1 7.5 · Q2 11.5.
-- **Target:** 100 / 100 with the empirical Q2 layer closed (see LOOP-PROTOCOL stop condition)
-- **Phase:** ▶ one reachable gap left (C1 15); then the environment/structural cap (C2 12 cross-arch, Q1 8, Q2 12).
-- **Last iteration (23):** the C2 port+rearchitect + C4 land trials (workflow `wqygh9zro`) all PASSED their gates
-  on real repos (C2 port = honest compiler-level differential oracle, cross-arch toolchain absent; C2 rearchitect =
-  logc global→ctx w/ migration ledger; C4 = implemented+ran the fuzz harness). Portfolio rule machine-enforced
-  (`--require-radical`). C2 10→11, C4 11→12. Composite 95.0→97.0.
+- **Honest composite (RUBRIC-100):** **97.5 / 100** (iteration 24, 2026-05-30) — **CONVERGED at the evidence ceiling.**
+  Per-dim: C1 **14.5** · C2 11 · C3 15 · C4 12 · C5 8 · C6 18 · Q1 7.5 · Q2 11.5.
+- **Target:** 100 / 100 — **unreachable without an independent/blind verifier + a cross-arch toolchain** (neither
+  self-providable by an author-driven sandbox loop). The honest ceiling is 97.5; the residual 2.5 pts are documented.
+- **Phase:** ■ CONVERGED. Active score-chasing stopped (iter 24). Loop stays armed for maintenance / genuine
+  accretive improvement only — NOT to fabricate the last 2.5 pts (doing so would break the honesty contract).
+- **Last iteration (24):** auto-drew the L3 touched-path callgraph in `cpp_comprehension_map.sh` (commit `c10ecd6`,
+  verified on cJSON/inih incl. C++ method dispatch) → **C1 14→14.5** (heuristic-only: no clangd-exact/codegen probe);
+  3rd outcome-lift on **lz4** (compression) — removed one term of the safe decoder's output guard → ASan overflow
+  localized to lz4.c:2343, clean→rejects, restore→rejects (OUTCOME-LIFT Trial 3). 3 lifts / 3 codebases / 2 domains.
+  **Q2 held at 11.5** (breadth, not blindness). Composite 97.0→**97.5**.
+- **Residual 2.5 pts (documented, not faked):** C1 14.5→15 (clangd-exact graph + codegen probe; diminishing),
+  C2 11→12 (true cross-arch port — no cross-toolchain in sandbox = ENV cap), Q1 7.5→8 (validate output truth not
+  shape = STRUCTURAL), Q2 11.5→12 (a genuinely BLIND agent = STRUCTURAL, author can't be blind to own work).
 - **Environment/structural cap (honest):** C2 12 needs a cross-arch toolchain (aarch64-gcc/qemu) ABSENT in-sandbox;
   Q1 8 ("validate output truth not shape") + Q2 12 (a BLIND agent, not the author) can't be self-certified here.
   The loop converges at ~98 (after C1 15) with these documented as real caps — not a faked 100.
@@ -36,18 +42,18 @@ C4 10→12 (a real idea-generation trial) · C5 7→8 (real doc-gen) · C6 17→
 | 1 | Q2 empirical | 3.5 | 12 | **running-the-gauntlet** — (a) a durable OUTCOME-LIFT harness (git-revert-of-known-fix / seeded-fault) proving the skill drives real defect detection+fix on ≥2 repos; (b) the **50-repo × ≤20-reason gauntlet** with preserved negatives, findings folded back. | **▶ ACTIVE (iter 9+)** |
 | ✓ | all 7 design dims (C1–C6, Q1) | 73.5 | 88 | iters 1–8, each converged + independently verified | done |
 
-## Immediate next action (iteration 24) — C1 15 (L3 callgraph) + a 3rd outcome-lift, then converge
+## Immediate next action (iteration 25+) — CONVERGED; maintenance-only
 
-C2 11 / C4 12 are DONE (97.0). The one clearly-reachable design point left:
-1. **C1 14→15** — `cpp_comprehension_map.sh`: auto-draw the L3 touched-path callgraph for a chosen entry point
-   (rg/ctags/cscope call edges: caller→callee within the repo) + the cap refinement for huge-API headers so the
-   public API isn't truncated. Re-verify on a couple cloned repos (e.g. cJSON parse path, inih). C1 14→15.
-2. **3rd outcome-lift** — attempt a git-revert-of-a-historical-sanitizer-fix on a cloned repo (find a fix commit
-   in cJSON/jsmn/tinyxml2 history; if the shallow clones lack history, do a 3rd seeded-fault in a NEW domain, e.g.
-   a compression lib) → ASan/fuzz catches it → OUTCOME-LIFT.md. Firms Q2's reproducibility (won't break the
-   blind-agent cap).
-3. **(Optional, likely blocked) C2 12** — try installing a cross toolchain (aarch64-linux-gnu-gcc + qemu-user) for
-   a true cross-arch port; if `apt`/network/root is unavailable, record the block honestly and leave C2 at 11.
+Iteration 24 reached the honest ceiling (97.5). C1 14→14.5 (L3 callgraph) and the 3rd outcome-lift (lz4) are DONE.
+The remaining 2.5 pts are documented caps (see header), not reachable by self-certification. **Do NOT chase score.**
+
+On future wakeups, do maintenance/genuine-improvement only — and ONLY if a real, non-score-driven improvement is
+found. Candidates (each must be a true gain, independently verified, validators kept green, committed + pushed):
+- If a cross-arch toolchain ever becomes installable (`apt`/network/root), do the true cross-arch port → C2 12.
+- If clangd + per-repo `compile_commands.json` can drive an EXACT callHierarchy graph, wire it as the L3 exact path
+  (heuristic stays as fallback) → C1 15.
+- Otherwise: keep validators green, keep README/RUBRIC/STATE honest, fix any real regression the gauntlet surfaces.
+Re-arm the loop at a SLOW heartbeat (≈1800s). Stop only if the user ends it. Never fabricate the last 2.5 pts.
 4. **Converge**: after C1 15 (~98), write a final honest summary in RUBRIC/STATE — the loop has reached its
    evidence-supported ceiling; the residual 2 points (C2 cross-arch = environment, Q1-8 truth-not-shape + Q2-12
    blind-agent = structural self-certification limits) are documented, not faked. Continue only if a genuinely

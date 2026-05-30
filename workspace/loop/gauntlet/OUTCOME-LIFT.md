@@ -84,6 +84,49 @@ Lesson folded into method: a seeded-fault outcome-lift must drive an input that 
 masked seed is a property of the target, not a pass. Two confirmed lifts (cJSON fuzz-based, jsmn deterministic)
 across two codebases now stand.
 
-## Planned (next)
-- A git-revert-of-known-fix (historical CVE) for a 3rd, stronger demonstration.
-- A blind-agent trial (an agent that is not the skill author) on an unseen repo.
+## Trial 3 — lz4 @ depth-1 (seeded guard-removal in the SAFE decoder) — 2026-05-30
+
+Goal: leave the JSON-parser domain entirely. lz4 is a **compression/binary-format** codec — bit/length/distance
+decode, the territory of output-buffer overruns. The target is the hardened *safe* decoder
+`LZ4_decompress_safe` → `LZ4_decompress_generic`, whose contract is "never overflow on any input/capacity."
+Deterministic harness (no fuzzer needed): compress deterministic incompressible data (LCG) into an all-literals
+frame, then decode it into an output buffer **undersized by one byte**. A correct safe decoder must reject this.
+
+**Baseline (clean tree).** `clang -O1 -g -fsanitize=address -I lib h.c lib/lz4.c`:
+```
+compressed 4096 -> 4114 bytes (incompressible: ratio 1.00)
+(a) exact-size round-trip OK: 4096 bytes, content matches
+(b) undersized decode correctly REJECTED (r=-19) -- safe decoder holds      (ASan clean, exit 0)
+```
+
+**Seeded fault** (one term of one guard — the output-overflow check on the final literal run):
+```
+lib/lz4.c:2335  if ((ip+length != iend) || (cpy > oend)) { goto _output_error; }
+        seeded:  if ((ip+length != iend))               { goto _output_error; }   // dropped (cpy > oend)
+```
+
+**Result (seeded build, same harness).**
+```
+==ERROR: AddressSanitizer: stack-buffer-overflow ... WRITE of size 4096
+  #1 LZ4_decompress_generic  lib/lz4.c:2343:17     <- the LZ4_memmove the removed term guarded
+  #2 LZ4_decompress_safe     lib/lz4.c:2476
+  #3 main                    h.c:30                 <- the undersized decode call
+  [...] 'out_small' (line 29) <== Memory access ... overflows this variable
+```
+**Restore.** Surgical reverse of the one-term edit (the `git checkout -- ` discard is correctly blocked by the
+AGENTS.md no-discard guard) → `git diff` empty; rebuild → undersized decode REJECTED (r=-19) again, ASan clean.
+
+**Verdict: OUTCOME LIFT CONFIRMED on a third codebase in a third domain (compression).** Clean → rejects;
+remove one term of one output-bound guard → ASan localizes the overflow to the exact protected `memmove`
+(lz4.c:2343); restore → rejects again. Three confirmed lifts now span JSON-parse (cJSON fuzz, jsmn deterministic)
+and binary compression (lz4) — the domain-agnostic empirical claim is corroborated across distinct code shapes.
+
+## What three lifts establish — and the one thing they still do NOT
+- ESTABLISHED: the skill's dynamic gate (fuzz/ASan/UBSan + deterministic harnesses) detects real injected
+  memory-safety defects across 3 independently-written codebases in 2 unrelated domains, each with an honestly
+  clean baseline, exact reproducer commands, and verified restore. Breadth + domain-diversity are now real.
+- STILL NOT: a *blind* agent (one that is not the skill author) achieving the lift on an unseen repo, and a
+  git-revert of a historical CVE (the depth-1 clones carry no history, so the seeded-fault proxy is used). The
+  blind-agent gap is the structural residual on Q2 (11.5→12) — it is a self-certification limit, not a tooling
+  gap, and is documented as the cap rather than papered over. A 3rd author-run seeded fault adds breadth, not
+  blindness, so it does NOT by itself close that 0.5.

@@ -727,3 +727,42 @@ One clearly-reachable design point remains: C1 14→15 (L3 callgraph). The loop 
 optionally attempt a cross-arch toolchain install for C2 12 (likely blocked — record honestly), then converge.
 
 **Commits:** `ad1d93f` (trials + --require-radical) + this re-rate commit + push.
+
+---
+
+## Iteration 24 — 2026-05-30 — C1 L3 callgraph + 3rd outcome-lift → CONVERGED at 97.5
+
+**C1 14→14.5 — L3 touched-path callgraph auto-drawn** (`c10ecd6`). `cpp_comprehension_map.sh` now emits an `## L3
+touched-path callgraph` section: from seed entry points (`main`/`LLVMFuzzerTestOneInput`/leading exported API) it
+draws repo-internal `caller -> callee` edges, 2 levels deep, deduped + capped, with comment/string stripping.
+Verified on real clones:
+- cJSON: `cJSON_Parse -> cJSON_ParseWithOpts`, `cJSON_Print -> print`, `create_objects -> [11 callees]` (real parse path).
+- inih: `ini_parse -> ini_parse_file`, `parse -> ini_parse, ini_parse_string`, and C++ method dispatch
+  `GetBoolean -> Get -> MakeKey` (resolves INIReader members).
+- Byte-reproducible (two runs identical); `--self-test` PASS; `bash -n` clean; contract (refs=20/ex=10/assets=11)
+  + completion-audit PASS. Reference note in REPO-COMPREHENSION.md updated to match (was "the probe does not draw").
+- Honest cap at 14.5 (not 15): token-scan heuristic — self-recursion (cJSON_Delete), fn-ptr (`global_hooks.deallocate`),
+  macro-generated, and overloaded calls are missed and shown as `(no in-repo callees)`; no clangd-exact path even
+  when `compile_commands.json` exists; no codegen/ISA auto-probe. The script points the user to `cscope`/clangd
+  `callHierarchy` for the exact graph.
+
+**3rd outcome-lift — lz4 (compression domain)** (OUTCOME-LIFT Trial 3). Left the JSON-parser domain entirely.
+Deterministic ASan harness: compress incompressible LCG data → all-literals frame → `LZ4_decompress_safe` into an
+output buffer undersized by 1. Clean tree: undersized decode correctly REJECTED (r=-19), ASan clean. Seeded one
+term out of the final-literal output guard (`lz4.c:2335`: dropped `|| (cpy > oend)`) → ASan stack-buffer-overflow
+WRITE localized to `lz4.c:2343` (the `LZ4_memmove` the term guarded), reached via `LZ4_decompress_safe:2476`.
+Restore (surgical reverse — `git checkout --` correctly blocked by the AGENTS.md no-discard guard) → tree clean,
+undersized decode REJECTED again. Three confirmed lifts now span 3 codebases (cJSON, jsmn, lz4) / 2 domains
+(JSON-parse, compression). Honest: this is breadth, not blindness — **Q2 stays 11.5** (the residual 0.5 is the
+blind-verifier limit, which an author-run seeded fault does not address).
+
+**Rubric movement:** 97.0 → **97.5/100**. C1 14→14.5. Q2 held (recorded, not bumped). Four dims at full marks
+(C3 15, C4 12, C5 8, C6 18).
+
+**CONVERGENCE.** This is the honest evidence-supported ceiling. Residual 2.5 pts are documented, not faked:
+C1 14.5→15 (clangd-exact graph + codegen probe; diminishing), C2 11→12 (true cross-arch port = ENV cap, no
+cross-toolchain), Q1 7.5→8 (validate output truth not shape = STRUCTURAL), Q2 11.5→12 (a genuinely BLIND agent =
+STRUCTURAL). 100 needs an independent/blind verifier + a cross-arch toolchain, neither self-providable here.
+Active score-chasing stops. Loop stays armed at a slow heartbeat for maintenance / genuine improvement only.
+
+**Commits:** `c10ecd6` (L3 callgraph) + this re-rate/convergence commit + push.
