@@ -21,6 +21,22 @@ from pathlib import Path
 VALID_STATUSES = {"passed", "failed", "not run", "not applicable"}
 PLACEHOLDERS = {"", "yes/no", "todo", "tbd", "n/a?", "?"}
 
+# G5: under the --require-*-proof flags, a "proof" must carry a real anchor, not
+# just the right label words. These are the lightweight content validators applied
+# beside each label-presence check (mirroring the static-analysis lane that already
+# requires `findings: <digit>`). A file:line token grounds comprehension; a
+# number+unit grounds a performance measurement.
+FILE_LINE_RE = re.compile(
+    r"[\w./~+-]+\.(?:c|cc|cpp|cxx|h|hh|hpp|hxx|inc|ipp)\b[:# ]\s*\d+",
+    re.IGNORECASE,
+)
+NUM_UNIT_RE = re.compile(
+    r"\d+(?:[.,]\d+)?\s*"
+    r"(?:ns|us|µs|ms|s\b|sec|%|x\b|mb|gb|kb|kib|mib|gib|b/s|ops|op/s|/s|"
+    r"cycles|fps|iter|req/s|instr|misses|hits|×)",
+    re.IGNORECASE,
+)
+
 BASELINE_REQUIRED = [
     ("inventory",),
     ("compile",),
@@ -99,9 +115,25 @@ def normalize(value: str) -> str:
 
 
 def read_report(path: str) -> str:
+    # G15: a missing path, a directory, or a non-UTF-8/binary file must produce a
+    # clean one-line error + non-zero exit, never an unhandled traceback.
     if path == "-":
-        return sys.stdin.read()
-    return Path(path).read_text(encoding="utf-8")
+        try:
+            return sys.stdin.read()
+        except UnicodeDecodeError:
+            print("error: stdin is not valid UTF-8 text", file=sys.stderr)
+            sys.exit(2)
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        print(f"error: report not found: {path}", file=sys.stderr)
+        sys.exit(2)
+    except (IsADirectoryError, PermissionError, OSError) as exc:
+        print(f"error: cannot read {path}: {exc}", file=sys.stderr)
+        sys.exit(2)
+    except UnicodeDecodeError:
+        print(f"error: {path} is not valid UTF-8 text (binary file?)", file=sys.stderr)
+        sys.exit(2)
 
 
 def split_table_row(line: str) -> list[str]:
@@ -324,6 +356,12 @@ def check_gates(
                         "gate performance: passed evidence missing strict proof fields: "
                         + ", ".join(missing)
                     )
+                elif not NUM_UNIT_RE.search(evidence):
+                    errors.append(
+                        "gate performance: proof fields present but NUMBERLESS — a "
+                        "performance proof needs a measured number with a unit (e.g. "
+                        "p95 1.8 ms, 2.3x, 12 percent); prose alone is not measurement"
+                    )
             if require_comprehension_proof and gate_name == "comprehension":
                 requirements = {
                     "entry-point": ("entry-point:" in evidence),
@@ -340,6 +378,12 @@ def check_gates(
                         "gate comprehension: passed evidence missing strict proof fields: "
                         + ", ".join(missing)
                     )
+                elif not (FILE_LINE_RE.search(evidence) or "->" in evidence):
+                    errors.append(
+                        "gate comprehension: proof fields present but ANCHORLESS — needs "
+                        "a file:line token (e.g. parser.c:42) or a callgraph edge (->); "
+                        "prose with no anchor is a guess, not comprehension"
+                    )
             if require_transform_proof and gate_name == "differential oracle":
                 requirements = {
                     "origin-triple": ("origin-triple:" in evidence),
@@ -354,6 +398,11 @@ def check_gates(
                     errors.append(
                         "gate differential oracle: passed evidence missing strict proof fields: "
                         + ", ".join(missing)
+                    )
+                elif not re.search(r"\d", evidence):
+                    errors.append(
+                        "gate differential oracle: corpus proof has no count — state "
+                        "the number of inputs/cases compared (e.g. corpus: 638 inputs)"
                     )
             if require_transform_proof and gate_name == "migration ledger":
                 requirements = {
@@ -434,6 +483,9 @@ def check_report(
 # Paths resolve against --verify-base (default: the report's directory).
 VERIFY_EXISTS_RE = re.compile(r"@verify-exists\{([^{}]+)\}")
 VERIFY_SHA256_RE = re.compile(r"@verify-sha256\{([0-9a-fA-F]{64})\}\{([^{}]+)\}")
+# G17: a LOOSE form so a typo'd/garbage digest fails loudly instead of being a
+# silent no-match skip (the strict RE above only fires on exactly 64 hex chars).
+VERIFY_SHA256_LOOSE_RE = re.compile(r"@verify-sha256\{([^{}]*)\}\{([^{}]+)\}")
 VERIFY_CONTAINS_RE = re.compile(r"@verify-contains\{([^{}]+)\}\{([^{}]*)\}")
 
 
@@ -441,19 +493,42 @@ def verify_evidence(text: str, base: Path) -> tuple[list[str], int]:
     """Independently re-check @verify-* directives. Returns (errors, n_checks)."""
     errors: list[str] = []
     checks = 0
+    base_resolved = base.resolve()
 
-    def resolve(p: str) -> Path:
+    def resolve(p: str) -> Path | None:
+        # G19: resolve against base and REJECT any path that escapes it (../ or an
+        # absolute path), so a directive cannot probe outside the report's tree.
         q = Path(p)
-        return q if q.is_absolute() else (base / q)
+        cand = q if q.is_absolute() else (base / q)
+        try:
+            cand.resolve().relative_to(base_resolved)
+        except ValueError:
+            return None
+        return cand
 
     for rel in VERIFY_EXISTS_RE.findall(text):
         checks += 1
-        if not resolve(rel).exists():
+        target = resolve(rel)
+        if target is None:
+            errors.append(f"verify-evidence: @verify-exists path escapes --verify-base: {rel}")
+        elif not target.exists():
             errors.append(f"verify-evidence: @verify-exists path not found: {rel}")
+
+    # G17: catch malformed sha256 digests (not exactly 64 hex) explicitly.
+    for digest, rel in VERIFY_SHA256_LOOSE_RE.findall(text):
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", digest):
+            checks += 1
+            errors.append(
+                f"verify-evidence: @verify-sha256 malformed digest for {rel}: "
+                f"{digest!r} is not 64 hex chars"
+            )
 
     for hexdigest, rel in VERIFY_SHA256_RE.findall(text):
         checks += 1
         path = resolve(rel)
+        if path is None:
+            errors.append(f"verify-evidence: @verify-sha256 path escapes --verify-base: {rel}")
+            continue
         if not path.is_file():
             errors.append(f"verify-evidence: @verify-sha256 file not found: {rel}")
             continue
@@ -466,7 +541,15 @@ def verify_evidence(text: str, base: Path) -> tuple[list[str], int]:
 
     for rel, needle in VERIFY_CONTAINS_RE.findall(text):
         checks += 1
+        # G17: an empty needle is a substring of every byte string -> a vacuous
+        # always-pass. Reject it.
+        if needle == "":
+            errors.append(f"verify-evidence: @verify-contains has an empty needle (vacuous): {rel}")
+            continue
         path = resolve(rel)
+        if path is None:
+            errors.append(f"verify-evidence: @verify-contains path escapes --verify-base: {rel}")
+            continue
         if not path.is_file():
             errors.append(f"verify-evidence: @verify-contains file not found: {rel}")
             continue
@@ -507,15 +590,30 @@ _DENY_CMDS = (
     r"nc|ncat|netcat|telnet|ssh|scp|sftp|rsync|ftp|eval|exec|source|crontab|at|"
     r"insmod|rmmod|modprobe|iptables|nft|systemctl|service|tee"
 )
+# Interpreters that run arbitrary code: deny OUTRIGHT (any invocation), not just
+# their -c/-e form. G3: the prior `python\d?...\s+-[ce]\b` missed versioned names
+# (python3.11, perl5.36), perl -E, and glued -c (`-cimport`). Denying the basename
+# is the safe call for a security backstop (a `python --version` author can re-run
+# it outside @reexec). Basenames match with optional version/path suffix.
+_DENY_INTERP = (
+    r"sh|bash|zsh|dash|ksh|fish|python[0-9.]*|perl[0-9.]*|ruby[0-9.]*|node|nodejs|"
+    r"php[0-9.]*|lua[0-9.]*|tclsh|awk|gawk|mawk|env"
+)
 REEXEC_DENY_RE = re.compile(
-    rf"(?:^|[\s|;&(/])(?:{_DENY_CMDS})(?:\s|$)"
-    r"|(?:^|[\s|;&(/])(?:sh|bash|zsh|dash|ksh|python\d?|perl|ruby|node|php)\s+-[ce]\b"
-    r"|(?:^|[\s|;&(/])xargs\b"
+    rf"(?:^|[\s|;&(/`])(?:{_DENY_CMDS})(?:\s|$)"
+    rf"|(?:^|[\s|;&(/`])(?:{_DENY_INTERP})(?:\s|$)"
+    r"|(?:^|[\s|;&(/`])xargs\b"
     r"|\bfind\b[^|;&]*-(?:delete|exec|execdir)\b"
     r"|git\s+(?:reset\s+--hard|clean|checkout\s+--|push|rebase|filter-branch)"
     r"|:\(\)\s*\{|of=/dev/|/dev/sd|/dev/nvme|--no-preserve-root"
     r"|>\s*/(?:etc|usr|s?bin|lib\w*|boot|dev|sys|proc|var|home|root)\b"
 )
+# G2: nested command execution / substitution — backtick, $( ), <<< here-string,
+# and process substitution <( )/>( ) — lets a denied command hide inside an allowed
+# one (`printf ok`rm x`{...}`). Refuse the whole command if any appears. (Plain
+# ${VAR} expansion is allowed; ${...} containing a command is not — we refuse the
+# $( and backtick forms which are the actual command-substitution syntaxes.)
+REEXEC_NEST_RE = re.compile(r"`|\$\(|<<<|<\(|>\(")
 
 
 def reexec_commands(text: str, base: Path, timeout: int) -> tuple[list[str], int]:
@@ -528,8 +626,11 @@ def reexec_commands(text: str, base: Path, timeout: int) -> tuple[list[str], int
         if not cmd:
             errors.append("reexec: empty command")
             continue
+        if REEXEC_NEST_RE.search(cmd):
+            errors.append(f"reexec: refused (command substitution / here-string can hide arbitrary code): {cmd!r}")
+            continue
         if REEXEC_DENY_RE.search(cmd):
-            errors.append(f"reexec: refused (destructive/privileged/network token): {cmd!r}")
+            errors.append(f"reexec: refused (destructive/privileged/network/interpreter token): {cmd!r}")
             continue
         try:
             proc = subprocess.run(
