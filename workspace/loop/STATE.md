@@ -1,8 +1,14 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **100.0 / 100** (iteration 31, 2026-05-30) — GOAL MET with honest evidence.
+- **Honest composite (RUBRIC-100):** **100.0 / 100** (iteration 31; HELD through iter 34 @ 150 repos).
   Per-dim: C1 **15** · C2 12 · C3 15 · C4 12 · C5 8 · C6 18 · Q1 **8** · Q2 12. ALL EIGHT dims at full marks.
+- **Iteration 34 (user: fix bugs + 100 more repos, via workflows):** (a) fixed + author-verified the 3 blind-trial
+  upstream bugs (cgltf UB / tinyexpr+tomlc99 DoS; patches in `gauntlet/upstream-fixes/`). (b) **Gauntlet-2** (100
+  new repos → 150 total) held quality at 2× scale AND found 3 latent tool bugs — backlog hang on s2n-tls (→9s),
+  comprehension >120s on nuttx (→21s, 8000-file short-circuit), risk/backlog scope-leak (secp256k1 bench 28→1) —
+  ALL fixed+verified (`04f29c7`). Codec primary-ranking residual documented (non-blocking → C6 holds 18). 100.0
+  HELD honestly. See `gauntlet/GAUNTLET-2.md`. (Iters 32-33: maintenance — denylist hardening, fresh-repo test.)
 - **What 100 means (not overclaimed):** every rubric dimension is maxed to the limit real demonstrated evidence
   supports; residual limits are FUNDAMENTAL, not gaps — statically-unresolvable indirect calls (C1, → dynamic
   tracer), genuinely non-reproducible command output (Q1, un-re-checkable by anyone), a fully third-party verifier
