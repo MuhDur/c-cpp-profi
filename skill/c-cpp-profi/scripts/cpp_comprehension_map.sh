@@ -1385,6 +1385,46 @@ EOF
   return 0
 }
 
+# Paradigm signals (heuristic): mechanically count the markers that distinguish
+# OOP / functional-declarative / C-OOP styles, so the comprehension read includes
+# HOW the code is built, not just what it exposes. A repo usually BLENDS paradigms;
+# this is a signal report (counts + first anchor + a soft dominant read), not a hard
+# classification. See DESIGN-PARADIGMS.md for what to do with each. One rg pass per
+# paradigm (count + first anchor in a single awk), comment/string-stripped, so it
+# stays cheap even on large repos.
+emit_paradigm_signals() {
+  local repo="$1"
+  local oop_pat fp_pat coop_pat
+  oop_pat='\bvirtual\b|\boverride\b|\bdynamic_cast\b|\b(public|protected|private)[ \t]*:|:[ \t]*(public|protected|private)[ \t]'
+  fp_pat='std::function|std::ranges|\branges::|std::views|\bviews::|std::transform|std::accumulate|std::for_each|std::reduce|std::find_if|std::optional|std::expected|\[(&|=|this)?\][ \t]*\('
+  coop_pat='\([ \t]*\*[ \t]*[a-z_][A-Za-z0-9_]*[ \t]*\)[ \t]*\(|typedef[^;]*\([ \t]*\*'
+  local pfx="$repo/"
+  # each: "count<TAB>file:line" of the first match (repo-relative)
+  local oop_s fp_s coop_s
+  oop_s="$(rg_code "$oop_pat" "$repo" | drop_comment_lines | LC_ALL=C sort | awk -F: 'NR==1{a=$1":"$2} END{printf "%d\t%s", NR, a}')"
+  fp_s="$(rg_code "$fp_pat" "$repo" | drop_comment_lines | LC_ALL=C sort | awk -F: 'NR==1{a=$1":"$2} END{printf "%d\t%s", NR, a}')"
+  coop_s="$(rg_code "$coop_pat" "$repo" | drop_comment_lines | LC_ALL=C sort | awk -F: 'NR==1{a=$1":"$2} END{printf "%d\t%s", NR, a}')"
+  local oop fp coop oop_a fp_a coop_a
+  oop="${oop_s%%	*}"; oop_a="${oop_s#*	}"; oop_a="${oop_a#"$pfx"}"
+  fp="${fp_s%%	*}";  fp_a="${fp_s#*	}";   fp_a="${fp_a#"$pfx"}"
+  coop="${coop_s%%	*}"; coop_a="${coop_s#*	}"; coop_a="${coop_a#"$pfx"}"
+  printf '\n## Paradigm signals (heuristic — see DESIGN-PARADIGMS.md)\n'
+  printf 'object-oriented (C++): %s markers (virtual/override/dynamic_cast/access-specifier/inheritance)%s\n' "${oop:-0}" "${oop_a:+ | e.g. $oop_a}"
+  printf 'functional/declarative: %s markers (lambda/std::function/ranges/algorithms/optional/expected)%s\n' "${fp:-0}" "${fp_a:+ | e.g. $fp_a}"
+  printf 'C-OOP / callback tables: %s markers (function-pointer members & typedefs)%s\n' "${coop:-0}" "${coop_a:+ | e.g. $coop_a}"
+  local dom
+  if [ "${oop:-0}" -ge "${fp:-0}" ] && [ "${oop:-0}" -ge "${coop:-0}" ] && [ "${oop:-0}" -gt 0 ]; then
+    dom="object-oriented (C++ classes + virtual dispatch)"
+  elif [ "${fp:-0}" -gt "${oop:-0}" ] && [ "${fp:-0}" -ge "${coop:-0}" ]; then
+    dom="functional/declarative-leaning C++ (algorithms/ranges/value types)"
+  elif [ "${coop:-0}" -gt 0 ]; then
+    dom="C object-orientation (function-pointer dispatch tables / opaque handles)"
+  else
+    dom="procedural (free functions; little OOP/FP/dispatch-table signal)"
+  fi
+  printf 'dominant signal: %s — heuristic only; real repos blend paradigms, so read the counts + anchors, not the label alone\n' "$dom"
+}
+
 emit_text() {
   # tab-separated section/key/anchor -> grouped, human-readable map.
   local repo="$1"
@@ -1414,6 +1454,7 @@ emit_text() {
   else
     printf 'none detected\n'
   fi
+  emit_paradigm_signals "$repo"
   printf '\n## L3 touched-path callgraph\n'
   printf '(heuristic: token scan, not a compiler callgraph — self-recursion is marked (recursive), but function-pointer/virtual/overloaded/macro-generated calls may be missed; use clangd callHierarchy or cscope for an exact graph)\n'
   local cg srcn
@@ -1982,6 +2023,23 @@ SRC
       printf '%s\n' "$exact_out" | awk '/## L3 exact/{p=1} p'
       exit 1
     fi
+  fi
+
+  # iter-39: the paradigm-signals lane. The fixture ships a C++ class (db.hpp with
+  # `public:`) so the OOP marker count must be > 0, the section + the soft dominant
+  # read must be present, and a recursive-but-procedural C file must not crash it.
+  if ! printf '%s\n' "$out1" | grep -q '## Paradigm signals'; then
+    printf 'cpp_comprehension_map self-test: FAIL (paradigm: section missing)\n'
+    exit 1
+  fi
+  if ! printf '%s\n' "$out1" | grep -qE '^object-oriented \(C\+\+\): [1-9][0-9]* markers'; then
+    printf 'cpp_comprehension_map self-test: FAIL (paradigm: OOP markers not counted for the fixture class)\n'
+    printf '%s\n' "$out1" | awk '/## Paradigm signals/{p=1} p'
+    exit 1
+  fi
+  if ! printf '%s\n' "$out1" | grep -q '^dominant signal:'; then
+    printf 'cpp_comprehension_map self-test: FAIL (paradigm: dominant-signal line missing)\n'
+    exit 1
   fi
 
   printf 'cpp_comprehension_map self-test: PASS\n'

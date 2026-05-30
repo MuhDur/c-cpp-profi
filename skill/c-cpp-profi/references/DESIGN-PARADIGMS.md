@@ -1,6 +1,6 @@
 # Design Paradigms — OOP, Functional, Procedural & Data-Oriented (C and C++)
 
-> How to recognize, work within, and transform between the paradigms a C/C++ codebase is written in. Pair with [CODE-TRANSFORM.md](CODE-TRANSFORM.md) (paradigm migration), [REFACTOR-ISOMORPHISM.md](REFACTOR-ISOMORPHISM.md) (paradigm-preserving rewrites), [MEMORY-SAFETY.md](MEMORY-SAFETY.md) (RAII/ownership), and [PERFORMANCE.md](PERFORMANCE.md) (data-oriented design). Each major area cites authoritative sources.
+> How to recognize, work within, and transform between the paradigms a C/C++ codebase is written in. For a **mechanical paradigm read** of a repo, run `cpp_comprehension_map.sh <repo>` — its "Paradigm signals" lane counts OOP (virtual/override/access-specifier/inheritance), functional (lambda/ranges/algorithms/`optional`/`expected`), and C-OOP (function-pointer dispatch tables) markers with anchors and a soft dominant read (verified e.g. nuttx → C-OOP function-pointer tables, tinyxml2 → OOP, fmt → OOP+functional). Pair with [CODE-TRANSFORM.md](CODE-TRANSFORM.md) (paradigm migration), [REFACTOR-ISOMORPHISM.md](REFACTOR-ISOMORPHISM.md) (paradigm-preserving rewrites), [MEMORY-SAFETY.md](MEMORY-SAFETY.md) (RAII/ownership), and [PERFORMANCE.md](PERFORMANCE.md) (data-oriented design). Each major area cites authoritative sources.
 
 
 ## Object-Oriented Design in C++ (and C-OOP Idioms)
