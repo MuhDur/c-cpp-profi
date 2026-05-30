@@ -63,22 +63,26 @@ C4 10→12 (a real idea-generation trial) · C5 7→8 (real doc-gen) · C6 17→
 | 1 | Q2 empirical | 3.5 | 12 | **running-the-gauntlet** — (a) a durable OUTCOME-LIFT harness (git-revert-of-known-fix / seeded-fault) proving the skill drives real defect detection+fix on ≥2 repos; (b) the **50-repo × ≤20-reason gauntlet** with preserved negatives, findings folded back. | **▶ ACTIVE (iter 9+)** |
 | ✓ | all 7 design dims (C1–C6, Q1) | 73.5 | 88 | iters 1–8, each converged + independently verified | done |
 
-## Immediate next action (iteration 30+) — the one remaining reachable lever: C1 exact callgraph via clang IR
+## Immediate next action (iteration 31+) — the last 0.25: Q1 8 via opt-in command re-execution
 
-At 99.25. Residual 0.75 = C1 0.5 + Q1 0.25. The honest next lever is **C1 via the installed clang** (cflow/clangd/
-cscope are absent, but `clang -emit-llvm` is not):
-- Add an OPTIONAL exact direct-call-graph path to `cpp_comprehension_map.sh`: when a TU compiles, emit LLVM IR
-  (`clang -g -emit-llvm -S <flags> tu.c -o -`) and extract `call`/`invoke @symbol` edges — a precise direct-call
-  graph (resolves what the token heuristic guesses). Keep the heuristic as the always-on fallback; gate the exact
-  path on clang availability + a TU that compiles (single-header/single-TU libs like cJSON/qoi/cgltf are easy;
-  multi-TU needs compile_commands.json). Indirect (fn-ptr/vtable) calls remain unresolved — that is fundamental to
-  static analysis, not a skill gap, so it should not block C1 15 once the exact DIRECT graph + honest indirect
-  caveat are in place. Demonstrate on cJSON (exact `cJSON_ParseWithOpts -> parse_value -> parse_string/...`).
-- Q1 0.25 (arbitrary command-output re-exec) stays on the honest-reporting contract; do not chase with unsafe
-  re-exec. Only the artifact-integrity slice was safely closeable (done iter 29).
+At 99.75. C1 (iter 30) and Q2 (iter 28) are done. Residual 0.25 = **Q1 7.75→8** only. The honest path:
+- Add an opt-in `--reexec` mode to `cpp_evidence_check.py`: the author marks a gate command idempotent/safe with a
+  directive (e.g. `@reexec{<cmd>}` or a `reexec:` column flag); the checker re-runs ONLY those, in `--verify-base`,
+  captures output, and verifies the gate's claimed evidence substring appears in the FRESH output (and/or exit
+  code). Opt-in per command so there are no surprise side-effects. This validates command-output truth for the
+  commands that ARE safely reproducible (e.g. `nm -D … | wc -l`, `git rev-parse HEAD`, `sha256sum`, a pre-built
+  test binary), complementing iter-29's artifact-integrity `--verify-evidence`.
+- Then Q1 8 is honest: the checker validates truth for everything independently re-verifiable (artifacts + safe
+  re-runnable commands); the only residual is genuinely NON-reproducible/side-effecting output (network, wall-clock,
+  stateful) which NO verifier can re-check — a fundamental limit, NOT a skill gap (parallel to C1's indirect-call
+  argument). Demonstrate: a report with `@reexec{sha256sum out_a64.txt}` claiming the real digest PASSES; a tampered
+  claim FAILS; a `@reexec` of a benign command whose output doesn't match FAILS. Extend `--self-test`.
+- Be careful: re-running is side-effecting by nature, so KEEP it opt-in + per-command + sandbox-respecting (no
+  network/destructive commands; the author asserts safety). Do NOT auto-reexec everything.
 
 Each must be a true gain, independently verified, validators green, committed + pushed. Re-arm at ≈1800s. Stop only
-if the user ends it. Never fabricate the residual.
+if the user ends it. Never fabricate the residual — if `--reexec` can't be made genuinely safe+useful, leave Q1 at
+7.75 and say so.
 4. **Converge**: after C1 15 (~98), write a final honest summary in RUBRIC/STATE — the loop has reached its
    evidence-supported ceiling; the residual 2 points (C2 cross-arch = environment, Q1-8 truth-not-shape + Q2-12
    blind-agent = structural self-certification limits) are documented, not faked. Continue only if a genuinely
