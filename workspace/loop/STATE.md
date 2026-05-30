@@ -1,15 +1,17 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **95.0 / 100** (iteration 21, 2026-05-30).
-  Per-dim: C1 14 · C2 10 · C3 **15** · C4 11 · C5 8 · C6 **18** · Q1 7.5 · Q2 11.5.
+- **Honest composite (RUBRIC-100):** **97.0 / 100** (iteration 23, 2026-05-30).
+  Per-dim: C1 14 · C2 **11** · C3 15 · C4 **12** · C5 8 · C6 18 · Q1 7.5 · Q2 11.5.
 - **Target:** 100 / 100 with the empirical Q2 layer closed (see LOOP-PROTOCOL stop condition)
-- **Phase:** ▶ closing the last reachable gaps (C1 15, C2 12, C4 12) toward the high 90s; Q1-8/Q2-12 are the structural cap.
-- **Last iteration (21):** fold-back H (`2fcbc33`) finished the gauntlet findings — NEW aliasing/cast-width lane
-  catches the real klib type-punning bug (C3→15), codec/library-shape vocab + ranking fixed libpng/rapidjson/klib/
-  sds/lua + fuzz-coverage OSS-Fuzz detection (C6→18). Composite 93.0→95.0.
-- **Structural ceiling (honest):** Q1 8 ("validate output truth not shape") + Q2 12 (a BLIND agent, not the author)
-  can't be fully self-certified by an author-driven loop. The loop converges in the high 90s with real evidence, not a faked 100.
+- **Phase:** ▶ one reachable gap left (C1 15); then the environment/structural cap (C2 12 cross-arch, Q1 8, Q2 12).
+- **Last iteration (23):** the C2 port+rearchitect + C4 land trials (workflow `wqygh9zro`) all PASSED their gates
+  on real repos (C2 port = honest compiler-level differential oracle, cross-arch toolchain absent; C2 rearchitect =
+  logc global→ctx w/ migration ledger; C4 = implemented+ran the fuzz harness). Portfolio rule machine-enforced
+  (`--require-radical`). C2 10→11, C4 11→12. Composite 95.0→97.0.
+- **Environment/structural cap (honest):** C2 12 needs a cross-arch toolchain (aarch64-gcc/qemu) ABSENT in-sandbox;
+  Q1 8 ("validate output truth not shape") + Q2 12 (a BLIND agent, not the author) can't be self-certified here.
+  The loop converges at ~98 (after C1 15) with these documented as real caps — not a faked 100.
 - **Per-iteration now also (user instruction):** push to `origin` after committing; refresh `README.md` via
   /readme-writing + /de-slopify whenever the composite moves or the skill materially changes (see LOOP-PROTOCOL step 7).
 - **Last iteration (12):** integrated batch-2 (12 repos → 25/50; 34 findings → regressions R1–R7) and **folded
@@ -34,19 +36,22 @@ C4 10→12 (a real idea-generation trial) · C5 7→8 (real doc-gen) · C6 17→
 | 1 | Q2 empirical | 3.5 | 12 | **running-the-gauntlet** — (a) a durable OUTCOME-LIFT harness (git-revert-of-known-fix / seeded-fault) proving the skill drives real defect detection+fix on ≥2 repos; (b) the **50-repo × ≤20-reason gauntlet** with preserved negatives, findings folded back. | **▶ ACTIVE (iter 9+)** |
 | ✓ | all 7 design dims (C1–C6, Q1) | 73.5 | 88 | iters 1–8, each converged + independently verified | done |
 
-## Immediate next action (iteration 22) — the last reachable gaps (C1 15, C2 12, C4 12) + a 3rd outcome-lift
+## Immediate next action (iteration 24) — C1 15 (L3 callgraph) + a 3rd outcome-lift, then converge
 
-C6 18 and C3 15 are DONE (fold-back H, 95.0). Remaining reachable (structural Q1-8/Q2-12 aside):
-1. **C2 10→12** (a Workflow of 2 trials, like iter-19): a real **port** trial (cross-compile a small lib for
-   aarch64 via qemu OR a glibc→musl differential oracle — origin+target triple, corpus) passing `--profile port`;
-   a real **re-architect** trial (a bounded structural change with a migration ledger + caller census) passing
-   `--profile rearchitect`. Commit the artifacts under `workspace/loop/trials/`.
-2. **C4 11→12** — machine-enforce the portfolio rule (a pass that requires ≥1 `kind: radical` card) + LAND the
-   accretive idea from the C4 trial (actually implement the cJSON_Utils fuzz harness on a copy + show it builds/runs).
-3. **C1 14→15** — auto-draw the L3 touched-path callgraph in `cpp_comprehension_map.sh` (cscope/clangd/`rg` call
-   edges for a chosen entry) + the cap refinement for huge APIs.
-4. A **3rd outcome-lift** (git-revert of a historical sanitizer-visible fix on a cloned repo) to firm Q2.
-Each re-rated with evidence; once these land (~99), state Q1-8/Q2-12 as the explicit structural cap and converge.
+C2 11 / C4 12 are DONE (97.0). The one clearly-reachable design point left:
+1. **C1 14→15** — `cpp_comprehension_map.sh`: auto-draw the L3 touched-path callgraph for a chosen entry point
+   (rg/ctags/cscope call edges: caller→callee within the repo) + the cap refinement for huge-API headers so the
+   public API isn't truncated. Re-verify on a couple cloned repos (e.g. cJSON parse path, inih). C1 14→15.
+2. **3rd outcome-lift** — attempt a git-revert-of-a-historical-sanitizer-fix on a cloned repo (find a fix commit
+   in cJSON/jsmn/tinyxml2 history; if the shallow clones lack history, do a 3rd seeded-fault in a NEW domain, e.g.
+   a compression lib) → ASan/fuzz catches it → OUTCOME-LIFT.md. Firms Q2's reproducibility (won't break the
+   blind-agent cap).
+3. **(Optional, likely blocked) C2 12** — try installing a cross toolchain (aarch64-linux-gnu-gcc + qemu-user) for
+   a true cross-arch port; if `apt`/network/root is unavailable, record the block honestly and leave C2 at 11.
+4. **Converge**: after C1 15 (~98), write a final honest summary in RUBRIC/STATE — the loop has reached its
+   evidence-supported ceiling; the residual 2 points (C2 cross-arch = environment, Q1-8 truth-not-shape + Q2-12
+   blind-agent = structural self-certification limits) are documented, not faked. Continue only if a genuinely
+   new accretive improvement (not score-chasing) is found.
 
 ## (history) Iteration 21 plan — close reachable gaps (C6 18, C3 15 done via fold-back H)
 

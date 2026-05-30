@@ -697,4 +697,33 @@ regression-guard unchanged; 4/4 self-tests PASS; contract PASS refs=20 examples=
 (machine-enforced portfolio rule + a LANDED idea), C1 14→15 (L3 callgraph), + a 3rd outcome-lift. Then converge in
 the high 90s with Q1-8/Q2-12 documented as the structural cap (truth-not-shape enforcement; a genuinely blind agent).
 
-**Commits:** `2fcbc33` (fold-back H) + this re-rate commit + push.
+**Commits:** `2fcbc33` (fold-back H), `ed8b2b0` (re-rate + push).
+
+---
+
+## Iterations 22-23 — 2026-05-30 — final cap-lift trials (C2 port+rearchitect, C4 land) → 97.0
+
+**Did:** workflow `wqygh9zro` (3 parallel trials), each gated by the skill's own checker + independently re-verified:
+- **C2 port** (`trials/C2-port.md`): probed cross-arch (aarch64/qemu/musl ABSENT, -m32 link-fails) → honest
+  compiler/opt-level differential-oracle port (gcc vs clang, -O0 vs -O2) on a 25-file cJSON corpus → byte-identical
+  output (shared sha256) → `--profile port --require-transform-proof` PASS.
+- **C2 re-architect** (`trials/C2-rearchitect.md`): logc global→injected-context on a copy (11-site caller census,
+  5-step migration ledger, compiles clean, byte-identical global-API oracle, honest intentional-API-break) →
+  `--profile rearchitect` PASS.
+- **C4 land** (`trials/C4-landed.md`): implemented the accretive cJSON_Utils libFuzzer harness on a copy → builds
+  clean, ran 893,563 execs (3,719 new coverage units), clean smoke → idea's behavior oracle realized end-to-end.
+- **Portfolio rule machine-enforced** (`ad1d93f`): added `cpp_idea_check.py --require-radical` (~8 lines) — fails
+  unless ≥1 card is `Kind: radical`. Verified PASS on the radical-bearing trial/example, FAIL on all-accretive, opt-in.
+
+**Rubric movement:** 95.0 → **97.0/100**. C2 10→11 (all 3 transform modes demonstrated + gated; the 12th = a true
+cross-arch port, environment-limited — no cross-toolchain in-sandbox), C4 11→12 (engine end-to-end + portfolio
+rule enforced). Each lift EARNED on real code via a passing gate, not asserted; honest limitations recorded.
+
+**Honest cap status:** C2 12 (cross-arch port) is ENVIRONMENT-limited (no aarch64-gcc/qemu); Q1 8 (validate output
+truth, not shape) + Q2 12 (a genuinely BLIND agent, not the author) are STRUCTURAL self-certification limits.
+One clearly-reachable design point remains: C1 14→15 (L3 callgraph). The loop converges ~98 with these documented.
+
+**Next:** iteration 24 → C1 L3 touched-path callgraph (→98) + a 3rd outcome-lift (git-revert or a 3rd seeded fault),
+optionally attempt a cross-arch toolchain install for C2 12 (likely blocked — record honestly), then converge.
+
+**Commits:** `ad1d93f` (trials + --require-radical) + this re-rate commit + push.
