@@ -7,6 +7,7 @@ references, examples, assets, script syntax, and local Markdown links.
 
 from __future__ import annotations
 
+import argparse
 import re
 import shutil
 import subprocess  # nosec B404 - this only invokes fixed local syntax checks.
@@ -119,7 +120,10 @@ def read(path: Path) -> str:
 
 
 def parse_frontmatter(text: str) -> dict[str, str] | None:
-    match = re.match(r"^---\n(.*?)\n---\n", text, flags=re.S)
+    # G23: tolerate CRLF (Windows-authored) and a closing fence that is the final
+    # line with no trailing newline.
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    match = re.match(r"^---\n(.*?)\n---\s*(?:\n|$)", text, flags=re.S)
     if not match:
         return None
     data: dict[str, str] = {}
@@ -179,23 +183,41 @@ def run_bash_syntax(skill_dir: Path, errors: list[str]) -> None:
     if bash is None:
         fail(errors, "bash not found; cannot syntax-check shell helpers")
         return
-    scripts = [skill_dir / "scripts" / name for name in REQUIRED_SCRIPTS if name.endswith(".sh")]
-    result = subprocess.run(
-        [bash, "-n", *map(str, scripts)],
-        cwd=skill_dir,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-        timeout=15,
-    )  # nosec B603 - shell script paths come from the skill contract constants.
-    if result.returncode != 0:
-        fail(errors, "bash -n failed:\n" + result.stdout)
+    scripts_dir = skill_dir / "scripts"
+    if not scripts_dir.is_dir():
+        fail(errors, "scripts/ directory missing; cannot syntax-check shell helpers")
+        return
+    # G4: `bash -n a.sh b.sh ...` parses only the FIRST arg as a script (the rest
+    # become $0,$1,...), so 7 of 8 helpers went unchecked -> false PASS. Check each
+    # file individually and accumulate failures, like run_python_syntax does.
+    for name in REQUIRED_SCRIPTS:
+        if not name.endswith(".sh"):
+            continue
+        script = scripts_dir / name
+        if not script.exists():
+            continue  # a missing required script is already reported in main()
+        try:
+            result = subprocess.run(
+                [bash, "-n", str(script)],
+                cwd=str(scripts_dir),
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+                timeout=15,
+            )  # nosec B603 - shell script paths come from the skill contract constants.
+        except (FileNotFoundError, OSError) as exc:
+            fail(errors, f"bash -n could not run on {name}: {exc}")
+            continue
+        if result.returncode != 0:
+            fail(errors, f"bash -n failed for {name}:\n" + result.stdout)
 
 
 def run_python_syntax(skill_dir: Path, errors: list[str]) -> None:
     scripts = [skill_dir / "scripts" / name for name in REQUIRED_SCRIPTS if name.endswith(".py")]
     for script in scripts:
+        if not script.exists():
+            continue  # a missing required script is already reported in main()
         try:
             compile(read(script), str(script), "exec")
         except SyntaxError as exc:
@@ -203,8 +225,24 @@ def run_python_syntax(skill_dir: Path, errors: list[str]) -> None:
 
 
 def main(argv: list[str]) -> int:
-    skill_dir = Path(argv[1] if len(argv) > 1 else ".").resolve()
+    # G16: real argument parsing + --help, and a clean FAIL (not a traceback) when
+    # the target directory does not exist or is not a directory.
+    parser = argparse.ArgumentParser(
+        prog="validate_skill_contract.py",
+        description="Validate the c-cpp-profi skill contract (packaging, references, syntax, links).",
+    )
+    parser.add_argument(
+        "skill_dir", nargs="?", default=".",
+        help="path to the skill directory to validate (default: current directory)",
+    )
+    args = parser.parse_args(argv[1:])
+    skill_dir = Path(args.skill_dir).resolve()
     errors: list[str] = []
+
+    if not skill_dir.is_dir():
+        print("c-cpp-profi contract: FAIL")
+        print(f"- skill directory not found: {args.skill_dir}")
+        return 1
 
     skill_md = skill_dir / "SKILL.md"
     if not skill_md.exists():
