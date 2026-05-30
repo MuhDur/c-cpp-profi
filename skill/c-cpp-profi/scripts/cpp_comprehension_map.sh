@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 #
-# cpp_comprehension_map.sh - emit a falsifiable L1+L2 comprehension map of a C/C++ repo.
+# cpp_comprehension_map.sh - emit a falsifiable L1+L2+L3 comprehension map of a C/C++ repo.
 #
 # This is the fast-path probe for references/REPO-COMPREHENSION.md L1 (build graph
-# & ground) and L2 (entry points + module map). It is READ-ONLY: it never writes
-# to the target repo. In one command it answers "what builds this, where does it
-# start, and how is it shaped" with anchored, falsifiable rows an agent can paste
+# & ground), L2 (entry points + module map), and a HEURISTIC L3 touched-path
+# callgraph. It is READ-ONLY: it never writes to the target repo. In one command
+# it answers "what builds this, where does it start, how is it shaped, and what
+# does an entry point call" with anchored, falsifiable rows an agent can paste
 # into the comprehension gate.
 #
-# It emits three sections, each line carrying a repo-relative anchor:
+# It emits these sections, each line carrying a repo-relative anchor:
 #
 #   L1 build graph & ground - detected build system(s) (CMakeLists.txt / meson.build /
 #                             Makefile / configure / Bazel), presence of
@@ -21,6 +22,11 @@
 #                             each with a repo-relative file:line anchor.
 #   L2 module map           - top-level source directories with per-dir file counts (a
 #                             coarse module map).
+#   L3 touched-path         - a HEURISTIC, bounded caller->callee callgraph rooted at up
+#      callgraph              to ~3 L2 seed entry points (main / LLVMFuzzerTestOneInput /
+#                             first exported-API functions), BFS ~2 levels deep, repo-
+#                             internal edges only, deduped + capped. NOT a compiler
+#                             callgraph (token scan); use clangd/cscope for an exact one.
 #
 # Output is deterministic: repo-relative paths only, LC_ALL=C sort, no timestamps,
 # no $RANDOM, no absolute paths, so two runs on an unchanged tree byte-match.
@@ -41,10 +47,11 @@ usage() {
 usage: cpp_comprehension_map.sh [REPO] [--json]
        cpp_comprehension_map.sh --self-test
 
-Emits a falsifiable L1+L2 comprehension map (build graph + entry points + module
-map) for a C/C++ repo. READ-ONLY. Deterministic and reproducible: two runs on an
-unchanged tree byte-match. Every entry-point/module line carries a repo-relative
-file:line or path anchor.
+Emits a falsifiable L1+L2+L3 comprehension map (build graph + entry points +
+module map + a heuristic touched-path callgraph) for a C/C++ repo. READ-ONLY.
+Deterministic and reproducible: two runs on an unchanged tree byte-match. Every
+entry-point/module/callgraph line carries a repo-relative file:line or path
+anchor. The L3 callgraph is a token-scan heuristic, not a compiler callgraph.
 USAGE
 }
 
@@ -840,6 +847,297 @@ emit_modules() {
   return 0
 }
 
+# L3 touched-path callgraph (HEURISTIC). --------------------------------------
+# REPO-COMPREHENSION.md L3's falsifiable artifact is a touched-path callgraph
+# (caller -> callee, each edge anchored). The probe cannot draw the WHOLE-repo
+# compiler callgraph (no front-end), but it CAN auto-draw a bounded, best-effort
+# graph rooted at the L2 entry points — which is exactly the seed an agent needs
+# before reading the path end-to-end. This replaces the old "manual fallback".
+#
+# Method (heuristic, NOT a compiler callgraph — see the caveats below):
+#   1. Compute the set of repo-DEFINED function names + their definition anchors
+#      in ONE awk pass over the source set (comment/string stripped, brace-depth
+#      tracked): a definition is "<type-ish head> <name> ( ... ) {" reaching `{`
+#      at brace depth 0. The same pass records, per definition, the body's line
+#      span so step 2 can read only the body.
+#   2. For each definition, extract the `identifier(` call tokens inside its body
+#      and KEEP ONLY those whose identifier is itself a repo-defined name (the
+#      intersection) — so libc/3rd-party calls (`malloc`, `memcpy`, `fopen`) are
+#      dropped and only repo-internal edges remain.
+#   3. Seed from the L2 entry points (reuse emit_entrypoints' detection): `main`,
+#      `LLVMFuzzerTestOneInput`, then the first few exported-API function names.
+#      BFS ~2 levels deep from up to 3 seeds, DEDUP edges, and CAP at CAP_EDGES
+#      (a "(+N more; capped)" footer) so it stays bounded on huge repos.
+# Deterministic: LC_ALL=C sort throughout, repo-relative anchors, fixed seed
+# order. No `head` on a pipe (SIGPIPE class) — the file list is materialized and
+# fed to a single awk via xargs, matching the rest of the script.
+CAP_EDGES=40
+SEED_LIMIT=3
+BFS_DEPTH=2
+
+# One awk pass over the source set -> "name<TAB>file<TAB>line<TAB>callee callee ..."
+# rows: a repo-defined function, its definition anchor, and the repo-internal
+# functions it calls. Reads the materialized, repo-relative file list on stdin
+# (one path per line; paths already prefixed with "$repo/" so awk can open them).
+# Two-phase within the single invocation: phase 1 (the per-file walk) records,
+# for every definition, its name/anchor and the RAW set of called identifiers;
+# phase 2 (END) intersects each definition's called set with the global set of
+# repo-defined names and prints the surviving edges. xargs -d '\n' passes paths.
+emit_callgraph_defs() {
+  local repo="$1"
+  local files
+  files="$(rg --files --no-messages \
+      --glob '*.{c,cc,cpp,cxx,h,hh,hpp,hxx}' \
+      --glob '!**/.git/**' --glob '!**/build/**' --glob '!**/_deps/**' \
+      --glob '!**/third_party/**' --glob '!**/vendor/**' --glob '!**/external/**' \
+      --glob '!**/test/gtest/**' --glob '!**/test/gmock/**' \
+      "${R3PLUS_GLOBS[@]}" \
+      "$repo" 2>/dev/null | LC_ALL=C sort -u || true)"
+  [ -n "$files" ] || return 0
+  printf '%s\n' "$files" \
+    | xargs -d '\n' -r awk -v repo="$repo" '
+        # --- per-file reset; compute repo-relative path for anchors -------------
+        FNR == 1 {
+          inblock = 0; depth = 0
+          rel = FILENAME
+          sub(/^\.\//, "", rel)
+          pfx = repo "/"
+          if (substr(rel, 1, length(pfx)) == pfx) rel = substr(rel, length(pfx) + 1)
+          # Reset any open definition state at file boundaries (defensive: a
+          # malformed file should not bleed into the next).
+          curname = ""; curdepthbase = 0
+        }
+        # --- strip /* */ (multi-line), // and string/char literals per line -----
+        # so call tokens inside comments/strings never count (reuse of the same
+        # comment-strip discipline as emit_exported_api, extended to strings).
+        {
+          line = $0
+          out = ""
+          i = 1
+          n = length(line)
+          instr = 0; inchr = 0
+          while (i <= n) {
+            ch = substr(line, i, 1)
+            two = substr(line, i, 2)
+            if (inblock) {
+              if (two == "*/") { inblock = 0; i += 2 } else { i++ }
+              continue
+            }
+            if (instr) {
+              if (ch == "\\") { i += 2; continue }
+              if (ch == "\"") { instr = 0 }
+              i++
+              continue
+            }
+            if (inchr) {
+              if (ch == "\\") { i += 2; continue }
+              if (ch == "\x27") { inchr = 0 }
+              i++
+              continue
+            }
+            if (two == "/*") { inblock = 1; i += 2; continue }
+            if (two == "//") { break }
+            if (ch == "\"") { instr = 1; i++; continue }
+            if (ch == "\x27") { inchr = 1; i++; continue }
+            out = out ch
+            i++
+          }
+          process(out, rel, FNR)
+        }
+        # --- character walk of one comment/string-stripped line -----------------
+        function process(s, rel, lno,   m, j, ch, tok, name, prevtok, head) {
+          m = length(s)
+          j = 1
+          while (j <= m) {
+            ch = substr(s, j, 1)
+            if (ch == "{") {
+              depth++
+              # A function body opens when, at the moment we see this `{`, brace
+              # depth WAS 0 and the most recent thing we parsed at depth 0 was a
+              # `<name> ( ... )` declarator-head. pendname holds that candidate.
+              if (depth == 1 && pendname != "") {
+                curname = pendname
+                curdepthbase = depth
+                defline[curname] = pendline
+                deffile[curname] = rel
+                isdef[curname] = 1
+              }
+              pendname = ""
+              j++
+              continue
+            }
+            if (ch == "}") {
+              if (depth > 0) depth--
+              if (curname != "" && depth < curdepthbase) {
+                curname = ""; curdepthbase = 0
+              }
+              pendname = ""
+              j++
+              continue
+            }
+            if (ch == ";") { pendname = ""; j++; continue }
+            # An identifier immediately followed by `(` is a call/declarator.
+            if (ch ~ /[A-Za-z_]/) {
+              tok = ""
+              while (j <= m && substr(s, j, 1) ~ /[A-Za-z0-9_]/) {
+                tok = tok substr(s, j, 1); j++
+              }
+              # skip optional spaces before a paren
+              while (j <= m && substr(s, j, 1) == " ") j++
+              if (j <= m && substr(s, j, 1) == "(") {
+                if (depth == 0) {
+                  # candidate function declarator at file scope; remember the
+                  # LAST such name + its line (the one right before `{` wins).
+                  if (!iskw(tok)) { pendname = tok; pendline = lno }
+                } else if (curname != "") {
+                  # a call site inside the current function body
+                  if (!iskw(tok) && tok != curname) {
+                    calls[curname SUBSEP tok] = 1
+                  }
+                }
+              }
+              continue
+            }
+            j++
+          }
+        }
+        # C/C++ keywords that can sit before `(` but are not function names.
+        function iskw(t) {
+          return (t == "if" || t == "for" || t == "while" || t == "switch" || \
+                  t == "do" || t == "else" || t == "return" || t == "sizeof" || \
+                  t == "catch" || t == "case" || t == "defined" || t == "static" || \
+                  t == "const" || t == "struct" || t == "union" || t == "enum" || \
+                  t == "typedef" || t == "extern" || t == "inline" || t == "void" || \
+                  t == "alignof" || t == "_Alignof" || t == "decltype" || \
+                  t == "typeof" || t == "__typeof__")
+        }
+        END {
+          # Intersect each definitions called set with the global def-name set,
+          # collapse to a per-definition sorted callee list. Emit only defs that
+          # exist (have a definition anchor); callees not defined in-repo (libc,
+          # third-party) are dropped here by the isdef[] membership test.
+          for (k in calls) {
+            split(k, p, SUBSEP)
+            caller = p[1]; callee = p[2]
+            if (!(caller in isdef)) continue
+            if (!(callee in isdef)) continue   # repo-internal only
+            edge[caller] = (edge[caller] == "" ? callee : edge[caller] " " callee)
+          }
+          for (name in isdef) {
+            printf "%s\t%s\t%d\t%s\n", name, deffile[name], defline[name], (name in edge ? edge[name] : "")
+          }
+        }
+      ' 2>/dev/null \
+    | LC_ALL=C sort -u
+  return 0
+}
+
+# Pick seed entry-point FUNCTION NAMES (deterministic order): `main`,
+# `LLVMFuzzerTestOneInput`, then the first few exported-API names. Reuses
+# emit_entrypoints/emit_exported_api so the seeds match the L2 list. Prints up to
+# SEED_LIMIT bare names, one per line, in priority order. Arg: REPO. (Names only;
+# the def table from emit_callgraph_defs is what actually anchors them.)
+emit_callgraph_seeds() {
+  local repo="$1"
+  local seeds=""
+  # main / LLVMFuzzerTestOneInput, if they are defined anywhere in-repo.
+  if [ -n "$(rg_code '\bint\s+main\s*\(' "$repo" | drop_comment_lines)" ]; then
+    seeds="main"
+  fi
+  if [ -n "$(rg_code 'LLVMFuzzerTestOneInput\s*\(' "$repo" | drop_comment_lines)" ]; then
+    seeds="${seeds:+$seeds$'\n'}LLVMFuzzerTestOneInput"
+  fi
+  # Exported-API function names (already deterministic, public-first ranked).
+  local api
+  api="$(emit_exported_api "$repo" \
+    | awk -F'\t' 'NF>=3 { name=$2; sub(/\(\)$/,"",name); print name }')"
+  if [ -n "$api" ]; then
+    seeds="${seeds:+$seeds$'\n'}$api"
+  fi
+  [ -n "$seeds" ] || return 0
+  # De-dup preserving first-seen (priority) order, then take the first SEED_LIMIT.
+  printf '%s\n' "$seeds" | awk -v lim="$SEED_LIMIT" '
+    $0 != "" && !seen[$0]++ { print; k++ }
+    k >= lim { exit }'
+  return 0
+}
+
+# Assemble the L3 callgraph: BFS from the seeds over the def/edge table, ~BFS_DEPTH
+# levels deep, dedup edges, cap at CAP_EDGES. Emits "callgraph\t<edge>\t<anchor>"
+# rows. The edge key is "caller -> callee1, callee2, ..." and the anchor is the
+# caller's definition file:line. A leaf seed (no in-repo callees) still emits a
+# row so the seed is visible. No-seed case is handled by the caller (build_map).
+emit_callgraph() {
+  local repo="$1"
+  local defs seeds
+  defs="$(emit_callgraph_defs "$repo")"
+  seeds="$(emit_callgraph_seeds "$repo")"
+  if [ -z "$seeds" ] || [ -z "$defs" ]; then
+    return 0
+  fi
+  # Feed the def/edge table + the seed list to one awk that does the BFS.
+  printf '%s\n' "$defs" \
+    | awk -F'\t' -v seeds="$seeds" -v maxdepth="$BFS_DEPTH" -v cap="$CAP_EDGES" '
+        # Phase 1: load the def/edge table. $1=name $2=file $3=line $4="c1 c2 ...".
+        NF>=3 {
+          file[$1] = $2
+          line[$1] = $3
+          callees[$1] = (NF>=4 ? $4 : "")
+        }
+        END {
+          ns = split(seeds, sarr, "\n")
+          # BFS queue with depth; visited prevents reprocessing a node.
+          qn = 0
+          for (si = 1; si <= ns; si++) {
+            s = sarr[si]
+            if (s == "" || !(s in file)) continue   # seed not defined in-repo
+            if (s in queued) continue
+            queued[s] = 1
+            qn++; q[qn] = s; qd[qn] = 1
+          }
+          nedges = 0; emitted = 0
+          for (qi = 1; qi <= qn; qi++) {
+            cur = q[qi]; d = qd[qi]
+            cl = callees[cur]
+            # Build a deterministic, deduped callee list for this node.
+            outlist = ""
+            if (cl != "") {
+              m = split(cl, ca, " ")
+              # LC_ALL=C order: insertion sort the small callee array.
+              for (a = 1; a <= m; a++)
+                for (b = a + 1; b <= m; b++)
+                  if (ca[b] < ca[a]) { t = ca[a]; ca[a] = ca[b]; ca[b] = t }
+              for (a = 1; a <= m; a++) {
+                cb = ca[a]
+                if (cb == "" || cb == cur) continue
+                if (cb == prevc) continue   # collapse dups after sort
+                prevc = cb
+                outlist = (outlist == "" ? cb : outlist ", " cb)
+                # enqueue the callee for the next BFS level
+                if (d < maxdepth && (cb in file) && !(cb in queued)) {
+                  queued[cb] = 1
+                  qn++; q[qn] = cb; qd[qn] = d + 1
+                }
+              }
+              prevc = ""
+            }
+            # Record the edge row (caller -> callees). A seed/leaf with no
+            # in-repo callees still gets a row so the seed itself is visible.
+            nedges++
+            if (emitted < cap) {
+              if (outlist == "")
+                printf "callgraph\t%s -> (no in-repo callees)\t%s:%s\n", cur, file[cur], line[cur]
+              else
+                printf "callgraph\t%s -> %s\t%s:%s\n", cur, outlist, file[cur], line[cur]
+              emitted++
+            }
+          }
+          if (nedges > emitted)
+            printf "callgraph\t... (+%d more; capped)\tcapped\n", nedges - emitted
+        }'
+  return 0
+}
+
 # Per-section dedup + cap (F5). The bounded, high-volume rows are the
 # "exported-symbol hint" lines (cglm: 1511) and the exported-API declarations.
 # We cap those KINDS to CAP_LIST rows each (with a "... (+N more; capped)" footer)
@@ -947,6 +1245,12 @@ build_map() {
         | cap_exported_api "$CAP_LIST" ;;
     module)
       emit_modules "$repo" | awk 'NF' | LC_ALL=C sort -u ;;
+    callgraph)
+      # BFS-ordered rows must NOT be re-sorted (the seed/level order carries the
+      # graph structure, and the cap footer must stay last). emit_callgraph
+      # already dedups + caps + orders deterministically, so pass it through
+      # verbatim (dropping any blank lines only).
+      emit_callgraph "$repo" | awk 'NF' ;;
   esac
 }
 
@@ -988,6 +1292,15 @@ emit_text() {
   else
     printf 'none detected\n'
   fi
+  printf '\n## L3 touched-path callgraph\n'
+  printf '(heuristic: token scan, not a compiler callgraph — recursion/fn-pointers/overloads/macro-generated calls may be missed; use clangd callHierarchy or cscope for an exact graph)\n'
+  local cg
+  cg="$(build_map "$repo" callgraph)"
+  if [ -n "$cg" ]; then
+    printf '%s\n' "$cg" | render_rows
+  else
+    printf 'no seed entry point; provide one (main / LLVMFuzzerTestOneInput / an exported API function) to root the callgraph\n'
+  fi
 }
 
 emit_json() {
@@ -1001,6 +1314,7 @@ emit_json() {
     build_map "$repo" exported_api | awk -F'\t' 'NF>=3 { print "exported_api\t" $2 "\t" $3 }'
     build_map "$repo" entrypoint   | awk -F'\t' 'NF>=3 { print "entrypoint\t" $2 "\t" $3 }'
     build_map "$repo" module       | awk -F'\t' 'NF>=3 { print "module\t" $2 "\t" $3 }'
+    build_map "$repo" callgraph    | awk -F'\t' 'NF>=3 { print "callgraph\t" $2 "\t" $3 }'
   } | awk -F'\t' '
     function esc(s,   r) {
       r = s
@@ -1023,7 +1337,8 @@ emit_json() {
       emit_arr("build", "build");               printf ",\n"
       emit_arr("exported_api", "exported_api"); printf ",\n"
       emit_arr("entrypoints", "entrypoint");    printf ",\n"
-      emit_arr("modules", "module")
+      emit_arr("modules", "module");            printf ",\n"
+      emit_arr("callgraph", "callgraph")
       printf "\n}\n"
     }'
 }
