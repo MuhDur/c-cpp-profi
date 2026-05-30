@@ -875,3 +875,41 @@ the readme-writing skill's mandatory text, so it stays (my review prompt had wro
 
 **Commits:** `7f3138e` (README + banner) + this log/STATE update + push. Composite unchanged (98.5; the README is
 presentation, not a rubric dimension).
+
+---
+
+## Iteration 28 — 2026-05-30 — BLIND-agent outcome-lift (Q2 11.5→12) + 2 skill fixes → 99.0
+
+Attacked the residual I'd called Q2's structural cap ("the author can't be blind to their own work") with the
+strongest honest move: put the skill in genuinely fresh hands.
+
+**Blind trial (workflow `wau9ep8wo`, 5 agents).** Cloned 5 UNSEEN, un-seeded repos (NOT in the 50-gauntlet):
+tomlc99, cgltf, qoi, tinyexpr, parson — all untrusted-input parsers/codecs. Each got a fresh subagent with clean
+context (no rubric, no gauntlet, no bug locations) and ONLY the skill + "find and prove a real defect; clean is
+acceptable; don't fabricate." Then the AUTHOR independently rebuilt + re-ran every claim (a claim counts only if
+it reproduces in my own hands):
+- **cgltf** — misaligned-load UB (`-fsanitize=alignment`) at `cgltf.h:2224` via the public
+  `cgltf_accessor_read_float`; `cgltf_validate` returns 0 (success) yet the UB fires → genuine library defect
+  (Recipe 9 class). REPRODUCED by author.
+- **tinyexpr** — stack-overflow, unbounded recursive descent (`expr→list→base→power→factor→term→expr`), recursion
+  entirely in `tinyexpr.c`. REPRODUCED.
+- **tomlc99** — stack-overflow, unbounded `parse_array` self-recursion at `toml.c:1060`; input is a valid
+  NUL-terminated string the API documents it accepts. REPRODUCED.
+- **qoi**, **parson** — HONEST clean negatives (~4M and 4.41M+ execs ASan+UBSan, no findings, explicitly not
+  fabricated). The negatives prove the agents weren't inventing bugs to please.
+
+Three real, disclosable bugs (a UB + two CWE-674 DoS) in widely-used libraries, found with no author hints =
+genuinely blind. **Q2 11.5→12.** (Documented in gauntlet/OUTCOME-LIFT.md "Blind-agent trial".)
+
+**The loop's real product — 2 skill fixes the trial forced (commit `326c064`):**
+1. **UBSan silently recovers by default.** The cgltf UB was MASKED until the agent added `-fno-sanitize-recover=all`
+   + `UBSAN_OPTIONS=halt_on_error=1`; that flag lived only in a CMake preset, not the prose gate. Added to
+   TESTING-FUZZING.md ("without halt-on-error, UBSan is an advisory printout, not a gate").
+2. **Deep-nesting fuzzing blind spot + no depth-cap recipe.** Coverage-guided mutation rarely emits ~20k identical
+   tokens, so a clean campaign doesn't clear the unbounded-recursion hazard. Added the blind-spot note + directed-
+   seed method (TESTING-FUZZING.md) and REMEDIATION-RECIPES.md **Recipe 10** (recursion depth cap, CWE-674).
+
+**Rubric:** 98.5 → **99.0/100**. Q2 11.5→12. SIX dims at full marks (C2,C3,C4,C5,C6,Q2). Residual 1.0 = C1 0.5
+(exact clangd graph) + Q1 0.5 (validate command-output truth). contract refs=20 + audit + docs-check all green.
+
+**Commits:** `326c064` (skill fold-backs) + this re-rate (OUTCOME-LIFT/RUBRIC/STATE/ACTION-LOG) + push.

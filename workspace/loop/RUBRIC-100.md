@@ -100,20 +100,24 @@ self-score, no blind-agent trial"; C1 "no mental-model-first phase"; C6 "domains
 
 | 26 | 2026-05-30 | **98.5** | C2 11→12 (cap FIXED, not documented); C1 recursion fix | **The user installed the cross toolchain (`gcc-aarch64-linux-gnu`, `gcc-riscv64-linux-gnu`, `qemu-user-static`), unblocking the one ENVIRONMENT cap.** Ran a TRUE cross-architecture port (`trials/C2-crossarch.md`, commit `a116639`): the identical cJSON driver cross-compiled for **aarch64 + riscv64**, RUN under QEMU-user over cJSON's 638-input corpus → all three ISA outputs byte-identical (shared sha256 `724ca465…a8c67`), gated by `cpp_evidence_check.py --profile port --require-transform-proof` = PASS. Teeth control proves the oracle discriminates: a `char`-signedness probe DIVERGES (x86 `is_negative=1`, aarch64/riscv64 `is_negative=0`). Folded the working recipe + the char-signedness hazard into CODE-TRANSFORM.md. **C2 11→12** (a genuine cross-arch port with a runtime differential oracle — the thing the iter-22 same-arch oracle could not prove). Also fixed a C1 callgraph weakness: self-recursion is now surfaced as `name -> name (recursive)` (cJSON_Delete was wrongly `(no in-repo callees)`) — firms C1 14.5 but doesn't reach 15 (fn-ptr/vtable + clangd-exact still pending). Per the user, the rating stays OUT of the skill and the README; it lives only here in the loop audit. Composite **97.5→98.5**. |
 
-## Convergence — evidence ceiling now 98.5/100 (2026-05-30, after the toolchain install)
+| 27 | 2026-05-30 | **98.5** (held) | USER DELIVERABLE: README + playful hero image | Not a rubric move (README is presentation). New `docs/banner.svg` mascot hero; README rewritten to the readme-writing structure + de-slopified (0 em-dashes), 4-lens adversarial review (`wn2zl1jw2`). Per the user: RATING removed from the README (lives only here), Limitations-confessional removed (limits were FIXED, not written down), gauntlet reframed as capability proof, Contributions policy verbatim. Commit `7f3138e`/`1fb1d4f`. Composite unchanged **98.5**. |
 
-Iteration 26 broke past the prior 97.5 ceiling because the *environment* changed: the user installed the cross
-toolchain, so the C2 cap was **fixed, not documented** (per the user's "fix limitations instead of writing them
-down"). The remaining **1.5 points** are now the genuinely-hard ones:
+| 28 | 2026-05-30 | **99.0** | Q2 11.5→12 (BLIND outcome-lift, author-verified) | **The blind-agent trial I'd called Q2's structural cap — done and author-verified.** Workflow `wau9ep8wo`: 5 fresh subagents (clean context, no rubric/gauntlet/bug-location knowledge), each given ONLY the skill + one UNSEEN, un-seeded repo (tomlc99, cgltf, qoi, tinyexpr, parson). Result, **each defect independently rebuilt + reproduced by the author**: cgltf misaligned-load UB at `cgltf.h:2224` via the public `cgltf_accessor_read_float` on a `validate`-accepted file (Recipe 9 class); tinyexpr + tomlc99 unbounded-recursion stack-overflows (CWE-674), recursion entirely in library code; qoi + parson HONEST clean negatives (~4M execs each, no fabrication). Three real, disclosable bugs in widely-used libraries, found with no author hints → genuinely blind. **Q2 11.5→12.** The trial also FORCED two skill fixes (commit `326c064`): UBSan `-fno-sanitize-recover=all`/`halt_on_error` (it had silently recovered and masked the cgltf UB) + Recipe 10 (recursion depth cap; deep-nesting fuzzing blind-spot). Composite **98.5→99.0**. |
+
+## Convergence — 99.0/100; residual 1.0 (2026-05-30)
+
+Iteration 28's blind trial closed the Q2 0.5 with author-verified evidence (a fresh agent, not the author, found
+real bugs in unseen repos using only the skill). The remaining **1.0 point**:
 - **C1 14.5→15 (0.5)** — exact clangd `callHierarchy` graph + function-pointer/vtable resolution + a codegen/ISA
   probe. The heuristic now handles self-recursion; the exact-graph + indirect-call resolution is the residual.
-- **Q1 7.5→8 (0.5)** — gates must validate command-output *truth*, not just shape. **Structural** self-cert limit.
-- **Q2 11.5→12 (0.5)** — a genuinely *blind* agent (not the skill author) achieving an outcome-lift on an unseen
-  repo. **Structural** — the author cannot be blind to their own work.
+- **Q1 7.5→8 (0.5)** — gates must validate command-output *truth*, not just shape. The checker reads report shape;
+  re-executing arbitrary gate commands to verify the *output* is the residual (partially tractable: artifact/sha
+  re-checking; fully general re-exec is hard and side-effecting).
 
-Five of eight dimensions are at full marks (C2 12/12, C3 15/15, C4 12/12, C5 8/8, C6 18/18). The last 1.5 points
-require an independent/blind verifier (Q1/Q2) and exact-graph tooling (C1) — fabricating them would violate the
-honesty contract that governed every row above (including two honest down-rates). Pursue only genuine fixes.
+Six of eight dimensions are at full marks (C2, C3, C4, C5, C6, **Q2**). The last 1.0 point is exact-graph tooling
+(C1) and command-output-truth re-execution (Q1) — pursue only as genuine fixes, never fabricate. The honesty
+contract has held across every row, including two honest down-rates and a blind trial whose result I re-verified
+by hand rather than trusting the agents' self-reports.
 
 ## Approaching the structural ceiling
 

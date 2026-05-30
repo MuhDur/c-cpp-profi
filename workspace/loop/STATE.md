@@ -1,13 +1,19 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **98.5 / 100** (iteration 26, 2026-05-30).
-  Per-dim: C1 **14.5** · C2 **12** · C3 15 · C4 12 · C5 8 · C6 18 · Q1 7.5 · Q2 11.5. Five dims at full marks.
+- **Honest composite (RUBRIC-100):** **99.0 / 100** (iteration 28, 2026-05-30).
+  Per-dim: C1 **14.5** · C2 12 · C3 15 · C4 12 · C5 8 · C6 18 · Q1 7.5 · Q2 **12**. SIX dims at full marks.
+- **Iteration 28 — BLIND outcome-lift (Q2 11.5→12):** workflow `wau9ep8wo` — 5 fresh subagents, 5 UNSEEN un-seeded
+  repos, skill-only, no hints. Author-reproduced 3 real defects (cgltf misaligned-load UB via public API on a
+  validate-accepted file; tinyexpr + tomlc99 unbounded-recursion stack-overflows, CWE-674) + 2 honest clean
+  negatives (qoi, parson). Forced 2 skill fixes (`326c064`): UBSan `-fno-sanitize-recover=all` (had masked the
+  cgltf UB) + Recipe 10 (recursion depth cap). Composite 98.5→99.0.
 - **NOTE (user rule):** the rating lives ONLY here in `workspace/loop/` (the loop audit). It is deliberately NOT in
   `skill/c-cpp-profi/` and NOT in the root README (verified: `grep /100` over the skill = none).
-- **Target:** 100 / 100. Residual **1.5 pts** = C1 0.5 (exact clangd graph + fn-ptr/vtable + codegen) + Q1 0.5
-  (validate output truth not shape) + Q2 0.5 (a genuinely blind verifier). All three need tooling/verification an
-  author-driven loop can't self-provide; pursue only as genuine fixes, never fabricate.
+- **Target:** 100 / 100. Residual **1.0 pt** = C1 0.5 (exact clangd graph + fn-ptr/vtable + codegen) + Q1 0.5
+  (validate command-output truth, not shape — partially tractable via artifact/sha re-checking; fully general
+  re-exec is hard/side-effecting). Q2 was closed iter 28 by the author-verified blind trial. Pursue only genuine
+  fixes, never fabricate.
 - **Phase:** ▶ broke past the prior 97.5 ceiling — the user installed the cross toolchain, so C2's ENV cap was
   FIXED (not documented). Next: the README+image deliverable the user asked for (see below), then genuine fixes only.
 - **Last iteration (26):** **C2 11→12 — TRUE cross-arch port landed.** User installed `gcc-aarch64-linux-gnu`,

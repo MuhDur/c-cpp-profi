@@ -125,8 +125,40 @@ and binary compression (lz4) — the domain-agnostic empirical claim is corrobor
 - ESTABLISHED: the skill's dynamic gate (fuzz/ASan/UBSan + deterministic harnesses) detects real injected
   memory-safety defects across 3 independently-written codebases in 2 unrelated domains, each with an honestly
   clean baseline, exact reproducer commands, and verified restore. Breadth + domain-diversity are now real.
-- STILL NOT: a *blind* agent (one that is not the skill author) achieving the lift on an unseen repo, and a
-  git-revert of a historical CVE (the depth-1 clones carry no history, so the seeded-fault proxy is used). The
-  blind-agent gap is the structural residual on Q2 (11.5→12) — it is a self-certification limit, not a tooling
-  gap, and is documented as the cap rather than papered over. A 3rd author-run seeded fault adds breadth, not
-  blindness, so it does NOT by itself close that 0.5.
+- STILL NOT (until the blind trial below): a *blind* agent achieving the lift on an unseen repo, and a git-revert
+  of a historical CVE (the depth-1 clones carry no history, so the seeded-fault proxy is used).
+
+## Blind-agent trial — 5 fresh agents, 5 UNSEEN repos, NO author hints — 2026-05-30
+
+This is the trial the seeded faults above could not be: it removes the author's hand from the find-and-prove work.
+Five fresh subagents (clean context, no knowledge of the rubric, the gauntlet, or any bug location) were each given
+ONLY the skill and one repository NOT in the 50-repo gauntlet and NOT seeded (tomlc99, cgltf, qoi, tinyexpr,
+parson — all untrusted-input parsers/codecs). Mission: "apply the skill's fuzz+sanitizer gate to find and prove a
+real defect; a clean result is acceptable; do not fabricate." Every claimed defect was then **independently
+re-built and re-run by the author** — a claim counts only if it reproduces in the author's own hands.
+
+| Repo (unseen) | Blind agent result | Author re-verification |
+|---|---|---|
+| **cgltf** | misaligned-load UB (`-fsanitize=alignment`) at `cgltf.h:2224` via public `cgltf_accessor_read_float` | REPRODUCED: `cgltf_validate` returns 0 (success), UB still fires → genuine library defect (Recipe 9 class) |
+| **tinyexpr** | stack-overflow, unbounded recursive descent | REPRODUCED: ASan stack-overflow, recursion cycle entirely in `tinyexpr.c` (`expr→list→base→power→factor→term→expr`) |
+| **tomlc99** | stack-overflow, unbounded `parse_array` recursion | REPRODUCED: ASan stack-overflow at `toml.c:1060` self-recursion; input is a valid NUL-terminated string the API documents it accepts |
+| **qoi** | clean (no defect) | honest negative — ~4M execs, 109-edge plateau, no fabrication |
+| **parson** | clean (no defect) | honest negative — 4.41M+ execs ASan+UBSan, no fabrication |
+
+**Verdict: BLIND OUTCOME-LIFT CONFIRMED.** Three genuine defects in three widely-used libraries, found by agents
+that are not the author and given no hints, each independently reproduced by the author from a saved input; two
+honest clean negatives prove the agents were not fabricating. The cgltf and tinyexpr/tomlc99 findings are real,
+disclosable bugs (a misaligned-load UB and two unbounded-recursion DoS, CWE-674). This is materially stronger than
+author-run seeded faults and is the evidence Q2 11.5→12 rests on.
+
+**Skill improvements the trial forced (observed friction → fold-back):**
+1. UBSan **silently recovers by default** — the cgltf UB was masked until the agent added `-fno-sanitize-recover=all`
+   + `UBSAN_OPTIONS=halt_on_error=1`. That flag lived only in a CMake preset, not the prose gate the agents follow;
+   now stated in TESTING-FUZZING.md ("without halt-on-error, UBSan is an advisory printout, not a gate").
+2. Coverage-guided fuzzing **under-explores deep nesting** (random mutation rarely emits ~20k identical tokens), so
+   a clean campaign does not clear the unbounded-recursion hazard. Added the deep-nesting blind-spot note + a
+   directed-seed method to TESTING-FUZZING.md and a depth-cap remediation (REMEDIATION-RECIPES.md Recipe 10).
+
+Remaining honest gap: a git-revert-of-historical-CVE (needs full clone history) and a fully third-party verifier
+(the author still chose the repos and dispatched the agents). Q1 7.5→8 (validate command-output truth, not shape)
+and C1 14.5→15 (exact clangd graph) remain.
