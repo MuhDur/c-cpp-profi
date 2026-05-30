@@ -802,3 +802,40 @@ that found no real improvement available correctly changes nothing rather than i
 slow maintenance heartbeat.
 
 **Commits:** this STATE/RUBRIC/ACTION-LOG sharpening commit + push.
+
+---
+
+## Iteration 26 — 2026-05-30 — C2 cross-arch cap FIXED (toolchain installed) + C1 recursion fix → 98.5
+
+The user installed the cross toolchain mid-loop (`gcc-aarch64-linux-gnu`, `gcc-riscv64-linux-gnu`,
+`qemu-user-static`), removing the two walls iteration 25 had documented (no sysroot + no qemu). Per the user's
+directive "fix limitations instead of writing them down," I turned the documented C2 cap into a real capability.
+
+**C2 11→12 — TRUE cross-architecture port (commit `a116639`, `trials/C2-crossarch.md`).**
+- Verified the pipeline: `aarch64-linux-gnu-gcc -static` + `qemu-aarch64-static` and the riscv64 pair both
+  compile libc-using code AND run it (hello prints `8/8`; dynamic + `qemu -L /usr/aarch64-linux-gnu` also works).
+- Differential oracle on cJSON: identical `driver.c`+`cJSON.c` built for x86-64 / aarch64 / riscv64; ran each over
+  cJSON's 638-file corpus (fuzzing/inputs + tests/inputs); `out_x86.txt`/`out_a64.txt`/`out_rv.txt` byte-identical,
+  shared sha256 `724ca465c78bbbf9c9a55e1b3c3997b3150cb0e49730e4e3fa229b02452a8c67`; both cross-ISA diffs exit 0.
+- Teeth control (`teeth.c`): `char c=(char)0xFF; c<0` DIVERGES — x86 `is_negative=1` (signed char) vs aarch64 AND
+  riscv64 `is_negative=0` (unsigned char per AAPCS64 / RISC-V psABI). Proves the oracle discriminates; cJSON's
+  638/638 clean result is meaningful (it never relies on char signedness).
+- Gated: `cpp_evidence_check.py --profile port --require-transform-proof` = PASS (profiles=port).
+- Fold-back: CODE-TRANSFORM.md gained a char-signedness hazard row + the working gcc-cross + qemu recipe (with the
+  honest QEMU-isn't-silicon / relaxed-memory caveat for concurrent ports). C2 is now 12/12.
+
+**C1 callgraph self-recursion fix (same commit).** `cpp_comprehension_map.sh` was silently dropping self-edges
+(`tok != curname` filter at two sites), so cJSON_Delete showed "(no in-repo callees)". Now self-recursion is
+tracked apart from the BFS and surfaced as `name -> name (recursive)` (verified: `cJSON_Delete -> cJSON_Delete
+(recursive)`). Self-test extended with a recursive fixture (`util_rec`); byte-reproducible; caveat docs updated
+(REPO-COMPREHENSION.md + the in-script note). Firms C1 14.5 but does not reach 15 (fn-ptr/vtable + clangd-exact
+remain).
+
+**Rubric:** 97.5 → **98.5/100**. C2 11→12. Five dims now at full marks (C2, C3, C4, C5, C6). Residual 1.5 =
+C1 0.5 (exact graph) + Q1 0.5 + Q2 0.5 (both structural). Rating kept OUT of skill + README (user rule); lives
+only in this loop audit. Skill self-tests + contract + audit all green.
+
+**Next (user deliverable):** repeatedly apply /readme-writing + /de-slopify on the root README, add a clean cool
+playful image (online inspiration), no rating in the README, fix-don't-document limitations.
+
+**Commits:** `a116639` (skill: cross-arch + recursion) + this re-rate commit + push.

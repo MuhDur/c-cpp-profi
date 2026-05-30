@@ -98,15 +98,22 @@ self-score, no blind-agent trial"; C1 "no mental-model-first phase"; C6 "domains
 
 | 25 | 2026-05-30 | **97.5** (held) | maintenance — both reachable caps dead-ended honestly | First post-convergence maintenance pass. Probed the two "reachable-if-environment-allows" caps; both dead-ended, so nothing moved (the honesty contract working, not inflation). **C2 12 cross-arch port** — confirmed doubly-blocked with sharper evidence than before: no GCC cross-compilers / no qemu / no root-apt, and while `clang --target=aarch64/riscv64` emits valid object files for *freestanding* snippets, real repos fail at `bits/libc-header-start.h` (no target SYSROOT) so libc-using code can't even be cross-compiled. **`-Wcast-align`/`-fsanitize=alignment`** for the klib unaligned-cast class — already shipped (QUALITY-GATES C+C++ flag sets; REMEDIATION Recipe 9); the "x86 hides it, aarch64 flags it" hypothesis was wrong (clang x86 default already warns). Regression sweep green (4 bash self-tests + cpp_docs_check PASS; L3 callgraph bounded+correct on lua). Only artifact: sharpened the C2-block reason in STATE/this log. Composite HELD **97.5**. |
 
-## Convergence — evidence ceiling reached at 97.5/100 (2026-05-30)
+| 26 | 2026-05-30 | **98.5** | C2 11→12 (cap FIXED, not documented); C1 recursion fix | **The user installed the cross toolchain (`gcc-aarch64-linux-gnu`, `gcc-riscv64-linux-gnu`, `qemu-user-static`), unblocking the one ENVIRONMENT cap.** Ran a TRUE cross-architecture port (`trials/C2-crossarch.md`, commit `a116639`): the identical cJSON driver cross-compiled for **aarch64 + riscv64**, RUN under QEMU-user over cJSON's 638-input corpus → all three ISA outputs byte-identical (shared sha256 `724ca465…a8c67`), gated by `cpp_evidence_check.py --profile port --require-transform-proof` = PASS. Teeth control proves the oracle discriminates: a `char`-signedness probe DIVERGES (x86 `is_negative=1`, aarch64/riscv64 `is_negative=0`). Folded the working recipe + the char-signedness hazard into CODE-TRANSFORM.md. **C2 11→12** (a genuine cross-arch port with a runtime differential oracle — the thing the iter-22 same-arch oracle could not prove). Also fixed a C1 callgraph weakness: self-recursion is now surfaced as `name -> name (recursive)` (cJSON_Delete was wrongly `(no in-repo callees)`) — firms C1 14.5 but doesn't reach 15 (fn-ptr/vtable + clangd-exact still pending). Per the user, the rating stays OUT of the skill and the README; it lives only here in the loop audit. Composite **97.5→98.5**. |
 
-Iteration 24 reaches the honest evidence-supported ceiling. The remaining **2.5 points are documented, not faked**:
-- **C1 14.5→15 (0.5)** — exact clangd `callHierarchy` graph (needs per-repo `compile_commands.json`) + a codegen/ISA-level auto-probe. Partly environment, partly diminishing returns past the heuristic graph already shipped.
-- **C2 11→12 (1.0)** — a *true* cross-architecture port. The sandbox has no cross-toolchain (aarch64/qemu/musl absent, `-m32` link-fails); the honest compiler/opt-level differential-oracle port was done instead. **Environment cap.**
-- **Q1 7.5→8 (0.5)** — gates must validate command-output *truth*, not just shape. **Structural** self-certification limit.
-- **Q2 11.5→12 (0.5)** — a genuinely *blind* agent (not the skill author) achieving an outcome-lift on an unseen repo. **Structural** — the author cannot be blind to their own work.
+## Convergence — evidence ceiling now 98.5/100 (2026-05-30, after the toolchain install)
 
-Four of eight dimensions are at full marks (C3 15/15, C4 12/12, C5 8/8, C6 18/18). The loop stops *active score-chasing* here: 100 would require an independent/blind verifier and a cross-arch toolchain — neither self-providable by an author-driven sandbox loop — and fabricating it would violate the honesty contract that governed every row above (including two honest down-rates). Further iterations are maintenance / genuine-accretive-improvement only.
+Iteration 26 broke past the prior 97.5 ceiling because the *environment* changed: the user installed the cross
+toolchain, so the C2 cap was **fixed, not documented** (per the user's "fix limitations instead of writing them
+down"). The remaining **1.5 points** are now the genuinely-hard ones:
+- **C1 14.5→15 (0.5)** — exact clangd `callHierarchy` graph + function-pointer/vtable resolution + a codegen/ISA
+  probe. The heuristic now handles self-recursion; the exact-graph + indirect-call resolution is the residual.
+- **Q1 7.5→8 (0.5)** — gates must validate command-output *truth*, not just shape. **Structural** self-cert limit.
+- **Q2 11.5→12 (0.5)** — a genuinely *blind* agent (not the skill author) achieving an outcome-lift on an unseen
+  repo. **Structural** — the author cannot be blind to their own work.
+
+Five of eight dimensions are at full marks (C2 12/12, C3 15/15, C4 12/12, C5 8/8, C6 18/18). The last 1.5 points
+require an independent/blind verifier (Q1/Q2) and exact-graph tooling (C1) — fabricating them would violate the
+honesty contract that governed every row above (including two honest down-rates). Pursue only genuine fixes.
 
 ## Approaching the structural ceiling
 

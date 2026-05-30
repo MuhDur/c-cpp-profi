@@ -1,31 +1,27 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **97.5 / 100** (iteration 24, 2026-05-30) — **CONVERGED at the evidence ceiling.**
-  Per-dim: C1 **14.5** · C2 11 · C3 15 · C4 12 · C5 8 · C6 18 · Q1 7.5 · Q2 11.5.
-- **Target:** 100 / 100 — **unreachable without an independent/blind verifier + a cross-arch toolchain** (neither
-  self-providable by an author-driven sandbox loop). The honest ceiling is 97.5; the residual 2.5 pts are documented.
-- **Phase:** ■ CONVERGED. Active score-chasing stopped (iter 24). Loop stays armed for maintenance / genuine
-  accretive improvement only — NOT to fabricate the last 2.5 pts (doing so would break the honesty contract).
-- **Last iteration (25, maintenance):** probed the two "reachable-if-environment-allows" caps; BOTH dead-ended
-  honestly, composite HELD at 97.5 (no inflation). (a) **C2 12 cross-arch port — confirmed doubly-blocked with
-  sharper evidence:** no GCC cross-compilers, no qemu, no root for apt; `clang --target=aarch64/riscv64` does
-  codegen for *freestanding* snippets but real repos fail at `bits/libc-header-start.h` (no target SYSROOT), so
-  libc-using code can't even be cross-*compiled*, let alone run. (b) **`-Wcast-align` / `-fsanitize=alignment`**
-  for the klib unaligned-cast bug class — already shipped (QUALITY-GATES.md C+C++ flag sets; REMEDIATION Recipe 9).
-  Regression sweep green: 4 bash self-tests + cpp_docs_check PASS; L3 callgraph bounded+correct on lua (large repo).
-- **Iteration 24:** auto-drew the L3 touched-path callgraph in `cpp_comprehension_map.sh` (commit `c10ecd6`,
-  verified on cJSON/inih incl. C++ method dispatch) → **C1 14→14.5** (heuristic-only: no clangd-exact/codegen probe);
-  3rd outcome-lift on **lz4** (compression) — removed one term of the safe decoder's output guard → ASan overflow
-  localized to lz4.c:2343, clean→rejects, restore→rejects (OUTCOME-LIFT Trial 3). 3 lifts / 3 codebases / 2 domains.
-  **Q2 held at 11.5** (breadth, not blindness). Composite 97.0→**97.5**.
-- **Residual 2.5 pts (documented, not faked):** C1 14.5→15 (clangd-exact graph + codegen probe; diminishing),
-  C2 11→12 (true cross-arch port — see below = ENV cap), Q1 7.5→8 (validate output truth not shape = STRUCTURAL),
-  Q2 11.5→12 (a genuinely BLIND agent = STRUCTURAL, author can't be blind to own work).
-- **Environment/structural cap (honest, sharpened iter 25):** C2 12 is blocked at TWO layers — no target sysroot
-  (cross-compile of libc-using code fails) AND no qemu (can't run target binaries); no root to `apt` either. The
-  same-arch compiler/opt-level differential oracle (iter 22-23) remains the honest best available. Q1 8 + Q2 12
-  can't be self-certified here. The ceiling is 97.5 with these documented as real caps — not a faked 100.
+- **Honest composite (RUBRIC-100):** **98.5 / 100** (iteration 26, 2026-05-30).
+  Per-dim: C1 **14.5** · C2 **12** · C3 15 · C4 12 · C5 8 · C6 18 · Q1 7.5 · Q2 11.5. Five dims at full marks.
+- **NOTE (user rule):** the rating lives ONLY here in `workspace/loop/` (the loop audit). It is deliberately NOT in
+  `skill/c-cpp-profi/` and NOT in the root README (verified: `grep /100` over the skill = none).
+- **Target:** 100 / 100. Residual **1.5 pts** = C1 0.5 (exact clangd graph + fn-ptr/vtable + codegen) + Q1 0.5
+  (validate output truth not shape) + Q2 0.5 (a genuinely blind verifier). All three need tooling/verification an
+  author-driven loop can't self-provide; pursue only as genuine fixes, never fabricate.
+- **Phase:** ▶ broke past the prior 97.5 ceiling — the user installed the cross toolchain, so C2's ENV cap was
+  FIXED (not documented). Next: the README+image deliverable the user asked for (see below), then genuine fixes only.
+- **Last iteration (26):** **C2 11→12 — TRUE cross-arch port landed.** User installed `gcc-aarch64-linux-gnu`,
+  `gcc-riscv64-linux-gnu`, `qemu-user-static`. Cross-compiled the identical cJSON driver for aarch64 + riscv64, ran
+  under QEMU over the 638-input corpus → all three ISAs byte-identical (sha256 `724ca465…a8c67`); `--profile port
+  --require-transform-proof` PASS (`trials/C2-crossarch.md`). Teeth control: char-signedness diverges (x86 signed,
+  aarch64/riscv64 unsigned) → oracle discriminates. Folded recipe + char-signedness hazard into CODE-TRANSFORM.md.
+  Also **fixed C1 callgraph self-recursion** (cJSON_Delete now `-> cJSON_Delete (recursive)`, was "no callees").
+  Commit `a116639`. Composite 97.5→**98.5**.
+- **Iteration 24-25:** L3 callgraph auto-draw (C1 14→14.5) + 3rd outcome-lift on lz4 (Q2 corroborated); iter-25
+  maintenance confirmed the cross-arch cap was then doubly-blocked (no sysroot + no qemu) — that block is now gone.
+- **PENDING USER DELIVERABLE (do when skill work settles):** repeatedly apply `/readme-writing` + `/de-slopify` to
+  the root README, add a clean/cool/playful image (online inspiration), keep the rating OUT of skill + README, and
+  FIX limitations rather than writing them down.
 - **Per-iteration now also (user instruction):** push to `origin` after committing; refresh `README.md` via
   /readme-writing + /de-slopify whenever the composite moves or the skill materially changes (see LOOP-PROTOCOL step 7).
 - **Last iteration (12):** integrated batch-2 (12 repos → 25/50; 34 findings → regressions R1–R7) and **folded
