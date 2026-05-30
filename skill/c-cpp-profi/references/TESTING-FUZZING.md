@@ -34,7 +34,8 @@ Fuzz any public or internal boundary that consumes:
 - Bound memory, recursion, progress callbacks, and input sizes deliberately.
 - Avoid filesystem, network, real time, sleeping, randomness, and global mutable state in the hot fuzz path.
 - Maintain at least two libFuzzer build modes when practical: fast exploration for corpus growth and sanitized replay for bug detection.
-- Pair fuzzing with sanitizers, usually ASan+UBSan first.
+- Pair fuzzing with sanitizers, usually ASan+UBSan first. **Build UBSan with `-fno-sanitize-recover=all` and run with `UBSAN_OPTIONS=halt_on_error=1` (and `print_stacktrace=1`).** By default UBSan only *prints* and then *recovers*, so a coverage-guided campaign keeps running past real UB (misaligned/unaligned loads, signed overflow, invalid enum) and the run still "passes" — a verified blind trial missed a genuine misaligned-load UB in a glTF accessor reader for exactly this reason until the recover-off flags were added. Without halt-on-error, UBSan is an advisory printout, not a gate.
+- Deep-nesting blind spot: coverage-guided mutation rarely produces the tens of thousands of repeated tokens (`[[[[…`, `{{{{…`, `((((…`) that trigger unbounded-recursion stack-overflow in a recursive-descent parser, so a clean fuzz campaign does NOT clear that hazard. Add directed depth-structured seeds (and read the parser for an uncapped recursive call) — see Recipe 10. Two of three defects a blind trial found across unseen parsers were this class.
 - Minimize crashing inputs before debugging.
 - Convert every crash into a regression test.
 - Use differential or metamorphic oracles when exact expected output is hard.

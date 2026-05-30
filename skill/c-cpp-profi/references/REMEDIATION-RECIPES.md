@@ -231,6 +231,43 @@ Invariant restored: a load reads exactly the bytes the source object owns, throu
 Proving gate: Memory/UB gate — ASan + UBSan (`-fsanitize=alignment` catches the misaligned wide load; ASan catches the over-read when the source is heap/stack-bounded), `-fstrict-aliasing -Wstrict-aliasing=2` clean, plus a regression test on the exact-width read. Validate `--profile memory`.
 Precedent: the Linux kernel and BearSSL/libsodium read multi-byte fields via `get_unaligned_*`/byte-wise loads rather than wide pointer casts; MEMORY-SAFETY.md lists type-punning through incompatible pointers as UB; this is the klib `knetfile.c:173` find recorded in the gauntlet FINDINGS.
 
+## Recipe 10 — Unbounded recursion on attacker-controlled nesting (stack-overflow DoS, CWE-674)
+
+Bug class: a recursive-descent parser (or any recursion driven by input structure) recurses once per nesting level with no depth limit, so untrusted input like `[[[[…`, `{{{{…`, or deeply parenthesized expressions exhausts the stack and crashes the process ([TESTING-FUZZING.md](TESTING-FUZZING.md) deep-nesting blind spot; [MEMORY-SAFETY.md](MEMORY-SAFETY.md)). It is a denial-of-service, not memory corruption, but it is a real, reachable crash on any worker thread with a small stack. Coverage-guided fuzzing rarely finds it (random mutation almost never emits tens of thousands of identical opening tokens), so it must be sought by directed deep-nesting seeds and by reading the parser for an uncapped recursive call. Three blind trials on unseen parsers reproduced exactly this: tomlc99 `parse_array` (`toml.c:1060`, self-recursive per `[`) and tinyexpr's `expr→…→base→expr` cycle both stack-overflowed under ASan; the input was a valid NUL-terminated string the API documents it accepts.
+
+```c
+/* Before: parse_array recurses on every nested '[' with no cap (DoS on deep input). */
+static node_t *parse_array(parser_t *p) {
+    expect(p, '[');
+    while (peek(p) != ']') {
+        if (peek(p) == '[') append(p, parse_array(p));   /* unbounded self-recursion */
+        else                append(p, parse_scalar(p));
+    }
+    ...
+}
+```
+
+```c
+/* After: thread a depth counter through the parser state and fail closed past a cap. */
+enum { MAX_PARSE_DEPTH = 200 };                 /* documented, well under any real stack */
+static node_t *parse_array(parser_t *p) {
+    if (++p->depth > MAX_PARSE_DEPTH) {          /* fail BEFORE the recursive call */
+        set_error(p, "nesting too deep");
+        --p->depth; return NULL;
+    }
+    expect(p, '[');
+    while (peek(p) != ']') { ... append(p, parse_array(p)); ... }
+    --p->depth;                                  /* restore on every return path */
+    ...
+}
+/* Equivalent fixes: convert the recursion to an explicit heap stack/work-list, or
+   (less portable) probe remaining stack. A constant cap is simplest and auditable. */
+```
+
+Invariant restored: recursion depth is bounded by a constant independent of input, so the worst-case stack is fixed and known; over-deep input returns a clean parse error instead of crashing. Mutually recursive paths (e.g. array↔inline-table) must share the SAME counter, and every early return must decrement it.
+Proving gate: Fuzz/dynamic gate — a directed deep-nesting regression input (e.g. `"a=" + "["*200000`) that crashed under ASan `stack-overflow` before the fix and returns a parse error after; keep it as a seed. Pair with the `-fno-sanitize-recover=all` UBSan build. Validate `--profile parser` (or `security`).
+Precedent: classic parser-DoS CVEs (libxml2 entity/element nesting, many JSON/TOML/expression parsers) are this class; RFC 8259 explicitly lets a JSON implementation set a maximum nesting depth. The depth cap is the standard fix.
+
 # Part B — Binary-Size Methodology
 
 ## Why size is a first-class budget
