@@ -493,14 +493,28 @@ def verify_evidence(text: str, base: Path) -> tuple[list[str], int]:
 #                                  (if <expected> non-empty) that it appears in output.
 REEXEC_RE = re.compile(r"@reexec\{([^{}]*)\}\{([^{}]*)\}")
 # Refuse to re-run anything matching these (destructive / privileged / network /
-# stateful-discard). The author owns the report, but this is defense-in-depth.
+# stateful-discard / arbitrary-code-exec). This is BEST-EFFORT defense-in-depth,
+# NOT a sandbox: a denylist over arbitrary shell is fundamentally incompletable
+# (obfuscation like `r''m`, `$(printf rm)`, base64|sh always exists). The real
+# safety guarantee is that --reexec is OPT-IN and meant for a TRUSTED report the
+# author wrote and asserts safe; run it in a sandbox/container for untrusted input.
+# The leading boundary includes `/` so a path-prefixed command (`/bin/rm`) is still
+# caught; inline-code interpreters (`sh -c`, `python -c`) and `find -delete/-exec`
+# are caught because they execute arbitrary code the author cannot vouch for.
+_DENY_CMDS = (
+    r"rm|rmdir|dd|mkfs\w*|shred|truncate|sudo|doas|su|shutdown|reboot|halt|"
+    r"poweroff|mv|cp|chmod|chown|chgrp|mount|umount|kill|pkill|killall|curl|wget|"
+    r"nc|ncat|netcat|telnet|ssh|scp|sftp|rsync|ftp|eval|exec|source|crontab|at|"
+    r"insmod|rmmod|modprobe|iptables|nft|systemctl|service|tee"
+)
 REEXEC_DENY_RE = re.compile(
-    r"(?:^|[\s|;&(])(?:rm|rmdir|dd|mkfs\w*|shred|truncate|sudo|doas|su|shutdown|"
-    r"reboot|halt|poweroff|mv|chmod|chown|chgrp|mount|umount|kill|pkill|killall|"
-    r"curl|wget|nc|ncat|netcat|telnet|ssh|scp|sftp|rsync|eval|exec|crontab|"
-    r"insmod|rmmod|iptables|systemctl|service)(?:\s|$)"
-    r"|git\s+(?:reset\s+--hard|clean|checkout\s+--|push|rebase)"
-    r"|:\(\)\s*\{|>\s*/dev/|of=/dev/|/dev/sd|\bmkfs\b|--no-preserve-root"
+    rf"(?:^|[\s|;&(/])(?:{_DENY_CMDS})(?:\s|$)"
+    r"|(?:^|[\s|;&(/])(?:sh|bash|zsh|dash|ksh|python\d?|perl|ruby|node|php)\s+-[ce]\b"
+    r"|(?:^|[\s|;&(/])xargs\b"
+    r"|\bfind\b[^|;&]*-(?:delete|exec|execdir)\b"
+    r"|git\s+(?:reset\s+--hard|clean|checkout\s+--|push|rebase|filter-branch)"
+    r"|:\(\)\s*\{|of=/dev/|/dev/sd|/dev/nvme|--no-preserve-root"
+    r"|>\s*/(?:etc|usr|s?bin|lib\w*|boot|dev|sys|proc|var|home|root)\b"
 )
 
 
@@ -595,6 +609,21 @@ def run_self_test() -> int:
         if not any("refused" in e for e in errs):
             print(f"cpp_evidence_check self-test: FAIL (destructive reexec not refused: {errs})")
             return 1
+
+        # Denylist hardening regression (iter-32): path-prefixed, find -delete, and
+        # shell-wrapped inline code must all be refused; safe read commands allowed.
+        must_refuse = ["/bin/rm x", "find . -delete", "sh -c id", "command chmod 777 x",
+                       "busybox dd if=a of=b", "git push origin main", "tee /etc/hosts"]
+        must_allow = ["sha256sum out.txt", "nm -D lib.so | wc -l", "./tests --all",
+                      "git rev-parse HEAD", "grep -c x f", "objdump -d a.o"]
+        for c in must_refuse:
+            if not REEXEC_DENY_RE.search(c):
+                print(f"cpp_evidence_check self-test: FAIL (denylist bypass not refused: {c!r})")
+                return 1
+        for c in must_allow:
+            if REEXEC_DENY_RE.search(c):
+                print(f"cpp_evidence_check self-test: FAIL (denylist over-blocks safe command: {c!r})")
+                return 1
 
     print("cpp_evidence_check self-test: PASS")
     return 0
