@@ -839,3 +839,39 @@ only in this loop audit. Skill self-tests + contract + audit all green.
 playful image (online inspiration), no rating in the README, fix-don't-document limitations.
 
 **Commits:** `a116639` (skill: cross-arch + recursion) + this re-rate commit + push.
+
+---
+
+## Iteration 27 — 2026-05-30 — USER DELIVERABLE: README overhaul + playful hero image
+
+The user asked (mid-iteration) to: repeatedly apply /readme-writing + /de-slopify to the root README, add a clean
+cool playful image (online inspiration), keep the RATING out of the skill AND README, and FIX limitations rather
+than writing them down. Done after the iter-26 skill improvements settled.
+
+**Image (`docs/banner.svg`, new).** Searched for inspiration (svg-banners, devicon, Looka/Visme palette guidance →
+teal+coral on deep navy = modern/friendly/playful). Hand-authored a self-contained, well-formed SVG hero: a
+friendly systems-bot mascot (asymmetric teal/coral eyes, antenna, wrench), the `c-cpp-profi` wordmark with a
+teal→coral gradient, capability chips (understand/transform/improve/ideate/document), a "prove it" gate badge, and
+a braces flourish. 5126 bytes; renders as a static SVG on GitHub.
+
+**README (readme-writing pass).** Rewrote to the golden structure: centered hero (banner + badges + bold one-liner
++ self-contained install), "Try it in 60 seconds" with REAL comprehension output, problem/solution, a 6-capability
+list, an Evidence section (the 50-repo gauntlet + NASA cFE + the 3 outcome-lifts + the NEW cross-arch port, framed
+as capability proof, NOT a score), install, usage, architecture, comparison, troubleshooting, FAQ, Contributions.
+
+**Per the user's two rules.** (1) The 0-100 RATING was removed from the README entirely (it lives only here in
+workspace/loop/); confirmed absent from skill/. (2) The Limitations CONFESSIONAL was removed — the cross-arch and
+recursion limits were FIXED (iter 26), the ~80% accuracy was already folded back, and the rest were reframed as
+honest FAQ scope-setting, not weakness confessions.
+
+**De-slopify + adversarial review (workflow `wn2zl1jw2`, 5 agents).** Four independent lenses
+(deslop/rating-limits/policy-accuracy/structure) + a synthesizer. Verdict: rating-limits found ZERO violations;
+deslop called it "unusually clean." Applied the substantive fixes: self-contained hero install (was missing
+mkdir + had a divergent path), dropped the "instead of vibes" contrast clause, added "Try it in 60 seconds",
+added 3 static badges, aligned the `S=` path to the install location, tightened the lz4 wording, and removed the
+one remaining em-dash (alt-text). Overrode ONE false-positive: the "*About Contributions:*" label is REQUIRED by
+the readme-writing skill's mandatory text, so it stays (my review prompt had wrongly asserted otherwise). Final:
+0 em-dashes, 0 rating leaks, 0 slop phrases, Contributions verbatim, banner referenced + on disk.
+
+**Commits:** `7f3138e` (README + banner) + this log/STATE update + push. Composite unchanged (98.5; the README is
+presentation, not a rubric dimension).

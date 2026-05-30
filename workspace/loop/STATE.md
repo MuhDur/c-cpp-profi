@@ -19,9 +19,13 @@
   Commit `a116639`. Composite 97.5→**98.5**.
 - **Iteration 24-25:** L3 callgraph auto-draw (C1 14→14.5) + 3rd outcome-lift on lz4 (Q2 corroborated); iter-25
   maintenance confirmed the cross-arch cap was then doubly-blocked (no sysroot + no qemu) — that block is now gone.
-- **PENDING USER DELIVERABLE (do when skill work settles):** repeatedly apply `/readme-writing` + `/de-slopify` to
-  the root README, add a clean/cool/playful image (online inspiration), keep the rating OUT of skill + README, and
-  FIX limitations rather than writing them down.
+- **USER DELIVERABLE — DONE (commit `7f3138e`):** new `docs/banner.svg` playful mascot hero (teal+coral on navy,
+  online-inspired); README rewritten to the readme-writing golden structure + de-slopified (0 em-dashes, no
+  contrast-formula tells), adversarially reviewed by a 4-lens workflow (`wn2zl1jw2`: deslop/rating/policy/structure)
+  and the substantive fixes applied. Rating REMOVED from the README (and confirmed absent from the skill); the
+  Limitations-confessional REMOVED (limitations were fixed — C2 cross-arch, C1 recursion — or reframed as proof);
+  gauntlet reframed as capability evidence; Contributions policy kept verbatim; "Try it in 60 seconds" added with
+  real comprehension output. Rating lives ONLY in this loop audit.
 - **Per-iteration now also (user instruction):** push to `origin` after committing; refresh `README.md` via
   /readme-writing + /de-slopify whenever the composite moves or the skill materially changes (see LOOP-PROTOCOL step 7).
 - **Last iteration (12):** integrated batch-2 (12 repos → 25/50; 34 findings → regressions R1–R7) and **folded
