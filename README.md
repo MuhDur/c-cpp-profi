@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/MuhDur/c-cpp-profi/actions/workflows/skill-validate.yml"><img src="https://github.com/MuhDur/c-cpp-profi/actions/workflows/skill-validate.yml/badge.svg" alt="skill-validate"></a>
   <img src="https://img.shields.io/badge/references-23-14b8a6" alt="23 references">
-  <img src="https://img.shields.io/badge/scripts-16-14b8a6" alt="16 scripts">
+  <img src="https://img.shields.io/badge/scripts-13-14b8a6" alt="13 scripts">
   <img src="https://img.shields.io/badge/gauntlet-160%20repos-fb7185" alt="validated on 160 repos">
 </p>
 
@@ -55,7 +55,7 @@ The skill makes the missing engineering loop mandatory and falsifiable:
 inventory -> invariants -> gate plan -> implementation -> mechanical evidence -> residual-risk handoff
 ```
 
-Every claim lands as a gate with a status of `passed`, `failed`, `not run`, or `not applicable`, an exact command, and the evidence it produced. A Python checker reads the report and rejects it if the proof for the work actually done is missing. Opt-in, it goes further than shape: `--verify-evidence` recomputes cited digests and re-checks artifacts, and `--reexec` re-runs author-marked idempotent commands and confirms their output, so a fabricated digest or a made-up command result fails the report instead of passing it.
+Every claim lands as a gate with a status of `passed`, `failed`, `not run`, or `not applicable`, an exact command, and the evidence it produced. A Python checker reads the report and rejects it if the proof for the work actually done is missing. Opt-in, it goes further than shape: `--verify-evidence` recomputes cited digests and re-checks artifacts, `--reexec` re-runs author-marked idempotent commands and confirms their output, and `--proof-repo` checks that every cited `file:line` comprehension anchor is a real file with the line in bounds, so a fabricated digest, a made-up command result, or an invented code anchor fails the report instead of passing it.
 
 | What agents usually do | What this skill requires |
 |---|---|
@@ -73,16 +73,16 @@ The skill is built around six capabilities, each backed by a reference and a det
 
 1. **Understand** any repo at every level: a four-layer comprehension ladder (build graph, exported API, touched-path callgraph, domain intent) emitted by `cpp_comprehension_map.sh`, with self-recursion marked and C++ method dispatch resolved. `--exact` adds a compiler-grade direct-call graph read from `clang -emit-llvm` IR (C++ names demangled).
 2. **Transform** it: port, modernize, or re-architect, each behind its own oracle. The port mode runs a true cross-architecture differential (see Evidence).
-3. **Improve** it: a gate ladder plus nine copy-ready remediation recipes, a binary-size method, and an aliasing/cast-width lane that has caught a real type-punning over-read.
+3. **Improve** it: a gate ladder plus ten copy-ready remediation recipes, a binary-size method, and an aliasing/cast-width lane that has caught a real type-punning over-read.
 4. **Generate ideas**: an innovation engine with a backlog script and an idea-card checker that enforces a mix of accretive and radical bets.
 5. **Document** it: a documentation reference and a docs linter, with the "the example must compile and run" rule.
-6. **Stay domain-agnostic**: a universal core plus fourteen plug-in domain packs and an unknown-domain derivation procedure, selected automatically by `cpp_domain_detect.sh`.
+6. **Stay domain-agnostic**: a universal core plus nineteen plug-in domain packs (parser, crypto, networking, compression/codec, databases, embedded/RT, kernel/driver, space/satellite, GPU, HPC/SIMD, audio/DSP, filesystems, compilers/VMs, linker/object-format, emulator, graphics/windowing/UI, profiler, 3D-asset import, and a generic fallback), plus an unknown-domain derivation procedure, selected automatically by `cpp_domain_detect.sh`. It also reports a mechanical paradigm read (OOP / functional / C-OOP / procedural) alongside the domain.
 
 ## Evidence
 
-The skill is validated by running it on 50 maximally different fresh C/C++ repositories, then folding every observed weakness back into the tools.
+The skill is validated by running it on 160 maximally different C/C++ repositories, then folding every observed weakness back into the tools.
 
-- **50 of 50 repositories carded**, spanning JSON/XML/INI/HTTP/SIMD parsers, crypto (mbedtls, libsodium, BLAKE2), interpreters and compilers (lua, chibicc, tinycc, wren, duktape, quickjs), databases (leveldb, sqlite, redis), async I/O and servers (libuv, nginx, libzmq, nng), an RTOS (FreeRTOS, Zephyr), an embedded filesystem (littlefs), SIMD math (cglm, xsimd, highway), audio (miniaudio), regex (re2, pcre2), compression and codecs (zlib, lz4, libjpeg-turbo, libpng), a test framework (Catch2), and real flight software (NASA cFE and F´).
+- **Validated on 160 repositories** (0 clone failures), spanning JSON/XML/INI/HTTP/SIMD parsers, crypto (mbedtls, libsodium, BLAKE2, secp256k1, wolfssl), interpreters and compilers (lua, chibicc, tinycc, wren, duktape, quickjs), databases (leveldb, sqlite, redis, rocksdb), async I/O and servers (libuv, nginx, libzmq, nng), an RTOS (FreeRTOS, nuttx, Zephyr), an embedded filesystem (littlefs), SIMD math (cglm, xsimd, highway), audio (miniaudio), regex (re2, pcre2), compression and codecs (zlib, lz4, libjpeg-turbo, libpng), a linker (mold), emulators (mgba, dosbox, stella), graphics/UI (SDL, raylib, imgui, glfw), a profiler (gperftools), 3D-asset loaders (cgltf, assimp), ML/tensor (llama.cpp, ggml, ncnn), a test framework (Catch2), and real flight software (NASA cFE and F´).
 - **It plugs into a domain it was never told about.** With no special briefing, the domain detector classified NASA cFE, the core Flight Executive, as the space/satellite pack from 14,398 matching signals and selected the matching gate set.
 - **It finds real defects, across codebases and domains.** On a fresh cJSON, the fuzz-plus-ASan gate caught a seeded one-character bounds bug with a 5-byte reproducer while the clean tree survived 1.27M executions. The same was reproduced on jsmn with a deterministic ASan harness, and on lz4: removing one term of the safe decoder's output guard turned a correctly-rejected undersized decode into an ASan buffer overflow localized to the exact protected `LZ4_memmove`, while the clean and restored trees both rejected cleanly.
 - **It ports across architectures and proves it.** The identical cJSON driver, cross-compiled for aarch64 and riscv64 and run under QEMU over a 638-input corpus, produced byte-identical output to the x86-64 baseline (one shared SHA-256). A `char`-signedness control diverges on the same run, so the match is a real result rather than a rubber stamp.
