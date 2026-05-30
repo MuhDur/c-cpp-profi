@@ -44,7 +44,7 @@ SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
   cat <<'USAGE'
-usage: cpp_comprehension_map.sh [REPO] [--json]
+usage: cpp_comprehension_map.sh [REPO] [--json] [--exact]
        cpp_comprehension_map.sh --self-test
 
 Emits a falsifiable L1+L2+L3 comprehension map (build graph + entry points +
@@ -52,6 +52,14 @@ module map + a heuristic touched-path callgraph) for a C/C++ repo. READ-ONLY.
 Deterministic and reproducible: two runs on an unchanged tree byte-match. Every
 entry-point/module/callgraph line carries a repo-relative file:line or path
 anchor. The L3 callgraph is a token-scan heuristic, not a compiler callgraph.
+
+--exact (opt-in) adds an EXACT direct-call graph: each TU that compiles
+standalone is lowered to LLVM IR via `clang -emit-llvm` and call/invoke edges
+are read from the IR (no token false positives; C++ names demangled with
+c++filt). Direct calls only — function-pointer/virtual calls are not statically
+resolvable and are omitted. Needs clang; degrades to a note if absent or if no
+TU compiles standalone (the heuristic graph always stands). This is the only
+mode that compiles code, so it is off by default to keep the probe fast.
 USAGE
 }
 
@@ -874,6 +882,10 @@ emit_modules() {
 CAP_EDGES=40
 SEED_LIMIT=3
 BFS_DEPTH=2
+# --exact (opt-in) emits a compiler-grade direct-call graph via `clang -emit-llvm`.
+# Off by default so the probe stays read-only, fast, and compiler-free.
+EXACT="no"
+EXACT_TU_CAP=24
 
 # One awk pass over the source set -> "name<TAB>file<TAB>line<TAB>callee callee ..."
 # rows: a repo-defined function, its definition anchor, and the repo-internal
@@ -1273,6 +1285,102 @@ render_rows() {
   }'
 }
 
+# L3 EXACT direct-call graph via clang -emit-llvm (opt-in, --exact). ----------
+# Where the heuristic above token-scans, this asks the compiler: each TU that
+# compiles standalone is lowered to LLVM IR, and `call`/`invoke @symbol` edges
+# are read straight from the IR — no token false positives, exact direct calls.
+# Indirect calls (`call %reg`: function pointers, C++ virtual dispatch) carry no
+# @symbol and are fundamentally not statically resolvable, so they are omitted
+# and labeled. C++ names are demangled with c++filt when present. Degrades
+# cleanly: no clang, or no TU that compiles standalone -> a one-line note, and
+# the heuristic graph above stands. Best-effort include flags only; a repo that
+# needs a real build (compile_commands.json) simply yields fewer compiled TUs.
+emit_exact_callgraph() {
+  local repo="$1"
+  printf '\n## L3 exact direct-call graph (clang IR)\n'
+  if ! command -v clang >/dev/null 2>&1; then
+    printf '(clang not available; exact graph skipped — the heuristic graph above stands)\n'
+    return 0
+  fi
+  local tmp; tmp="$(mktemp -d 2>/dev/null)" || { printf '(could not allocate scratch dir; skipped)\n'; return 0; }
+  local files
+  files="$(rg --files --no-messages --glob '*.{c,cc,cpp,cxx}' \
+      --glob '!**/.git/**' --glob '!**/build/**' --glob '!**/_deps/**' \
+      --glob '!**/third_party/**' --glob '!**/vendor/**' --glob '!**/external/**' \
+      --glob '!**/test/**' --glob '!**/tests/**' --glob '!**/example*/**' \
+      --glob '!**/deps/**' --glob '!**/dependencies/**' \
+      "${R3PLUS_GLOBS[@]}" "$repo" 2>/dev/null | LC_ALL=C sort | head -n "$EXACT_TU_CAP")"
+  local llall="$tmp/all.ll"; : > "$llall"
+  local compiled=0 total=0 f
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    total=$((total + 1))
+    if clang -O0 -g -emit-llvm -S -w \
+        -I"$repo" -I"$repo/include" -I"$repo/src" -I"$(dirname "$f")" \
+        "$f" -o "$tmp/tu.ll" 2>/dev/null; then
+      cat "$tmp/tu.ll" >> "$llall"
+      compiled=$((compiled + 1))
+    fi
+  done <<EOF
+$files
+EOF
+  if [ "$compiled" -eq 0 ]; then
+    printf '(no candidate TU compiled standalone via clang -emit-llvm; provide compile_commands.json or build flags — the heuristic graph above stands)\n'
+    rm -f "$tmp"/*.ll 2>/dev/null; rmdir "$tmp" 2>/dev/null
+    return 0
+  fi
+  printf '(exact: %d/%d candidate TU(s) lowered to LLVM IR; DIRECT calls only — indirect/virtual/function-pointer calls carry no symbol and are omitted)\n' \
+    "$compiled" "$total"
+  # Extract `define @caller` ... `call/invoke @callee` edges; keep repo-defined
+  # callees only (a `define` exists for them across the compiled set). Demangle.
+  local edges="$tmp/edges.tsv"
+  awk '
+    /^define /     { if (match($0, /@[A-Za-z0-9_$.]+/)) { cur = substr($0, RSTART + 1, RLENGTH - 1); defs[cur] = 1 } next }
+    /^}/           { cur = "" ; next }
+    cur != "" {
+      s = $0
+      while (match(s, /(call|invoke)[^@]*@[A-Za-z0-9_$.]+/)) {
+        t = substr(s, RSTART, RLENGTH); sub(/.*@/, "", t)
+        if (t !~ /^llvm\./ && t != cur) e[cur SUBSEP t] = 1
+        s = substr(s, RSTART + RLENGTH)
+      }
+    }
+    END { for (k in e) { split(k, p, SUBSEP); if (p[2] in defs) printf "%s\t%s\n", p[1], p[2] } }
+  ' "$llall" | LC_ALL=C sort -u > "$edges"
+  if command -v c++filt >/dev/null 2>&1; then
+    c++filt < "$edges" > "$edges.dm" 2>/dev/null && mv "$edges.dm" "$edges"
+  fi
+  # Root at the same seeds as the heuristic; bounded BFS; group by caller; cap.
+  local seeds; seeds="$(emit_callgraph_seeds "$repo")"
+  awk -F'\t' -v seeds="$seeds" -v maxd="$BFS_DEPTH" -v cap="$CAP_EDGES" -v ccap=16 '
+    NF==2 { adj[$1] = (adj[$1]=="" ? $2 : adj[$1] "\t" $2); has[$1]=1 }
+    END {
+      ns = split(seeds, sa, "\n"); qn = 0
+      for (i = 1; i <= ns; i++) { s = sa[i]; if (s=="" || s in seen) continue; if (!(s in adj)) continue; seen[s]=1; q[++qn]=s; qd[qn]=1 }
+      # if no seed has edges, fall back to showing all callers (sorted) so the section is never empty
+      if (qn == 0) { n = 0; for (c in adj) callers[++n] = c; for (a=1;a<=n;a++) for (b=a+1;b<=n;b++) if (callers[b]<callers[a]){t=callers[a];callers[a]=callers[b];callers[b]=t}; for (a=1;a<=n;a++){ if(seen[callers[a]])continue; seen[callers[a]]=1; q[++qn]=callers[a]; qd[qn]=1 } }
+      emitted = 0; shown = 0
+      for (qi = 1; qi <= qn; qi++) {
+        cur = q[qi]; d = qd[qi]; m = split(adj[cur], cs, "\t")
+        for (a=1;a<=m;a++) for (b=a+1;b<=m;b++) if (cs[b]<cs[a]){t=cs[a];cs[a]=cs[b];cs[b]=t}
+        line = ""; prev = ""; nc = 0; ncshown = 0
+        for (a = 1; a <= m; a++) {
+          cb = cs[a]; if (cb=="" || cb==prev) continue; prev = cb
+          nc++
+          if (ncshown < ccap) { line = (line=="" ? cb : line ", " cb); ncshown++ }
+          if (d < maxd && (cb in adj) && !(cb in seen)) { seen[cb]=1; q[++qn]=cb; qd[qn]=d+1 }
+        }
+        if (nc > ncshown) line = line ", (+" (nc - ncshown) " more)"
+        emitted++
+        if (shown < cap) { printf "%s -> %s\n", cur, line; shown++ }
+      }
+      if (emitted > shown) printf "... (+%d more; capped)\n", emitted - shown
+    }
+  ' "$edges"
+  rm -f "$tmp"/*.ll "$tmp"/edges.tsv 2>/dev/null; rmdir "$tmp" 2>/dev/null
+  return 0
+}
+
 emit_text() {
   # tab-separated section/key/anchor -> grouped, human-readable map.
   local repo="$1"
@@ -1310,6 +1418,9 @@ emit_text() {
     printf '%s\n' "$cg" | render_rows
   else
     printf 'no seed entry point; provide one (main / LLVMFuzzerTestOneInput / an exported API function) to root the callgraph\n'
+  fi
+  if [ "$EXACT" = yes ]; then
+    emit_exact_callgraph "$repo"
   fi
 }
 
@@ -1844,6 +1955,23 @@ SRC
     printf '%s\n%s\n' '--- map ---' "$out1"
     exit 1
   fi
+  # iter-30: the OPT-IN exact direct-call graph (--exact / clang -emit-llvm). When
+  # clang is present it must compile the fixture TUs and surface the real
+  # `util_run -> util_rec` edge from the IR (compiler-grade, not a token guess).
+  # If clang is absent it must degrade to a one-line note, not fail.
+  if command -v clang >/dev/null 2>&1; then
+    local exact_out
+    exact_out="$(EXACT=yes run_map "$tmp" no 2>/dev/null)"
+    if ! printf '%s\n' "$exact_out" | grep -q '## L3 exact direct-call graph'; then
+      printf 'cpp_comprehension_map self-test: FAIL (L3 exact: section missing under --exact)\n'
+      exit 1
+    fi
+    if ! printf '%s\n' "$exact_out" | grep -qE 'util_run -> .*util_rec'; then
+      printf 'cpp_comprehension_map self-test: FAIL (L3 exact: clang IR did not surface util_run -> util_rec)\n'
+      printf '%s\n' "$exact_out" | awk '/## L3 exact/{p=1} p'
+      exit 1
+    fi
+  fi
 
   printf 'cpp_comprehension_map self-test: PASS\n'
   exit 0
@@ -1864,6 +1992,9 @@ main() {
         ;;
       --json)
         json="yes"
+        ;;
+      --exact)
+        EXACT="yes"
         ;;
       -h|--help)
         usage
