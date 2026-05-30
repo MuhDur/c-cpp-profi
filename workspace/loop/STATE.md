@@ -1,9 +1,18 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **97.5 / 100** (iteration 40 — dropped from 100 after a 160-repo
-  re-validation + deep audit DISPROVED the 100; then repaired). Per-dim: C1 14.5 · C2 12 · C3 15 · C4 12 ·
-  C5 8 · C6 16.5 · Q1 7.5 · Q2 12.
+- **Honest composite (RUBRIC-100):** **98.0 / 100** (iteration 41). Per-dim: C1 14.5 · C2 12 · C3 15 · C4 12 ·
+  C5 8 · C6 **17.0** · Q1 7.5 · Q2 12. (Iter 40 dropped 100→97.5 after a 160-repo re-validation DISPROVED the
+  100; iter 41 lifts C6 16.5→17.0 by adding the linker + emulator domain packs + HIP/ROCm.)
+- **Iteration 41 (loop; user mandate "domain-agnostic, any known/unknown domain"):** workflow `w1hf7rv9z`
+  (7 agents) researched + collision-audited new domain packs grounded in the real gauntlet repos + spec sources.
+  Implemented the 3 vetted: GPU pack += 13 HIP/ROCm tokens (HIP 4→691 matches → GPU-primary), NEW **linker**
+  pack (mold wrong-Parser → Linker-primary, using only de-collided implementation tokens since the ELF-ABI
+  tokens also fire on nuttx's ELF loader), NEW **emulator** pack (mgba/stella/dosbox now surface Emulator as a
+  correct SECONDARY; not primary — the over-broad Parser/Networking out-count it, a pre-existing ranking
+  residual). DEFERRED honestly: benchmark pack (bench*.cc self-exclusion) + windowing pack (every token fires
+  on raylib). DOMAIN-AGNOSTIC-MASTERY.md gained full Linker+Emulator seed packs; self-test extended + green;
+  ZERO calibration regression (controls hold). Commit `a20ad73`. See `gauntlet/GAUNTLET-3-150.md` + RUBRIC iter-41.
 - **Iteration 40 (user: "check, verify, close remaining gaps; workflows; 150 repos"):** workflow `w7rkgwd24`
   (22 agents) ran a 160-repo gauntlet (0 clone fails) + 6 deep auditors → 26 ranked gaps. It found the iter-39
   paradigm lane + the 3 new refs + the large-repo guards had NEVER been scale-tested, and surfaced **7

@@ -1322,3 +1322,39 @@ RATING: composite 100 → **97.5** (C1 14.5, C6 16.5, Q1 7.5 dropped; the rest h
 contract working: the 100 was disproven by adversarial scale-testing; the climb back to 97.5 is earned by real
 fixes; the residual 2.5 is genuine + documented, not faked. Validators + 6 self-tests + completion audit green;
 no regression. 12 commits pushed. README gauntlet badge 50→160. See gauntlet/GAUNTLET-3-150.md.
+
+---
+
+## Iteration 41 — 2026-05-30 — linker + emulator domain packs + HIP/ROCm → C6 16.5→17.0 (composite 98.0)
+
+Loop pick: the largest honest gap, C6 (domain-agnostic), with iter-40 gauntlet evidence that mold→Parser and
+mgba→Networking were confident-WRONG primaries for want of a pack (worse than an honest unknown-domain).
+
+Workflow `w1hf7rv9z` (7 agents): one researcher per candidate domain (linker/emulator/windowing/gpu/benchmark)
+mined the REAL cloned repos for distinctive tokens + cited authoritative specs (ELF gABI, target-ISA manuals,
+hardware test-ROM suites), then a collision auditor greps every proposed token against 15 calibration controls,
+then a synthesizer produced an implement/defer plan. Net: 2 repos get a correct NEW primary, 3 a correct
+secondary, ZERO control regressions.
+
+IMPLEMENTED (committed `a20ad73`):
+- GPU pack += 13 HIP/ROCm host-API tokens (hipError_t/hipStream_t/hipMemcpyKind/__HIP_PLATFORM_AMD__/...).
+  Verified: HIP Generic-primary(4) → GPU-primary(691); cuda-samples/llama.cpp/ggml/whisper.cpp unchanged.
+- NEW linker pack (tier 0, code mode): ONLY the de-collided implementation tokens (*Section class suffixes +
+  get_*_addr). The 10 ELF-ABI tokens (R_*, Elf_* structs, SHT_/SHF_/STT_/SHN_, st_shndx, .symtab strings,
+  gotplt/dynsym) were DROPPED — the collision audit proved they fire on nuttx (ships an ELF loader, 219-622
+  hits) and stb_* (raylib). Verified: mold Parser-primary → Linker-primary(135), 0 on every control.
+- NEW emulator pack (tier 0, all mode): 12 collision-pruned tokens (dropped MBC[0-9]=nuttx regs, VRAM=raylib;
+  narrowed IO_Read*/IO_Write* to case-sensitive — Lua io_read collided; poke to memory-poke shapes). Verified:
+  mgba(166)/stella(539)/dosbox(1154) surface Emulator as a strong correct SECONDARY, 0 on every control.
+  HONEST: not PRIMARY (over-broad Parser/Networking out-count it — pre-existing ranking weakness, logged).
+DEFERRED honestly: benchmark pack (bench*.{c,cc} EXCLUDE_GLOBS makes google/benchmark's own src undetectable —
+self-exclusion is fatal) + windowing pack (VkSurfaceKHR/wglMakeCurrent/xdg_*/wl_compositor/etc. ALL fire on
+raylib → collision wipeout). Both are real coverage gaps left documented, not faked.
+
+DOCS: DOMAIN-AGNOSTIC-MASTERY.md += full Linker + Emulator seed packs (authorities/invariants/oracle/
+constraints/toolchain/failure-modes) + Signal→Pack + pack-to-gate rows. Self-test += linker/emulator/hip
+fixtures+assertions (lock the new behavior). All 6 self-tests + contract + completion audit GREEN; calibration
+controls (cJSON/zlib/lua/sqlite/redis/secp256k1/cFE/fprime/nuttx/raylib/...) unchanged.
+
+RATING: C6 16.5→17.0 (composite 97.5→98.0). +0.5 not +1.5: windowing/benchmark deferred, emulator only
+secondary, protocol-lib imprecision unchanged — all genuine, documented residuals. Path to 100 in RUBRIC iter-41.

@@ -186,3 +186,25 @@ primary imprecision; the deferred G22 line-continuation strip edge; the best-eff
 lightweight proof-anchor validation). It is NOT faked back to 100. Path to higher: add the missing domain
 packs (additive, needs new reference packs + validator updates), land G22, and deepen proof-anchor validation
 toward truth-not-shape — each a real, evidence-backed gain, not score motion.
+
+---
+
+## Iteration 41 re-rate — 97.5 → 98.0 (C6 16.5 → 17.0: linker + emulator packs + HIP)
+
+Acting on the largest honest gap (C6), with empirical backing from the iter-40 gauntlet (mold→Parser,
+mgba→Networking were confident-wrong primaries for want of a pack). Workflow `w1hf7rv9z` researched +
+collision-audited candidate packs against 15 calibration controls; I implemented the 3 that were both
+recommended and safe.
+
+| Dim | iter-40 | iter-41 | Why it moved |
+|---|---:|---:|---|
+| C6 domain-agnostic | 16.5 | **17.0** | +HIP/ROCm to the GPU pack (HIP 4→691 → correct GPU-primary); +a linker pack (mold → correct Linker-primary); +an emulator pack (mgba/stella/dosbox now surface the correct domain as a strong secondary). DOMAIN-AGNOSTIC-MASTERY now documents both new packs with full gate sets. NOT +1.5 to cap because: windowing + benchmark packs were honestly DEFERRED (collision wipeout on raylib / bench*.cc self-exclusion — real coverage gaps remain for glfw/sokol/google-benchmark); emulators get a SECONDARY not PRIMARY (the over-broad Parser/Networking packs out-count them — a separate pre-existing ranking weakness); and the protocol-lib Crypto-primary imprecision (curl/libcoap) is unchanged. |
+| (all others) | — | — | unchanged (C1 14.5, C2 12, C3 15, C4 12, C5 8, Q1 7.5, Q2 12). |
+| **Composite** | **97.5** | **98.0** | |
+
+Residual 2.0 (honest, documented): C6 17→18 needs the deferred windowing/benchmark packs (need a way around
+the raylib-collision / bench-exclusion) AND fixing the over-broad-pack ranking so emulators/etc. can be PRIMARY
+— both real, non-trivial, calibration-sensitive. Q1 7.5→8 needs proof-anchor validation that checks an
+anchor's TRUTH (does the file:line exist in the repo) not just its SHAPE. C1 14.5→15 = the deferred G22 +
+paradigm-blend precision. Each a genuine, evidence-gated gain — not score motion. Zero calibration regression
+this iteration (self-test + controls verified).
