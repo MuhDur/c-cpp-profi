@@ -94,6 +94,12 @@ EXCLUDE_GLOBS=(
   --glob '!**/extras/**'
   --glob '!**/extra/**'
   --glob '!**/runners/**'
+  # G9 (150-repo gauntlet): tutorial/ trees are example apps, not the repo's domain
+  # — mongoose ships 75 copies of its 1 MB mongoose.c under tutorials/ (~75 MB),
+  # which alone drove a 60s+ timeout. Excluded like examples/. (Kept in the risk/
+  # backlog sibling scripts too.)
+  --glob '!**/tutorials/**'
+  --glob '!**/tutorial/**'
   # R10: vendored *runtime* dependencies and generated amalgam/aux trees that the
   # `_deps/`/`third_party/`/`vendor/` set missed: the bare `deps/` convention
   # (redis/git/php bundle libs there — hiredis/lua/jemalloc), `dependencies/`
@@ -136,12 +142,37 @@ EXCLUDE_GLOBS=(
   --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/gmock/**'
   --glob '!**/*_test.*'
   --glob '!**/*_tests.*'
-  --glob '!**/*test*.c'
-  --glob '!**/*test*.cc'
-  --glob '!**/*test*.cpp'
-  --glob '!**/*test*.cxx'
+  # G7 (150-repo gauntlet): anchored test-SOURCE forms replacing the old unanchored
+  # `*test*.c` substring (which dropped real code like attestation.c); G6: test-only
+  # HEADER conventions. Mirrors cpp_risk_scan.sh / cpp_backlog.sh.
+  --glob '!**/test_*.c'
+  --glob '!**/test_*.cc'
+  --glob '!**/test_*.cpp'
+  --glob '!**/test_*.cxx'
   --glob '!**/*_bench*.*'
   --glob '!**/ltests.*'
+  --glob '!**/tests_impl.*'
+  --glob '!**/tests_exhaustive*'
+  --glob '!**/testrand*'
+  --glob '!**/testutil.*'
+  --glob '!**/tests_common.*'
+  --glob '!**/unit_test.*'
+  --glob '!**/wycheproof/**'
+  # G10 (150-repo gauntlet): CMake find-modules are build infrastructure, NOT the
+  # repo's domain — FindMbedTLS.cmake / FindOpenSSL.cmake etc. flooded the Crypto
+  # pack and mis-primaried curl/libcoap/libwebsockets (Networking) as Crypto. Toolchain
+  # detection reads CMakeLists.txt separately, so dropping Find*.cmake here is safe.
+  --glob '!**/Find*.cmake'
+  --glob '!**/cmake/Find*'
+  # G11 (150-repo gauntlet): vendored/bundled dependency trees under non-standard
+  # dir spellings the third_party/vendor set missed, plus SWIG-generated bindings —
+  # mold (third-party/zstd -> Compression), mgba (src/third-party/sqlite3 -> Databases).
+  --glob '!**/third-party/**'
+  --glob '!**/3rdparty/**'
+  --glob '!**/3rd_party/**'
+  --glob '!**/*_wrap.c'
+  --glob '!**/*_wrap.cc'
+  --glob '!**/*_wrap.cxx'
   # R3+ test/vendored/generated conventions that path-segment + suffix globs miss
   # (kept identical to cpp_risk_scan.sh / cpp_backlog.sh so anchors line up): NASA
   # cFE `ut-coverage/`/`ut-stubs/`; CamelCase test roots (`STest/`, `FppTestProject/`,
@@ -183,6 +214,7 @@ FNR == 1 {
   inblock = 0
   hashcomment = (FILENAME ~ /\.(c|cc|cpp|cxx|h|hh|hpp|hxx|cu|cuh|cl)$/) ? 0 : 1
 }
+maxln > 0 && FNR > maxln { next }
 {
   print strip($0) "\t" FILENAME ":" FNR ":" $0
 }
@@ -249,6 +281,22 @@ signal_globs() {
 # the re-match pass already required to be PCRE-valid, so this is semantics-stable.
 rg_signal() {
   local mode="${3:-all}"
+  # G9 (150-repo gauntlet) large-repo FAST PATH: when run_detect has pre-stripped
+  # the repo into a bounded, comment/string-cleaned corpus (huge or amalgam repos —
+  # nuttx 16.9k files, mongoose's 75 mongoose.c copies), re-match the signal against
+  # the cleaned column ONCE-stripped, instead of re-listing + re-stripping per pack
+  # (O(packs*files), which exit-124'd at 60s). Normal repos leave the corpus globals
+  # empty and take the exact original path below — their calibrated output is
+  # byte-identical (this branch is inert for them).
+  local corpus=""
+  case "$mode" in
+    code) corpus="${DOMAIN_CORPUS_CODE:-}" ;;
+    *)    corpus="${DOMAIN_CORPUS_ALL:-}" ;;
+  esac
+  if [ -n "$corpus" ]; then
+    rg -iP --no-messages "^[^\t]*(?:$1)" "$corpus" 2>/dev/null | cut -f2- || true
+    return 0
+  fi
   local gl=()
   local g
   while IFS= read -r -d '' g; do gl+=(--glob "$g"); done < <(signal_globs "$mode")
@@ -262,6 +310,47 @@ rg_signal() {
     | xargs -0 awk "$STRIP_COMMENTS_AWK" 2>/dev/null \
     | rg -iP "^[^\t]*(?:$1)" 2>/dev/null \
     | cut -f2- || true
+}
+
+# G9: caps for the large-repo corpus (override via env). Trigger when a repo's
+# source-file count exceeds DOMAIN_FILE_CAP; then scan a bounded sample: at most
+# DOMAIN_BASENAME_CAP copies of any basename, DOMAIN_FILE_CAP files total, and the
+# first DOMAIN_LINECAP lines of each (so a 1 MB single-file amalgam cannot dominate).
+# G9 caps (override via env). Corpus mode triggers when a repo exceeds DOMAIN_FILE_CAP
+# files OR DOMAIN_BYTE_CAP bytes of source; it then scans a bounded, EVENLY-SAMPLED
+# corpus: <=DOMAIN_BASENAME_CAP copies of any basename, ~DOMAIN_SAMPLE files spread
+# uniformly across the (sorted) tree (NOT the first N — that would bias a big repo to
+# its alphabetically-first subtree), each truncated to DOMAIN_LINECAP lines. These
+# bounds make a 17k-file RTOS or an 8 MB amalgam finish in seconds; a normal repo
+# never enters corpus mode and keeps its exact calibrated per-pack scan.
+: "${DOMAIN_FILE_CAP:=6000}"
+: "${DOMAIN_BASENAME_CAP:=4}"
+: "${DOMAIN_LINECAP:=4000}"
+: "${DOMAIN_BYTE_CAP:=6000000}"
+: "${DOMAIN_SAMPLE:=1000}"
+DOMAIN_CORPUS_ALL=""
+DOMAIN_CORPUS_CODE=""
+
+# Strip a bounded EVEN SAMPLE of the repo's source ONCE into a comment/string-cleaned
+# corpus that rg_signal then re-matches per pack. The line cap is enforced via maxln
+# in STRIP_COMMENTS_AWK. Args: REPO MODE OUTFILE.
+build_domain_corpus() {
+  local repo="$1" mode="$2" out="$3"
+  local gl=() g
+  while IFS= read -r -d '' g; do gl+=(--glob "$g"); done < <(signal_globs "$mode")
+  local flist total step
+  flist="$( { rg --files --no-messages "${gl[@]}" "${EXCLUDE_GLOBS[@]}" -- "$repo" 2>/dev/null || true; } \
+      | LC_ALL=C sort \
+      | awk -F/ -v k="${DOMAIN_BASENAME_CAP}" '{ b = $NF; if (++seen[b] <= k) print }')"
+  total="$(printf '%s\n' "$flist" | awk 'NF' | wc -l | tr -d ' ')"
+  step=$(( total / DOMAIN_SAMPLE + 1 ))
+  # (NR-1) % step == 0 keeps every step-th file starting at the first; with step==1
+  # (fewer files than the sample target, e.g. wolfssl's 767 large files) it keeps
+  # ALL of them — `NR % step == 1` would select NONE when step==1 (NR%1 is always 0).
+  printf '%s\n' "$flist" | awk 'NF' | awk -v s="$step" '(NR - 1) % s == 0' \
+    | tr '\n' '\0' \
+    | xargs -0 -r awk -v maxln="${DOMAIN_LINECAP}" "$STRIP_COMMENTS_AWK" 2>/dev/null \
+    > "$out" 2>/dev/null || true
 }
 
 # Strip a leading "REPO/" (or "REPO" == ".") prefix so anchors are repo-relative.
@@ -350,7 +439,7 @@ pack_label() {
 #     (`crypto`/`sha`/`blake`/`hmac` prefix or a `256`/`512`/`sha` suffix).
 pack_regex() {
   case "$1" in
-    space)       printf '%s' '\bMISRA\b|rules? of ten|Power of Ten|(?-i:\bcFE_|\bCFE_|\bOS_API|\bOS_(?!CODE\b)[A-Z]|\bCCSDS\b|\bFramer\b|\bDeframer\b|\bTlm\b|\bAPID\b|\bFwOpcode|\bCmdResponse)|\btelemetry\b|\bspacecraft\b|\bwatchdog\b|\bRTEMS\b|EXPORT_SYMBOL_NASA' ;;
+    space)       printf '%s' '\bMISRA\b|rules? of ten|Power of Ten|(?-i:\bcFE_|\bCFE_|\bOS_(?:API|printf|[A-Z][a-z])|\bCCSDS\b|\bFramer\b|\bDeframer\b|\bTlm\b|\bAPID\b|\bFwOpcode|\bCmdResponse)|\btelemetry\b|\bspacecraft\b|\bwatchdog\b|\bRTEMS\b|EXPORT_SYMBOL_NASA' ;;
     embedded)    printf '%s' '\bFreeRTOS\b|\bZephyr\b|xTaskCreate|-ffreestanding|\bvolatile\b.*(0x[0-9A-Fa-f]+|register)|ISR_HANDLER|\bHAL_' ;;
     kernel)      printf '%s' '(^|[^A-Za-z0-9_])__user([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])copy_(to|from)_user([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])MODULE_LICENSE([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])EXPORT_SYMBOL([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])spin_lock([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])GFP_(KERNEL|ATOMIC)([^A-Za-z0-9_]|$)' ;;
     gpu)         printf '%s' '(^|[^A-Za-z0-9_])__global__([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])__device__([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])__syncthreads([^A-Za-z0-9_]|$)|\bcudaMalloc\b|\bcudaMemcpy\b|\bhipMalloc\b|sycl::|-fsycl' ;;
@@ -590,8 +679,42 @@ run_detect() {
     printf 'error: rg (ripgrep) is required for cpp_domain_detect.sh\n' >&2
     exit 3
   fi
+  # G9 (150-repo gauntlet): for a large/amalgam repo, pre-strip a bounded sample
+  # ONCE so the 14 per-pack scans re-match a cached corpus instead of re-listing +
+  # re-stripping the whole tree each time (which timed out — exit 124 — on nuttx,
+  # mongoose, betaflight, wolfssl). Normal repos skip this entirely and keep their
+  # exact calibrated per-pack path.
+  local _corpus_dir=""
+  local srcn srcb _flist
+  _flist="$( { rg --files --no-messages \
+      --glob '*.{c,cc,cpp,cxx,h,hh,hpp,hxx,cu,cuh,cl}' --glob '!**/.git/**' \
+      "${EXCLUDE_GLOBS[@]}" -- "$repo" 2>/dev/null || true; }; )"
+  srcn="$(printf '%s\n' "$_flist" | awk 'NF' | wc -l | tr -d ' ')"
+  # Trigger on file COUNT or total BYTES: a single-file amalgam (mongoose's 1 MB
+  # mongoose.c) is few files but char-walking it once per pack still times out, so a
+  # byte budget catches what the file-count cap misses. Byte sum via stat (no reads);
+  # only computed when the file-count gate did not already fire.
+  srcb=0
+  if [ "${srcn:-0}" -le "${DOMAIN_FILE_CAP}" ]; then
+    srcb="$(printf '%s\n' "$_flist" | awk 'NF' | tr '\n' '\0' \
+        | xargs -0 -r stat -c '%s' 2>/dev/null | awk '{s+=$1} END{print s+0}')"
+  fi
+  if [ "${srcn:-0}" -gt "${DOMAIN_FILE_CAP}" ] || [ "${srcb:-0}" -gt "${DOMAIN_BYTE_CAP:-6000000}" ]; then
+    _corpus_dir="$(mktemp -d 2>/dev/null || true)"
+    if [ -n "$_corpus_dir" ]; then
+      # ONE corpus over the 'all' globs (superset of 'code'); both modes re-match it.
+      DOMAIN_CORPUS_ALL="$_corpus_dir/all"
+      build_domain_corpus "$repo" all "$DOMAIN_CORPUS_ALL"
+      DOMAIN_CORPUS_CODE="$DOMAIN_CORPUS_ALL"
+      printf '[scope] large repo (%s source files / %s bytes): domain scored from a bounded, evenly-spread sample (~%s files, first %s lines each) to stay in budget — re-run on a touched subdirectory for an exhaustive scan.\n' \
+        "$srcn" "${srcb:-?}" "${DOMAIN_SAMPLE}" "${DOMAIN_LINECAP}" >&2
+    fi
+  fi
   local rows
   rows="$(detect "$repo")"
+  [ -n "$_corpus_dir" ] && rm -rf "$_corpus_dir" 2>/dev/null
+  DOMAIN_CORPUS_ALL=""
+  DOMAIN_CORPUS_CODE=""
   if [ "$json" = yes ]; then
     emit_json "$rows"
   else

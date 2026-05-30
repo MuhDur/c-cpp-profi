@@ -71,6 +71,8 @@ EXCLUDE_GLOBS=(
   --glob '!**/benchmarks/**'
   --glob '!**/examples/**'
   --glob '!**/example/**'
+  --glob '!**/tutorials/**'
+  --glob '!**/tutorial/**'
   --glob '!**/extras/**'
   --glob '!**/extra/**'
   --glob '!**/docs/**'
