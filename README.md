@@ -71,7 +71,7 @@ Every claim lands as a gate with a status of `passed`, `failed`, `not run`, or `
 
 The skill is built around six capabilities, each backed by a reference and a deterministic script:
 
-1. **Understand** any repo at every level: a four-layer comprehension ladder (build graph, exported API, touched-path callgraph, domain intent) emitted by `cpp_comprehension_map.sh`, with self-recursion marked and C++ method dispatch resolved.
+1. **Understand** any repo at every level: a four-layer comprehension ladder (build graph, exported API, touched-path callgraph, domain intent) emitted by `cpp_comprehension_map.sh`, with self-recursion marked and C++ method dispatch resolved. `--exact` adds a compiler-grade direct-call graph read from `clang -emit-llvm` IR (C++ names demangled).
 2. **Transform** it: port, modernize, or re-architect, each behind its own oracle. The port mode runs a true cross-architecture differential (see Evidence).
 3. **Improve** it: a gate ladder plus nine copy-ready remediation recipes, a binary-size method, and an aliasing/cast-width lane that has caught a real type-punning over-read.
 4. **Generate ideas**: an innovation engine with a backlog script and an idea-card checker that enforces a mix of accretive and radical bets.
