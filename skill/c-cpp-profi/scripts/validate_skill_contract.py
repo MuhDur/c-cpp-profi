@@ -20,9 +20,11 @@ REQUIRED_REFERENCES = [
     "C-CPP-EXPERT-CANON.md",
     "CODE-TRANSFORM.md",
     "CONCURRENCY-DEADLOCKS.md",
+    "DESIGN-PARADIGMS.md",
     "DOCUMENTATION.md",
     "DOMAIN-AGNOSTIC-MASTERY.md",
     "INNOVATION-ENGINE.md",
+    "LANGUAGE-INTERNALS.md",
     "MEMORY-SAFETY.md",
     "NATIVE-UI-GOLDENS.md",
     "PERFORMANCE.md",
@@ -31,6 +33,7 @@ REQUIRED_REFERENCES = [
     "REMEDIATION-RECIPES.md",
     "REPO-COMPREHENSION.md",
     "SECURITY-REVIEW.md",
+    "STANDARDS-VERSIONS-IDIOMS.md",
     "TESTING-FUZZING.md",
     "TOOLCHAIN-MATRIX.md",
     "TOOLCHAIN-TEMPLATES.md",
@@ -136,10 +139,20 @@ def check_markdown_links(skill_dir: Path, errors: list[str]) -> None:
     files.extend(sorted((skill_dir / "examples").glob("*.md")))
 
     link_re = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
+
+    def strip_code(text: str) -> str:
+        # Code spans/blocks are NOT parsed for Markdown links, so a C++ lambda or
+        # subscript-call written in backticks (e.g. `[capture](params)`, `a[i](x)`)
+        # is not a broken link. Remove fenced blocks and inline spans before scanning.
+        text = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+        text = re.sub(r"~~~.*?~~~", "", text, flags=re.DOTALL)
+        text = re.sub(r"`+[^`]*`+", "", text)
+        return text
+
     for file_path in files:
         if not file_path.exists():
             continue
-        for target in link_re.findall(read(file_path)):
+        for target in link_re.findall(strip_code(read(file_path))):
             target = target.strip()
             if not target or target.startswith("#"):
                 continue

@@ -67,6 +67,7 @@ Native C/C++ extras are mandatory when relevant: no UB-for-speed contracts, no `
 | User asks for | Do this |
 |---|---|
 | Understand / onboard to any-domain repo | Climb the four-layer comprehension ladder in [REPO-COMPREHENSION.md](references/REPO-COMPREHENSION.md), read [DOMAIN-AGNOSTIC-MASTERY.md](references/DOMAIN-AGNOSTIC-MASTERY.md), detect the domain from repo signals, load or synthesize its pack, then gate comprehension and that pack's oracle |
+| Recognize/work within a paradigm (OOP, functional, procedural, data-oriented), reason about language internals (object model, ABI, vtables, templates), or target a specific C/C++ standard version | Read [DESIGN-PARADIGMS.md](references/DESIGN-PARADIGMS.md) for paradigm idioms + transforms, [LANGUAGE-INTERNALS.md](references/LANGUAGE-INTERNALS.md) for the mechanisms, and [STANDARDS-VERSIONS-IDIOMS.md](references/STANDARDS-VERSIONS-IDIOMS.md) for per-version features, the idiom catalog, and the foundational rules |
 | Implement feature | Inventory -> design invariants -> edit -> compile -> tests -> relevant dynamic/static gates |
 | Fix crash | Reproduce first -> minimize input -> sanitizer/debugger -> regression test -> fix; copy the corrected pattern from [REMEDIATION-RECIPES.md](references/REMEDIATION-RECIPES.md) |
 | Security hardening | Threat model -> CERT/Core Guideline checks -> static analysis -> sanitizer/fuzz -> hardening flags; apply the fix cards in [REMEDIATION-RECIPES.md](references/REMEDIATION-RECIPES.md) |
@@ -91,6 +92,9 @@ Load only the relevant file:
 | Need | Reference |
 |---|---|
 | Enforcing expert workflow and elite-project patterns | [C-CPP-EXPERT-CANON.md](references/C-CPP-EXPERT-CANON.md) |
+| Paradigms: OOP design, functional/declarative, procedural, data-oriented (C and C++) | [DESIGN-PARADIGMS.md](references/DESIGN-PARADIGMS.md) |
+| Language internals: C/C++ object & memory model, ABI/vtables/mangling, templates, type system | [LANGUAGE-INTERNALS.md](references/LANGUAGE-INTERNALS.md) |
+| Standards & versions (C89→C23, C++98→C++26), idiom/technique catalog, foundational rules & canon | [STANDARDS-VERSIONS-IDIOMS.md](references/STANDARDS-VERSIONS-IDIOMS.md) |
 | Any-domain transfer, domain packs, unknown-domain template | [DOMAIN-AGNOSTIC-MASTERY.md](references/DOMAIN-AGNOSTIC-MASTERY.md) |
 | On-the-spot pack derivation when no seed pack matches a domain | [UNKNOWN-DOMAIN.md](references/UNKNOWN-DOMAIN.md) |
 | Four-layer comprehension ladder, comprehension gate | [REPO-COMPREHENSION.md](references/REPO-COMPREHENSION.md) |

@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/MuhDur/c-cpp-profi/actions/workflows/skill-validate.yml"><img src="https://github.com/MuhDur/c-cpp-profi/actions/workflows/skill-validate.yml/badge.svg" alt="skill-validate"></a>
-  <img src="https://img.shields.io/badge/references-20-14b8a6" alt="20 references">
+  <img src="https://img.shields.io/badge/references-23-14b8a6" alt="23 references">
   <img src="https://img.shields.io/badge/scripts-16-14b8a6" alt="16 scripts">
   <img src="https://img.shields.io/badge/gauntlet-50%20repos-fb7185" alt="validated on 50 repos">
 </p>
@@ -175,7 +175,7 @@ handoff with passed / failed / not-run / not-applicable gates and residual risk
 | Path | Purpose |
 |---|---|
 | `skill/c-cpp-profi/SKILL.md` | Skill entrypoint and routing. |
-| `skill/c-cpp-profi/references/` | 20 deep references: expert canon, toolchain matrix, quality gates, memory safety, concurrency, performance, security, fuzzing, ABI and portability, native-UI goldens, refactor isomorphism, code transform, domain-agnostic mastery and unknown-domain derivation, the innovation engine, repo comprehension, remediation recipes, and documentation authoring. |
+| `skill/c-cpp-profi/references/` | 23 deep references: expert canon, toolchain matrix, quality gates, memory safety, concurrency, performance, security, fuzzing, ABI and portability, native-UI goldens, refactor isomorphism, code transform, domain-agnostic mastery and unknown-domain derivation, the innovation engine, repo comprehension, remediation recipes, documentation authoring, plus design paradigms (OOP/functional/data-oriented), C/C++ language internals (object model, ABI, templates), and standards/versions/idioms (C89→C23, C++98→C++26); the last three are authored with cited authoritative sources. |
 | `skill/c-cpp-profi/scripts/` | Read-only helpers: inventory, gate plan, risk scan, gate report, evidence checker (16 risk profiles, scope-derived), domain detector, comprehension map, accretive backlog, idea-card checker, docs linter, ABI snapshot, pixel diff, and the contract validator. |
 | `skill/c-cpp-profi/assets/` | Reusable CMake, Meson, and libFuzzer scaffolds, plus a portable `ci/` drop-in (GitHub Actions workflow and pre-commit hook) a consumer repo copies to get the gates in CI. |
 
