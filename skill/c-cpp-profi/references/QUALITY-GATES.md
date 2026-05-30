@@ -56,7 +56,13 @@ Use `--verify-evidence` to check the *truth* of cited artifacts, not just the *s
 - `@verify-sha256{hex}{path}` — the checker recomputes `sha256(path)` and it must equal `hex`.
 - `@verify-contains{path}{substring}` — the artifact must contain the substring (bytes).
 
-Paths resolve against `--verify-base` (default: the report's directory). Example: `cpp_evidence_check.py gate-report.md --profile port --require-transform-proof --verify-evidence --verify-base ./build`. A flipped digit in a claimed digest now fails the report instead of passing it. This closes the artifact-integrity slice of "validate output, not shape"; it does not re-run arbitrary commands (side-effecting and context-dependent), so output with no persisted artifact still rests on the honest-reporting contract. `cpp_evidence_check.py --self-test` exercises the verifier on a real temp file (correct claims pass, tampered claims fail).
+Paths resolve against `--verify-base` (default: the report's directory). Example: `cpp_evidence_check.py gate-report.md --profile port --require-transform-proof --verify-evidence --verify-base ./build`. A flipped digit in a claimed digest now fails the report instead of passing it. This closes the artifact-integrity slice of "validate output, not shape." `cpp_evidence_check.py --self-test` exercises the verifier on a real temp file (correct claims pass, tampered claims fail).
+
+Use `--reexec` to validate the *reproducible-command* slice: the author marks an idempotent, safe gate command and states what its output should contain, and the checker re-runs it and confirms.
+
+- `@reexec{<cmd>}{<expected>}` — run `<cmd>` in `--verify-base`; require exit 0, and (when `<expected>` is non-empty) that it appears in the output.
+
+So a claim like "symbol count = 42" backed by `@reexec{nm -D libfoo.so | wc -l}{42}`, or "tests pass" backed by `@reexec{./build/tests}{0 failed}`, is re-run and checked rather than trusted. Re-running is side-effecting, so it is opt-in (the flag plus a per-command directive), bounded by `--reexec-timeout` (default 60s), and a destructive/privileged/network denylist (rm, dd, mkfs, sudo, mv, chmod, curl, ssh, `git reset --hard`, …) refuses obviously dangerous commands; the author asserts safety for the rest, so only run `--reexec` on trusted reports. Together, `--verify-evidence` (artifacts) and `--reexec` (reproducible commands) let the checker independently re-verify every claim that *can* be re-verified. The only residual is genuinely non-reproducible output (network, wall-clock, stateful, destructive), which no verifier can re-check; that rests on the honest-reporting contract by necessity, not by omission.
 
 Use `--derive-profiles` to make profile selection derived rather than self-attested. With that flag, the checker reads the `## Change Scope` yes/no answers and computes the minimum required profile set, unions it with any explicit `--profile`, and enforces it:
 

@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -477,6 +478,71 @@ def verify_evidence(text: str, base: Path) -> tuple[list[str], int]:
     return errors, checks
 
 
+# --- Command re-execution (the reproducible slice of command-output TRUTH) -------
+# `--verify-evidence` above proves persisted ARTIFACTS. `--reexec` proves the
+# reproducible-COMMAND slice: the author marks a gate command as idempotent/safe
+# and states what its output should contain; the checker re-runs it and confirms.
+# An agent then cannot claim "nm -D libfoo.so | wc -l -> 42" or "tests: 0 failed"
+# for a command that, re-run, says otherwise. It is opt-in (flag + per-command
+# directive) because re-running is side-effecting by nature; a destructive-command
+# denylist refuses obviously dangerous commands (AGENTS.md). Output with NO
+# reproducible command and no artifact (network/wall-clock/stateful) is the
+# fundamental residual no verifier can re-check, and rests on honest reporting.
+#
+#   @reexec{<cmd>}{<expected>}  -- run <cmd> in --verify-base; require exit 0, and
+#                                  (if <expected> non-empty) that it appears in output.
+REEXEC_RE = re.compile(r"@reexec\{([^{}]*)\}\{([^{}]*)\}")
+# Refuse to re-run anything matching these (destructive / privileged / network /
+# stateful-discard). The author owns the report, but this is defense-in-depth.
+REEXEC_DENY_RE = re.compile(
+    r"(?:^|[\s|;&(])(?:rm|rmdir|dd|mkfs\w*|shred|truncate|sudo|doas|su|shutdown|"
+    r"reboot|halt|poweroff|mv|chmod|chown|chgrp|mount|umount|kill|pkill|killall|"
+    r"curl|wget|nc|ncat|netcat|telnet|ssh|scp|sftp|rsync|eval|exec|crontab|"
+    r"insmod|rmmod|iptables|systemctl|service)(?:\s|$)"
+    r"|git\s+(?:reset\s+--hard|clean|checkout\s+--|push|rebase)"
+    r"|:\(\)\s*\{|>\s*/dev/|of=/dev/|/dev/sd|\bmkfs\b|--no-preserve-root"
+)
+
+
+def reexec_commands(text: str, base: Path, timeout: int) -> tuple[list[str], int]:
+    """Re-run @reexec{cmd}{expected} directives and verify output. Returns (errors, n)."""
+    errors: list[str] = []
+    checks = 0
+    for cmd, expected in REEXEC_RE.findall(text):
+        checks += 1
+        cmd = cmd.strip()
+        if not cmd:
+            errors.append("reexec: empty command")
+            continue
+        if REEXEC_DENY_RE.search(cmd):
+            errors.append(f"reexec: refused (destructive/privileged/network token): {cmd!r}")
+            continue
+        try:
+            proc = subprocess.run(
+                cmd,
+                shell=True,
+                cwd=str(base),
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            errors.append(f"reexec: timed out after {timeout}s: {cmd!r}")
+            continue
+        except Exception as exc:  # pragma: no cover - environment dependent
+            errors.append(f"reexec: failed to run {cmd!r}: {exc}")
+            continue
+        out = (proc.stdout or "") + (proc.stderr or "")
+        if proc.returncode != 0:
+            errors.append(f"reexec: nonzero exit {proc.returncode} for {cmd!r}")
+            continue
+        if expected and expected not in out:
+            errors.append(
+                f"reexec: output of {cmd!r} does not contain claimed {expected!r}"
+            )
+    return errors, checks
+
+
 def run_self_test() -> int:
     """Exercise verify_evidence on a real temp file: correct claims pass, tampered fail."""
     import tempfile
@@ -505,6 +571,29 @@ def run_self_test() -> int:
         errs, n = verify_evidence(bad_report, base)
         if n != 3 or len(errs) != 3:
             print(f"cpp_evidence_check self-test: FAIL (bad report should give 3 errors: errs={errs}, n={n})")
+            return 1
+
+        # --reexec: a safe idempotent command whose real output matches passes;
+        # a wrong claimed substring fails; a destructive command is refused.
+        good_reexec = (
+            f"@reexec{{sha256sum out.txt}}{{{good_sha}}} "
+            "@reexec{printf ok}{ok}"
+        )
+        errs, n = reexec_commands(good_reexec, base, timeout=30)
+        if errs or n != 2:
+            print(f"cpp_evidence_check self-test: FAIL (good reexec: errs={errs}, n={n})")
+            return 1
+
+        bad_reexec = (
+            "@reexec{printf ok}{THIS_IS_NOT_IN_OUTPUT} "   # output mismatch -> error
+            "@reexec{dd if=/dev/zero of=/tmp/zz}{}"         # destructive class -> refused, NOT run
+        )
+        errs, n = reexec_commands(bad_reexec, base, timeout=30)
+        if n != 2 or len(errs) != 2:
+            print(f"cpp_evidence_check self-test: FAIL (bad reexec should give 2 errors: errs={errs}, n={n})")
+            return 1
+        if not any("refused" in e for e in errs):
+            print(f"cpp_evidence_check self-test: FAIL (destructive reexec not refused: {errs})")
             return 1
 
     print("cpp_evidence_check self-test: PASS")
@@ -600,7 +689,23 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--verify-base",
         default=None,
-        help="base directory for @verify-* relative paths (default: the report's directory)",
+        help="base directory for @verify-* and @reexec relative paths (default: the report's directory)",
+    )
+    parser.add_argument(
+        "--reexec",
+        action="store_true",
+        help=(
+            "re-run @reexec{cmd}{expected} directives (opt-in): run cmd in "
+            "--verify-base, require exit 0 and that expected appears in output. "
+            "Destructive/privileged/network commands are refused. This verifies "
+            "the reproducible slice of command-output truth"
+        ),
+    )
+    parser.add_argument(
+        "--reexec-timeout",
+        type=int,
+        default=60,
+        help="per-command timeout in seconds for --reexec (default: 60)",
     )
     parser.add_argument(
         "--self-test",
@@ -646,6 +751,17 @@ def main(argv: list[str]) -> int:
         verify_errors, verify_checks = verify_evidence(text, base)
         errors = list(errors) + verify_errors
 
+    reexec_checks = 0
+    if args.reexec:
+        if args.verify_base is not None:
+            rbase = Path(args.verify_base)
+        elif args.report == "-":
+            rbase = Path.cwd()
+        else:
+            rbase = Path(args.report).resolve().parent
+        reexec_errors, reexec_checks = reexec_commands(text, rbase, args.reexec_timeout)
+        errors = list(errors) + reexec_errors
+
     if args.json:
         print(
             json.dumps(
@@ -660,6 +776,8 @@ def main(argv: list[str]) -> int:
                     "require_warning_clean": args.require_warning_clean,
                     "verify_evidence": args.verify_evidence,
                     "verify_checks": verify_checks,
+                    "reexec": args.reexec,
+                    "reexec_checks": reexec_checks,
                     "errors": errors,
                 },
                 indent=2,
@@ -675,6 +793,8 @@ def main(argv: list[str]) -> int:
         print("profiles=" + ",".join(profiles))
         if args.verify_evidence:
             print(f"verify-evidence: {verify_checks} artifact assertion(s) re-checked OK")
+        if args.reexec:
+            print(f"reexec: {reexec_checks} command(s) re-run and verified OK")
 
     return 1 if errors else 0
 
