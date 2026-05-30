@@ -36,6 +36,50 @@ NUM_UNIT_RE = re.compile(
     r"cycles|fps|iter|req/s|instr|misses|hits|×)",
     re.IGNORECASE,
 )
+# Split a FILE_LINE_RE token into (path, lineno) for the anchor-TRUTH check below.
+FILE_LINE_SPLIT_RE = re.compile(
+    r"^(.+\.(?:c|cc|cpp|cxx|h|hh|hpp|hxx|inc|ipp))[:# ]\s*(\d+)$",
+    re.IGNORECASE,
+)
+
+
+def verify_comprehension_anchors(raw_evidence: str, base: "Path") -> list[str]:
+    """Q1 truth-not-shape (opt-in via --proof-repo/--verify-base): every file:line anchor
+    in a comprehension proof must resolve to a REAL file UNDER base whose line count is
+    >= the cited line. Rejects a fabricated anchor (nonexistent file, past-EOF line, or a
+    path escaping base). Read-only, offline, deterministic. Shape-only when not opted in."""
+    errors: list[str] = []
+    base_resolved = base.resolve()
+    seen: set = set()
+    for m in FILE_LINE_RE.finditer(raw_evidence):
+        sp = FILE_LINE_SPLIT_RE.match(m.group(0).strip())
+        if not sp:
+            continue
+        relpath, lineno = sp.group(1), int(sp.group(2))
+        if (relpath, lineno) in seen:
+            continue
+        seen.add((relpath, lineno))
+        cand = Path(relpath)
+        cand = cand if cand.is_absolute() else (base / cand)
+        try:
+            cand.resolve().relative_to(base_resolved)
+        except ValueError:
+            errors.append(f"comprehension anchor escapes --proof-repo: {relpath}:{lineno}")
+            continue
+        if not cand.is_file():
+            errors.append(f"comprehension anchor file not found under --proof-repo: {relpath}:{lineno}")
+            continue
+        try:
+            with cand.open("rb") as fh:
+                nlines = sum(1 for _ in fh)
+        except OSError as exc:
+            errors.append(f"comprehension anchor unreadable: {relpath} ({exc})")
+            continue
+        if lineno < 1 or lineno > nlines:
+            errors.append(
+                f"comprehension anchor past EOF: {relpath}:{lineno} (file has {nlines} lines)"
+            )
+    return errors
 
 BASELINE_REQUIRED = [
     ("inventory",),
@@ -281,6 +325,7 @@ def check_gates(
     require_comprehension_proof: bool,
     require_transform_proof: bool,
     errors: list[str],
+    proof_repo: "Path | None" = None,
 ) -> None:
     for gate_name, row in sorted(rows.items()):
         if row.status not in VALID_STATUSES:
@@ -384,6 +429,11 @@ def check_gates(
                         "a file:line token (e.g. parser.c:42) or a callgraph edge (->); "
                         "prose with no anchor is a guess, not comprehension"
                     )
+                # Q1 truth-not-shape: when a repo is given, every file:line anchor must
+                # actually exist there (real file, line within bounds), not merely look
+                # like an anchor. Uses the RAW (case-sensitive) evidence, not normalize()d.
+                if not missing and proof_repo is not None:
+                    errors.extend(verify_comprehension_anchors(row.evidence, proof_repo))
             if require_transform_proof and gate_name == "differential oracle":
                 requirements = {
                     "origin-triple": ("origin-triple:" in evidence),
@@ -437,6 +487,7 @@ def check_report(
     require_comprehension_proof: bool,
     require_transform_proof: bool,
     derive: bool = False,
+    proof_repo: "Path | None" = None,
 ) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     if "# C/C++ Gate Report" not in text:
@@ -464,6 +515,7 @@ def check_report(
         require_comprehension_proof,
         require_transform_proof,
         errors,
+        proof_repo,
     )
     return errors, profiles
 
@@ -822,6 +874,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="base directory for @verify-* and @reexec relative paths (default: the report's directory)",
     )
     parser.add_argument(
+        "--proof-repo",
+        default=None,
+        help=(
+            "repo root to verify comprehension file:line anchors against (truth-not-shape, "
+            "opt-in): under --require-comprehension-proof, every cited file:line must resolve "
+            "to a real file with enough lines, not merely look like an anchor. Falls back to "
+            "--verify-base; when neither is given the check stays shape-only (backward compatible)"
+        ),
+    )
+    parser.add_argument(
         "--reexec",
         action="store_true",
         help=(
@@ -858,6 +920,13 @@ def main(argv: list[str]) -> int:
     explicit_profiles = args.profile or ([] if args.derive_profiles else ["basic"])
     require_performance_proof = args.require_performance_proof or args.strict_numeric
     text = read_report(args.report)
+    # Q1 truth-not-shape (opt-in): resolve the repo to verify comprehension anchors
+    # against. --proof-repo wins, else --verify-base; neither => None (shape-only).
+    proof_repo = None
+    if args.proof_repo is not None:
+        proof_repo = Path(args.proof_repo)
+    elif args.verify_base is not None:
+        proof_repo = Path(args.verify_base)
     errors, profiles = check_report(
         text,
         explicit_profiles,
@@ -868,6 +937,7 @@ def main(argv: list[str]) -> int:
         args.require_comprehension_proof,
         args.require_transform_proof,
         args.derive_profiles,
+        proof_repo,
     )
 
     verify_checks = 0

@@ -160,11 +160,15 @@ EXCLUDE_GLOBS=(
 # A downstream rg re-applies the search pattern to the cleaned field; `cut`
 # recovers the original row. Replaces the old leading-marker-only F1b filter.
 STRIP_COMMENTS_AWK='
-FNR == 1 { inblock = 0 }
+FNR == 1 { inblock = 0; linecont = 0 }
 {
   print strip($0) "\t" FILENAME ":" FNR ":" $0
 }
 function strip(s,   out, i, c, nx, n) {
+  if (linecont) {
+    linecont = (substr(s, length(s), 1) == "\\")
+    return ""
+  }
   out = ""; n = length(s); i = 1
   while (i <= n) {
     c = substr(s, i, 1); nx = substr(s, i + 1, 1)
@@ -172,7 +176,7 @@ function strip(s,   out, i, c, nx, n) {
       if (c == "*" && nx == "/") { inblock = 0; i += 2; continue }
       i++; continue
     }
-    if (c == "/" && nx == "/") break
+    if (c == "/" && nx == "/") { if (substr(s, length(s), 1) == "\\") linecont = 1; break }
     if (c == "/" && nx == "*") { inblock = 1; i += 2; continue }
     if (c == "\"") {
       i++

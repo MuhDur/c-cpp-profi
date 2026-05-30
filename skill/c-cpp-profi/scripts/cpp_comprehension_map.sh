@@ -268,20 +268,24 @@ strip_files_stream() {
   local repo="$1"
   tr '\n' '\0' | xargs -0 -r awk -v repo="$repo" '
     FNR == 1 {
-      inblk = 0
+      inblk = 0; linecont = 0
       rel = FILENAME; sub(/^\.\//, "", rel)
       pfx = repo "/"
       if (substr(rel, 1, length(pfx)) == pfx) rel = substr(rel, length(pfx) + 1)
     }
     {
       line = $0; out = ""; i = 1; n = length(line); instr = 0; inchr = 0
+      if (linecont) {
+        linecont = (substr(line, n, 1) == "\\")
+        next
+      }
       while (i <= n) {
         ch = substr(line, i, 1); two = substr(line, i, 2)
         if (inblk) { if (two == "*/") { inblk = 0; i += 2 } else i++; continue }
         if (instr) { if (ch == "\\") { i += 2; continue } if (ch == "\"") instr = 0; i++; continue }
         if (inchr) { if (ch == "\\") { i += 2; continue } if (ch == "\x27") inchr = 0; i++; continue }
         if (two == "/*") { inblk = 1; i += 2; continue }
-        if (two == "//") break
+        if (two == "//") { if (substr(line, n, 1) == "\\") linecont = 1; break }
         if (ch == "\"") { instr = 1; i++; continue }
         if (ch == "\x27") { inchr = 1; i++; continue }
         out = out ch; i++
@@ -993,7 +997,7 @@ emit_callgraph_defs() {
     | xargs -d '\n' -r awk -v repo="$repo" '
         # --- per-file reset; compute repo-relative path for anchors -------------
         FNR == 1 {
-          inblock = 0; depth = 0
+          inblock = 0; depth = 0; linecont = 0
           rel = FILENAME
           sub(/^\.\//, "", rel)
           pfx = repo "/"
@@ -1011,6 +1015,10 @@ emit_callgraph_defs() {
           i = 1
           n = length(line)
           instr = 0; inchr = 0
+          if (linecont) {
+            linecont = (substr(line, n, 1) == "\\")
+            next
+          }
           while (i <= n) {
             ch = substr(line, i, 1)
             two = substr(line, i, 2)
@@ -1031,7 +1039,7 @@ emit_callgraph_defs() {
               continue
             }
             if (two == "/*") { inblock = 1; i += 2; continue }
-            if (two == "//") { break }
+            if (two == "//") { if (substr(line, n, 1) == "\\") linecont = 1; break }
             if (ch == "\"") { instr = 1; i++; continue }
             if (ch == "\x27") { inchr = 1; i++; continue }
             out = out ch

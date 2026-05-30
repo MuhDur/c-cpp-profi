@@ -211,7 +211,7 @@ EXCLUDE_GLOBS=(
 # there. The per-file `hashcomment` flag is set at FNR==1 from the extension.
 STRIP_COMMENTS_AWK='
 FNR == 1 {
-  inblock = 0
+  inblock = 0; linecont = 0
   hashcomment = (FILENAME ~ /\.(c|cc|cpp|cxx|h|hh|hpp|hxx|cu|cuh|cl)$/) ? 0 : 1
 }
 maxln > 0 && FNR > maxln { next }
@@ -219,6 +219,10 @@ maxln > 0 && FNR > maxln { next }
   print strip($0) "\t" FILENAME ":" FNR ":" $0
 }
 function strip(s,   out, i, c, nx, n) {
+  if (linecont) {
+    linecont = (substr(s, length(s), 1) == "\\")
+    return ""
+  }
   out = ""; n = length(s); i = 1
   while (i <= n) {
     c = substr(s, i, 1); nx = substr(s, i + 1, 1)
@@ -227,7 +231,7 @@ function strip(s,   out, i, c, nx, n) {
       i++; continue
     }
     if (hashcomment && c == "#") break
-    if (c == "/" && nx == "/") break
+    if (c == "/" && nx == "/") { if (substr(s, length(s), 1) == "\\") linecont = 1; break }
     if (c == "/" && nx == "*") { inblock = 1; i += 2; continue }
     if (c == "\"") {
       i++
@@ -394,7 +398,7 @@ pack_anchors() {
 pack_ids() {
   printf '%s\n' \
     space embedded kernel gpu hpc crypto networking compression \
-    compilers linker emulator databases audio filesystems parser generic
+    compilers linker emulator databases audio graphics profiler filesystems parser generic
 }
 
 pack_label() {
@@ -412,6 +416,8 @@ pack_label() {
     emulator)    printf 'Emulator / hardware & ISA emulation' ;;
     databases)   printf 'Databases / storage engines' ;;
     audio)       printf 'Audio / DSP / real-time media' ;;
+    graphics)    printf 'Graphics / windowing / native UI / rendering' ;;
+    profiler)    printf 'Benchmarking / profiling' ;;
     filesystems) printf 'Filesystems / block storage' ;;
     parser)      printf 'Parser / text-format / serialization' ;;
     generic)     printf 'Generic library / data-structures / strings' ;;
@@ -477,6 +483,19 @@ pack_regex() {
     emulator)    printf '%s' '\bcartridge\b|\bbankswitch|\bIWRAM\b|(?-i:\bIO_Read[BWD]?\b)|(?-i:\bIO_Write[BWD]?\b)|\bCPU_Cycles\b|\bcyclesLate\b|RaiseIRQ|\bphys_page|\bvblank\b|\bhblank\b|\b(?:poke(?:8|16|32|b|w|l)|(?:mem|bus|io|cpu|ram|reg)_poke|poke_(?:byte|word|mem|addr))\b' ;;
     databases)   printf '%s' '\bfsync\b|fdatasync|write-ahead|write.?ahead|\bWAL\b|\bMVCC\b|crash.consistency|page_checksum|page.?cache|\bpwrite\b|dm-flakey|\bALICE\b|\bsqlite3?\b|\bbtree\b|b-tree|\bpager\b|\bvdbe\b|opcode.*VDBE|\browid\b|(?-i:\bPRAGMA\b|\bPragma)|\bvacuum\b|\bredis\b|\bredisDb\b|\brobj\b|\bRDB\b|\bAOF\b|\brdbSave\b|\brdbAdd|\bkeyspace\b|dict.*entry|\btransaction\b|\bcommit\b|\brollback\b|\bcompaction\b|\bmemtable\b|\bsstable\b|\bmanifest\b|\bsnapshot\b|write.?batch' ;;
     audio)       printf '%s' 'audio_?callback|audio_?buffer|process_block|\bdenormal|\bxrun\b|\bjack_|kAudioUnit|\bVST3\b|\bASIO\b|\bCoreAudio\b|flush.to.zero|samples?_per_(buffer|frame)' ;;
+    # G24 (iter42): Graphics/windowing/native-UI pack — the skill had NO graphics pack
+    # so glfw/SDL/raylib/sokol/bgfx/imgui/nanovg/Nuklear/nanogui all mis-primaried. Token
+    # set is collision-audited to 0 hits on 24+ non-graphics controls (the raw gl*/GL_*
+    # primitive tokens were DROPPED — they fire on zstd/mold OpenGL demos; InitWindow
+    # dropped — cuda-samples). API/handle spellings are word-bounded in (?-i:...) groups.
+    # Flips glfw/bgfx/nanovg/Nuklear/nanogui to Graphics-primary; SDL/raylib/sokol/imgui
+    # get a correct Graphics SECONDARY (their primary-making GL-primitive tokens collided).
+    graphics)    printf '%s' '(?-i:\bglfwCreateWindow\b|\bGLFWwindow\b|\bglfwPollEvents\b|\bglfwSwapBuffers\b|\bglfwMakeContextCurrent\b|\bglfwSwapInterval\b)|(?-i:\bSDL_CreateWindow\b|\bSDL_GL_SwapWindow\b|\bSDL_GL_CreateContext\b|\bSDL_CreateRenderer\b)|(?-i:\bsg_make_buffer\b|\bsg_apply_pipeline\b|\bsg_begin_pass\b|\bsg_make_shader\b|\bsapp_run\b)|bgfx::|(?-i:\bnvgBeginFrame\b|\bnvgBeginPath\b|\bNVGcontext\b)|\bnk_begin\b|\bnk_layout_row\b|\bBeginDrawing\b|\bEndDrawing\b|\bClearBackground\b|\brlglInit\b|(?-i:\bVkSwapchainKHR\b|\bvkCreateSwapchainKHR\b|\bVkRenderPass\b|\bVkCommandBuffer\b|\bVkPipelineLayout\b)' ;;
+    # G24 (iter42): Benchmarking/profiling pack — gperftools-only tokens (google/benchmark
+    # API tokens like benchmark::State were DEFERRED: they are shared infra that collide on
+    # abseil/json/leveldb/re2/rocksdb/snappy/spdlog/xtensor). \bProfilerStart\b excludes
+    # cudaProfilerStart. Flips gperftools Generic→Profiling; 0 on jemalloc/abseil/controls.
+    profiler)    printf '%s' '\bProfilerStart\b|\bProfilerEnable\b|\bProfilerFlush\b|\bProfilerRegisterThread\b|\bHeapProfilerStart\b|\bIsHeapProfilerRunning\b|\bHeapProfilerDump\b|\bMallocExtension\b' ;;
     # FILESYSTEMS: `barrier` is word-BOUNDED (`\bbarrier\b`) so it matches a genuine
     # I/O / write barrier but NOT a GC write-barrier identifier like lua's
     # `luaC_barrier`/`luaC_barrierback` (the leading `_` is a word char, so there is
@@ -503,7 +522,7 @@ pack_regex() {
 # is then ranked by code-match count. Higher tier sorts first.
 pack_priority() {
   case "$1" in
-    gpu|kernel) printf '1' ;;
+    gpu|kernel|emulator) printf '1' ;;
     *)          printf '0' ;;
   esac
 }
@@ -514,7 +533,7 @@ pack_priority() {
 # its toolchain signals from build files and uses the wide ('all') set.
 pack_mode() {
   case "$1" in
-    parser|generic|linker) printf 'code' ;;
+    parser|generic|linker|graphics) printf 'code' ;;
     *)                     printf 'all' ;;
   esac
 }
@@ -1377,6 +1396,36 @@ hipError_t run(void) {
 }
 SRC
 
+  # Fixture GRAPHICS (iter42): a glfw/GL-shaped windowing app using the collision-safe
+  # graphics tokens (the raw gl*/GL_* primitives are intentionally NOT used — they were
+  # dropped for colliding on zstd/mold). Must select the Graphics pack as PRIMARY.
+  mkdir -p "$tmp/gfxish/src"
+  cat >"$tmp/gfxish/src/app.c" <<'SRC'
+#include "app.h"
+GLFWwindow *win;
+int run(void) {
+    win = glfwCreateWindow(640, 480, "x", 0, 0);
+    glfwMakeContextCurrent(win);
+    while (1) { glfwPollEvents(); glfwSwapBuffers(win); }
+    return 0;
+}
+SRC
+  cat >"$tmp/gfxish/src/draw.c" <<'SRC'
+#include "draw.h"
+void frame(void) { nvgBeginFrame(0, 640, 480, 1.0f); nvgBeginPath(0); }
+SRC
+
+  # Fixture PROFILER (iter42): a gperftools-shaped profiler using the gperftools-only
+  # tokens (google/benchmark API tokens are deferred — shared infra, control collisions).
+  mkdir -p "$tmp/profish/src"
+  cat >"$tmp/profish/src/prof.c" <<'SRC'
+#include "prof.h"
+int start(const char *f) { return ProfilerStart(f); }
+void stop(void) { ProfilerFlush(); ProfilerStop(); }
+int heap(void) { HeapProfilerStart("h"); return IsHeapProfilerRunning(); }
+size_t mem(void) { return MallocExtension::instance()->GetAllocatedSize(0); }
+SRC
+
   local gpu_out kernel_out plain_out hpc_out parser_out generic_out comments_out
   local zlibish_out cfsish_out fprimeish_out
   local codec_out net_out cry_out fp2_out
@@ -1405,10 +1454,12 @@ SRC
   rjsonish_out="$(run_detect "$tmp/rjsonish" no)"
   grabbag_out="$(run_detect "$tmp/grabbag" no)"
   luaish_out="$(run_detect "$tmp/luaish" no)"
-  local linkerish_out emuish_out hipish_out
+  local linkerish_out emuish_out hipish_out gfxish_out profish_out
   linkerish_out="$(run_detect "$tmp/linkerish" no)"
   emuish_out="$(run_detect "$tmp/emuish" no)"
   hipish_out="$(run_detect "$tmp/hipish" no)"
+  gfxish_out="$(run_detect "$tmp/gfxish" no)"
+  profish_out="$(run_detect "$tmp/profish" no)"
 
   # Assertion 1: the CUDA fixture selects the GPU pack as primary, anchored to
   # the .cu file. Output format: "pack[<role>]: <label> | <anchor> (N code matches)".
@@ -1775,6 +1826,17 @@ SRC
   if ! printf '%s\n' "$hipish_out" | grep -qE 'pack\[primary\]: GPU \(CUDA / SYCL / HIP\) \|'; then
     printf 'cpp_domain_detect self-test: FAIL (G24: HIP host-API tokens did not select GPU primary)\n'
     printf '%s\n%s\n' '--- hipish ---' "$hipish_out"
+    exit 1
+  fi
+  # iter42: graphics + profiler packs.
+  if ! printf '%s\n' "$gfxish_out" | grep -qE 'pack\[primary\]: Graphics / windowing / native UI / rendering \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (iter42: graphics tokens did not select Graphics primary)\n'
+    printf '%s\n%s\n' '--- gfxish ---' "$gfxish_out"
+    exit 1
+  fi
+  if ! printf '%s\n' "$profish_out" | grep -qE 'pack\[primary\]: Benchmarking / profiling \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (iter42: gperftools tokens did not select Benchmarking / profiling primary)\n'
+    printf '%s\n%s\n' '--- profish ---' "$profish_out"
     exit 1
   fi
 
