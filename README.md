@@ -55,7 +55,7 @@ The skill makes the missing engineering loop mandatory and falsifiable:
 inventory -> invariants -> gate plan -> implementation -> mechanical evidence -> residual-risk handoff
 ```
 
-Every claim lands as a gate with a status of `passed`, `failed`, `not run`, or `not applicable`, an exact command, and the evidence it produced. A Python checker reads the report and rejects it if the proof for the work actually done is missing.
+Every claim lands as a gate with a status of `passed`, `failed`, `not run`, or `not applicable`, an exact command, and the evidence it produced. A Python checker reads the report and rejects it if the proof for the work actually done is missing. Opt-in, it goes further than shape: `--verify-evidence` recomputes cited digests and re-checks artifacts, and `--reexec` re-runs author-marked idempotent commands and confirms their output, so a fabricated digest or a made-up command result fails the report instead of passing it.
 
 | What agents usually do | What this skill requires |
 |---|---|
