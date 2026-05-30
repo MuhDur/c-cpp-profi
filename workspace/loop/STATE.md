@@ -1,9 +1,25 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **98.0 / 100** (iteration 41). Per-dim: C1 14.5 · C2 12 · C3 15 · C4 12 ·
-  C5 8 · C6 **17.0** · Q1 7.5 · Q2 12. (Iter 40 dropped 100→97.5 after a 160-repo re-validation DISPROVED the
-  100; iter 41 lifts C6 16.5→17.0 by adding the linker + emulator domain packs + HIP/ROCm.)
+- **Honest composite (RUBRIC-100):** **99.5 / 100** (iteration 42). Per-dim: C1 **15** · C2 12 · C3 15 · C4 12 ·
+  C5 8 · C6 **17.5** · Q1 **8** · Q2 12. (Iter 40 dropped 100→97.5 after a 160-repo re-validation DISPROVED 100;
+  iter 41 C6→17.0 via linker+emulator+HIP; iter 42 closes 3 more: C1→15, C6→17.5, Q1→8.)
+- **Iteration 42 (user: "use workflows to close these gaps"):** workflows `w1hf7rv9z`→`wz9p6enos` designed +
+  collision-verified the closeable residuals; implemented + live-verified all with ZERO calibration regression:
+  (1) C6→17.5 — NEW **graphics** pack (whole-family hole closed: glfw/bgfx/nanovg/Nuklear/nanogui→Graphics
+  primary, SDL/raylib/sokol/imgui→Graphics secondary; the raw gl*/GL_* tokens dropped for colliding on
+  zstd/mold; 0 on all controls), NEW **profiler** pack (gperftools→primary; google/benchmark API DEFERRED —
+  shared-infra collisions + bench-dir self-exclusion), **emulator→tier-1** (mgba/stella/dosbox now PRIMARY).
+  (2) Q1→8 — `cpp_evidence_check.py --proof-repo` verifies each comprehension file:line anchor is REAL (file
+  exists + line in bounds), not just shape; residual = the fundamental non-reproducible-NUMBER limit (parallel
+  to the C1 indirect-call argument). (3) C1→15 — **G22** //-line-continuation comment-strip fixed across all 4
+  strip sites. Self-test extended (graphics/profiler fixtures); contract refs=23 + completion audit green.
+  Commit `070e530`. See `gauntlet/GAP-CLOSURE-iter42.md`.
+- **Residual to 100 (0.5, honest):** C6 17.5→18 needs the DEFERRED google/benchmark detection (shared-infra
+  token collisions + the bench-dir self-exclusion both block it), graphics PRIMARY for SDL/raylib/sokol/imgui
+  (the primary-making GL-primitive tokens collide on zstd/mold), an asset-loader pack (tinyobjloader/cgltf/
+  assimp), and the protocol-lib Crypto-primary imprecision (curl/libcoap). All genuinely hard / collision-
+  blocked — documented, not faked.
 - **Iteration 41 (loop; user mandate "domain-agnostic, any known/unknown domain"):** workflow `w1hf7rv9z`
   (7 agents) researched + collision-audited new domain packs grounded in the real gauntlet repos + spec sources.
   Implemented the 3 vetted: GPU pack += 13 HIP/ROCm tokens (HIP 4→691 matches → GPU-primary), NEW **linker**

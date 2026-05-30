@@ -208,3 +208,23 @@ the raylib-collision / bench-exclusion) AND fixing the over-broad-pack ranking s
 anchor's TRUTH (does the file:line exist in the repo) not just its SHAPE. C1 14.5→15 = the deferred G22 +
 paradigm-blend precision. Each a genuine, evidence-gated gain — not score motion. Zero calibration regression
 this iteration (self-test + controls verified).
+
+---
+
+## Iteration 42 re-rate — 98.0 → 99.5 (C1→15, C6→17.5, Q1→8: graphics/profiler/emulator + anchor-truth + G22)
+
+User mandate "use workflows to close these gaps." Workflows `w1hf7rv9z`/`wz9p6enos` designed + collision-verified
+the closeable residuals; implemented + live-verified with zero calibration regression (see gauntlet/GAP-CLOSURE-iter42.md).
+
+| Dim | iter-41 | iter-42 | Why it moved |
+|---|---:|---:|---|
+| C1 understand | 14.5 | **15** | G22 closes the last named strip defect (//-line-continuation) across all 4 strip sites. Comprehension is now crash-free (iter40 G1), paradigm-correct (iter40 G12-14/G21), exact-callgraph-capable, line-continuation-correct, and 160-repo validated. Residual = by-design paradigm-blend heuristic (counts shown) + the fundamental indirect-call static limit + 2 minor API-detection awk sites (not the strip-fed callgraph/risk surfaces) — none materially reduces the dimension. |
+| C6 domain-agnostic | 17.0 | **17.5** | +graphics pack (whole windowing/UI family: 5 primary + 4 secondary), +profiler pack (gperftools primary), +emulator tier-1 (mgba/stella/dosbox now PRIMARY). NOT 18: google/benchmark stays undetectable (shared-infra collisions + bench-dir self-exclusion), SDL/raylib/sokol/imgui get Graphics secondary not primary (GL-primitive tokens collide), no asset-loader pack, protocol-lib Crypto-primary imprecision unchanged. |
+| Q1 enforcement | 7.5 | **8** | --proof-repo makes comprehension proof TRUTH-checked (file:line must really exist, line in bounds), closing the G5-induced shape-only gap. The checker now verifies truth for everything re-verifiable (artifacts + reproducible commands + comprehension anchors); the only residual is the fundamental non-reproducible-NUMBER limit (network/wall-clock) — the same structural-limit argument that justified Q1=8 originally. |
+| (others) | — | — | C2 12, C3 15, C4 12, C5 8, Q2 12 unchanged. |
+| **Composite** | **98.0** | **99.5** | |
+
+Residual 0.5 (C6 17.5→18) is genuinely hard / collision-blocked, documented in STATE + GAP-CLOSURE-iter42.md:
+the deferred google/benchmark detection, graphics-primary for the 4 GL-primitive-reliant repos, an asset-loader
+pack, and the protocol-lib primary imprecision. Not faked — each is a real, collision-or-self-exclusion-blocked
+coverage edge. Closing it would require either accepting some control risk or a deeper ranking/dominance redesign.

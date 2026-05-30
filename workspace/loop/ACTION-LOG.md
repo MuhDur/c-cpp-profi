@@ -1358,3 +1358,34 @@ controls (cJSON/zlib/lua/sqlite/redis/secp256k1/cFE/fprime/nuttx/raylib/...) unc
 
 RATING: C6 16.5→17.0 (composite 97.5→98.0). +0.5 not +1.5: windowing/benchmark deferred, emulator only
 secondary, protocol-lib imprecision unchanged — all genuine, documented residuals. Path to 100 in RUBRIC iter-41.
+
+---
+
+## Iteration 42 — 2026-05-30 — workflow-driven gap closure → C1→15, C6→17.5, Q1→8 (composite 99.5)
+
+User: "ok use workflows to close these gaps." Ran two design workflows (w1hf7rv9z pack research; wz9p6enos
+gap-closure: 5 design agents + full-clone-set collision auditor + synthesis), each grounding token sets in the
+real /tmp/cpp-gauntlet-150 repos and sweeping them against the true controls. Implemented the 5 vetted changes
+by hand (calibration-sensitive), live-verified all, ZERO calibration regression.
+
+IMPLEMENTED (commit 070e530):
+- graphics pack (NEW): closed a whole-family C6 hole (no graphics pack existed). 8 collision-safe tokens (raw
+  gl*/GL_* DROPPED — collide on zstd/mold). glfw/bgfx/nanovg/Nuklear/nanogui→Graphics primary; SDL/raylib/sokol/
+  imgui→Graphics secondary; 0 on 17 controls (cuda-samples keeps tier-1 GPU primary, graphics interop secondary).
+- profiler pack (NEW): gperftools-only tokens; gperftools→Benchmarking/profiling primary; 0 on jemalloc/abseil/
+  benchmark/HIP/controls. google/benchmark API DEFERRED (shared-infra collisions + bench-dir self-exclusion).
+- emulator→tier-1: a full 160-repo sweep proved the emulator tokens never-incidental; mgba/stella/dosbox now
+  classify Emulator PRIMARY (were secondary). One-line pack_priority change.
+- Q1 anchor-truth: cpp_evidence_check.py --proof-repo verifies each comprehension file:line anchor is real
+  (file exists + line in bounds). Verified: real PASS, past-EOF FAIL, missing-file FAIL, shape-only backward-
+  compatible. Truth-not-shape for everything re-verifiable; residual = fundamental non-reproducible-NUMBER limit.
+- G22: //-comment line-continuation strip fixed across all 4 strip sites (risk+backlog byte-identical, domain
+  variant, comprehension strip_files_stream + emit_callgraph). Verified: strcpy on a continuation line not flagged.
+
+DEFERRED (honest): google/benchmark detection (collisions + self-exclusion), graphics-primary for the 4
+GL-primitive-reliant repos, asset-loader pack, protocol-lib Crypto-primary imprecision.
+
+RATING: C1 14.5→15, C6 17→17.5, Q1 7.5→8 → composite 98.0→99.5. Each move tied to a specific verified capability.
+Self-test extended (graphics/profiler fixtures); all 6 self-tests + contract refs=23 + completion audit green;
+controls (cJSON/zlib/lua/sqlite/redis/secp256k1/mbedtls/cFE/fprime/nuttx/raylib) unchanged. Residual 0.5 (C6→18)
+is collision-blocked / genuinely hard, documented — not faked. See gauntlet/GAP-CLOSURE-iter42.md + RUBRIC iter-42.
