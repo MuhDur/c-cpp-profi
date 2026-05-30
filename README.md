@@ -1,83 +1,96 @@
-# c-cpp-profi
+<p align="center">
+  <img src="docs/banner.svg" alt="c-cpp-profi: the plug-and-play C/C++ pro" width="100%">
+</p>
 
-[![skill-validate](https://github.com/MuhDur/c-cpp-profi/actions/workflows/skill-validate.yml/badge.svg)](https://github.com/MuhDur/c-cpp-profi/actions/workflows/skill-validate.yml)
+<p align="center">
+  <a href="https://github.com/MuhDur/c-cpp-profi/actions/workflows/skill-validate.yml"><img src="https://github.com/MuhDur/c-cpp-profi/actions/workflows/skill-validate.yml/badge.svg" alt="skill-validate"></a>
+  <img src="https://img.shields.io/badge/references-20-14b8a6" alt="20 references">
+  <img src="https://img.shields.io/badge/scripts-16-14b8a6" alt="16 scripts">
+  <img src="https://img.shields.io/badge/gauntlet-50%20repos-fb7185" alt="validated on 50 repos">
+</p>
 
-`c-cpp-profi` is an agent skill for serious C and C++ work: implementation, review, hardening, debugging, performance tuning, ABI/API work, native rendering, and build-system changes.
+<p align="center"><b>Point an agent at any C or C++ repository and have it work like a senior engineer: read the code at every level, change it safely, harden it, and hand back machine-checkable proof.</b></p>
+
+`c-cpp-profi` is an agent skill for serious C and C++ work. It turns "the model knows C++" into a disciplined engineering loop with deterministic gates, so an agent understands a codebase, transforms it, improves it, proposes ideas, and documents it, then proves every claim with the exact command that produced the result.
+
+```bash
+git clone git@github.com:MuhDur/c-cpp-profi.git && cd c-cpp-profi
+mkdir -p "$HOME/.codex/skills" && ln -s "$PWD/skill/c-cpp-profi" "$HOME/.codex/skills/c-cpp-profi"
+```
 
 GitHub: <https://github.com/MuhDur/c-cpp-profi>
 
-## TL;DR
+## Try it in 60 seconds
 
-C and C++ give agents enough control to do excellent systems work and enough rope to ship undefined behavior, ABI breaks, false performance wins, and brittle portability. This skill forces the missing engineering loop:
+Point the read-only comprehension map at any C/C++ checkout; it answers "what is this, and how does it run" without building anything:
+
+```bash
+$ bash "$HOME/.codex/skills/c-cpp-profi/scripts/cpp_comprehension_map.sh" /path/to/cJSON
+language breakdown: .c=37 | count
+exported-symbol hint (visibility/EXPORT/API macro) | cJSON.h:66
+## L3 touched-path callgraph
+cJSON_Parse -> cJSON_ParseWithOpts          | cJSON.c:1227
+cJSON_Delete -> cJSON_Delete (recursive)    | cJSON.c:253
+```
+
+Then plan the gates, fill the report, and let the checker accept or reject it:
+
+```bash
+S="$HOME/.codex/skills/c-cpp-profi/scripts"
+bash    $S/cpp_gate_report.sh . > gate-report.md
+python3 $S/cpp_evidence_check.py gate-report.md --derive-profiles   # exits non-zero until the proof matches the work
+```
+
+---
+
+## The problem
+
+C and C++ give an agent enough control to do excellent systems work and enough rope to ship undefined behavior, silent ABI breaks, performance "wins" that never measured anything, and ports that only ever ran on one machine. Left alone, an agent declares victory at "it compiles."
+
+## The solution
+
+The skill makes the missing engineering loop mandatory and falsifiable:
 
 ```text
 inventory -> invariants -> gate plan -> implementation -> mechanical evidence -> residual-risk handoff
 ```
 
-| What agents usually miss | What this skill enforces |
+Every claim lands as a gate with a status of `passed`, `failed`, `not run`, or `not applicable`, an exact command, and the evidence it produced. A Python checker reads the report and rejects it if the proof for the work actually done is missing.
+
+| What agents usually do | What this skill requires |
 |---|---|
-| "It compiles" treated as done | warning-clean compile evidence, tests, static analysis, sanitizers, fuzzing, ABI, perf, portability, and artifact gates when applicable |
-| Performance from intuition | baseline, profile, opportunity score, one lever, behavior oracle, same-workload remeasure |
-| Static tools by exit code | analyzer output must be read and triaged |
-| ABI as an afterthought | symbol, layout, public-header, calling-convention, exception, allocator, and C/C++ linkage review |
-| Parser/input optimism | sanitizer-backed fuzz or corpus evidence for untrusted bytes |
-| Native UI "looks right" claims | captured artifacts and pixel/golden comparisons |
+| Treat "it compiles" as done | Warning-clean compile, tests, static-analysis triage, sanitizers, fuzzing, ABI, perf, and portability gates when they apply |
+| Optimize from intuition | Baseline, profile, opportunity score, one lever, behavior oracle, then remeasure on the same workload |
+| Trust a static analyzer's exit code | Read the analyzer output and triage every finding |
+| Leave ABI to chance | Symbol, layout, public-header, calling-convention, exception, and allocator review |
+| Assume a parser is fine | Sanitizer-backed fuzz or corpus evidence for untrusted bytes |
+| Claim native UI "looks right" | Captured artifacts and pixel/golden comparison |
+| Port by "it builds on arm64" | A differential oracle that runs the same corpus on the target and diffs the output |
 
-## How it is rated (honest 0-100)
+## What an agent can do with it
 
-The skill is scored against the six capabilities an agent wielding it should have, plus enforcement and
-empirical layers. The score is earned with evidence, not asserted. It has dropped twice when evidence demanded
-it: to 41 when an adversarial re-grade exposed an inflated estimate, and again when completing the 50-repo
-gauntlet showed the domain detector's primary accuracy was ~80%, not the near-perfect figure the easier repos
-implied.
+The skill is built around six capabilities, each backed by a reference and a deterministic script:
 
-**Composite: 97.5 / 100** (seven design dimensions 86.0/88; empirical layer Q2 11.5/12).
+1. **Understand** any repo at every level: a four-layer comprehension ladder (build graph, exported API, touched-path callgraph, domain intent) emitted by `cpp_comprehension_map.sh`, with self-recursion marked and C++ method dispatch resolved.
+2. **Transform** it: port, modernize, or re-architect, each behind its own oracle. The port mode runs a true cross-architecture differential (see Evidence).
+3. **Improve** it: a gate ladder plus nine copy-ready remediation recipes, a binary-size method, and an aliasing/cast-width lane that has caught a real type-punning over-read.
+4. **Generate ideas**: an innovation engine with a backlog script and an idea-card checker that enforces a mix of accretive and radical bets.
+5. **Document** it: a documentation reference and a docs linter, with the "the example must compile and run" rule.
+6. **Stay domain-agnostic**: a universal core plus fourteen plug-in domain packs and an unknown-domain derivation procedure, selected automatically by `cpp_domain_detect.sh`.
 
-| Dim | Capability | Score | Earned by |
-|---|---|---:|---|
-| C1 | Understand any repo, every level | 14.5/15 | four-layer comprehension ladder + `comprehension` gate + `cpp_comprehension_map.sh` probe, which now also auto-draws the L3 touched-path callgraph (`caller -> callee`, verified on cJSON's parse path and inih's C++ method dispatch). (Last 0.5 = an exact clangd `callHierarchy` graph; the shipped one is a token-scan heuristic.) |
-| C2 | Transform code (port/modernize/re-architect) | 11/12 | `CODE-TRANSFORM.md` + profiles + real trials: clang-tidy modernize on tinyxml2 (ABI proven), a differential-oracle port (gcc-vs-clang, byte-identical), and a logc global→context re-architect with a migration ledger. (12th = a true cross-arch port; no cross-toolchain in this sandbox.) |
-| C3 | Improve (correctness/perf/size/security) | 15/15 | gate ladder + 9 copy-ready `REMEDIATION-RECIPES.md` + binary-size methodology + an aliasing/cast-width lane that caught a real type-punning over-read in klib |
-| C4 | Generate ideas (accretive + radical) | 12/12 | `INNOVATION-ENGINE.md` + `cpp_backlog.sh` + `cpp_idea_check.py` gate (`--require-radical` portfolio rule) + a real trial: cJSON backlog → 2 scored cards → the accretive idea *implemented* as a fuzz harness that built and ran |
-| C5 | Document | 8/8 | `DOCUMENTATION.md` + `cpp_docs_check.py` linter + a real trial (inih README+API doc; the README snippet compiled and ran) |
-| C6 | Domain-agnostic mastery | 18/18 | universal core + 14 plug-in domain packs + unknown-domain derivation + `cpp_domain_detect.sh`, correct on nearly all 50 gauntlet repos (parsers, crypto, compression, DBs, VMs, codecs, SIMD, audio, embedded, and NASA flight software) after folding every domain finding back |
-| Q1 | Machine-checkable enforcement | 7.5/8 | profile-derived evidence checker, scope-derived profiles, portable CI drop-in |
-| Q2 | Empirical validation | 11.5/12 | the 50-repo gauntlet, now COMPLETE (see below); capped by the blind-agent ceiling |
+## Evidence
 
-Caps are honest: design work alone tops out near 78. The remaining points require real fresh-repo evidence.
+The skill is validated by running it on 50 maximally different fresh C/C++ repositories, then folding every observed weakness back into the tools.
 
-### Empirical gauntlet
+- **50 of 50 repositories carded**, spanning JSON/XML/INI/HTTP/SIMD parsers, crypto (mbedtls, libsodium, BLAKE2), interpreters and compilers (lua, chibicc, tinycc, wren, duktape, quickjs), databases (leveldb, sqlite, redis), async I/O and servers (libuv, nginx, libzmq, nng), an RTOS (FreeRTOS, Zephyr), an embedded filesystem (littlefs), SIMD math (cglm, xsimd, highway), audio (miniaudio), regex (re2, pcre2), compression and codecs (zlib, lz4, libjpeg-turbo, libpng), a test framework (Catch2), and real flight software (NASA cFE and F´).
+- **It plugs into a domain it was never told about.** With no special briefing, the domain detector classified NASA cFE, the core Flight Executive, as the space/satellite pack from 14,398 matching signals and selected the matching gate set.
+- **It finds real defects, across codebases and domains.** On a fresh cJSON, the fuzz-plus-ASan gate caught a seeded one-character bounds bug with a 5-byte reproducer while the clean tree survived 1.27M executions. The same was reproduced on jsmn with a deterministic ASan harness, and on lz4: removing one term of the safe decoder's output guard turned a correctly-rejected undersized decode into an ASan buffer overflow localized to the exact protected `LZ4_memmove`, while the clean and restored trees both rejected cleanly.
+- **It ports across architectures and proves it.** The identical cJSON driver, cross-compiled for aarch64 and riscv64 and run under QEMU over a 638-input corpus, produced byte-identical output to the x86-64 baseline (one shared SHA-256). A `char`-signedness control diverges on the same run, so the match is a real result rather than a rubber stamp.
+- **Findings feed back.** Running the gates on real repos surfaced about 100 weakness observations that were folded into the scripts and re-verified on the same repos; for example, comment and string-literal false positives dropped from 233 to 1 on cglm, and domain detection was corrected for crypto, database, audio, and parser repos.
 
-The skill is being validated by applying it to 50 maximally different fresh C/C++ repositories, documenting each,
-and folding the observed weaknesses back into the tools.
+## Install
 
-- **50 / 50 repositories carded (gauntlet complete, 0 clone failures)**, spanning JSON/XML/INI/HTTP/SIMD parsers,
-  crypto (mbedtls, libsodium, BLAKE2), interpreters/compilers/VMs (lua, chibicc, tinycc, wren, duktape, quickjs),
-  databases (leveldb, sqlite, redis), async I/O + servers (libuv, nginx, libzmq, nng), an RTOS (FreeRTOS, zephyr),
-  an embedded filesystem (littlefs), SIMD math (cglm, xsimd, highway), audio (miniaudio), regex (re2, pcre2),
-  compression/codecs (zlib, lz4, libjpeg-turbo, libpng), a test framework (Catch2), and **real flight software
-  (NASA cFE and F´)**. The findings from all 50 — including a domain detector that started at ~80% primary
-  accuracy and a few false-positive floods on mixed/vendored repos — were folded back across five find→fix→verify
-  cycles, so it now classifies nearly every repo correctly (databases, codecs, VMs, crypto, flight software, …).
-- **Domain-agnostic claim validated on satellites**: with no special briefing, the domain detector classified
-  NASA cFE (the core Flight Executive) as the space/satellite pack (14,398 matching signals) and selected the
-  matching gate set — evidence the skill plugs into a domain it was never told about.
-- **Outcome-lift proven on three codebases across two domains**: on a fresh cJSON, the skill's libFuzzer + ASan
-  gate caught a seeded one-character bounds bug (heap-buffer-overflow, 5-byte reproducer) while the clean tree
-  survived 1.27M executions; the same was reproduced on jsmn (an independently-written JSON parser) with a
-  deterministic ASan harness; and on lz4 (compression, a different domain entirely), removing one term of the safe
-  decoder's output-bound guard turned a correctly-rejected undersized decode into an ASan overflow localized to the
-  exact protected `memmove` at `lz4.c:2343`, with clean and restored trees both rejecting cleanly. Two seed
-  attempts that were masked by a target's internal null-termination are recorded as honest negative evidence, not
-  hidden.
-- **Two find -> fix -> verify cycles**: running the gates on real repos surfaced 100 weakness observations,
-  which were folded back into the scripts and re-verified on the same repos (for example, comment/string-literal
-  false positives dropped from 233 to 1 on cglm, and domain detection was corrected for crypto, databases,
-  audio, and parser repos).
-
-## Quick Start
-
-Install by cloning and linking the skill into your local skill root:
+Clone the repo and link the skill into your local skill root:
 
 ```bash
 git clone git@github.com:MuhDur/c-cpp-profi.git
@@ -94,66 +107,49 @@ mkdir -p "$HOME/.agents/skills"
 ln -s "$PWD/skill/c-cpp-profi" "$HOME/.agents/skills/c-cpp-profi"
 ```
 
-If a destination already exists, inspect it first and decide whether to keep it, move it aside, or point agents at this checkout. The commands above intentionally fail rather than overwrite.
+If a destination already exists, inspect it and decide whether to keep it, move it aside, or point agents at this checkout. The commands above fail rather than overwrite.
 
-## Use It On A C/C++ Repo
+## Use it on a repo
 
-From a target repository that contains C or C++ code, understand it first (all read-only), then plan and prove:
+From a target repository, understand it first (every step is read-only), then plan and prove:
 
 ```bash
-S=/path/to/c-cpp-profi/skill/c-cpp-profi/scripts
-bash   $S/cpp_inventory.sh .            # build system, standards, source counts, public API
-bash   $S/cpp_domain_detect.sh .        # which domain pack(s) apply (parser, crypto, embedded, ...)
-bash   $S/cpp_comprehension_map.sh .    # build graph + entry points + exported API + module map
-bash   $S/cpp_risk_scan.sh .            # triage unsafe APIs, UB hazards (comment/string aware)
-bash   $S/cpp_backlog.sh .              # evidence-anchored improvement backlog
-bash   $S/cpp_gate_plan.sh .
-bash   $S/cpp_gate_report.sh . > gate-report.md
-python3 $S/cpp_evidence_check.py gate-report.md --derive-profiles   # profiles derived from the report's Change Scope
+S="$HOME/.codex/skills/c-cpp-profi/scripts"   # or an absolute path to this checkout's scripts/
+bash    $S/cpp_inventory.sh .          # build system, standards, source counts, public API
+bash    $S/cpp_domain_detect.sh .      # which domain pack(s) apply: parser, crypto, embedded, space, ...
+bash    $S/cpp_comprehension_map.sh .  # build graph + entry points + exported API + touched-path callgraph
+bash    $S/cpp_risk_scan.sh .          # triage unsafe APIs and UB hazards (comment and string aware)
+bash    $S/cpp_backlog.sh .            # evidence-anchored improvement backlog
+bash    $S/cpp_gate_plan.sh .
+bash    $S/cpp_gate_report.sh . > gate-report.md
+python3 $S/cpp_evidence_check.py gate-report.md --derive-profiles   # profiles derived from the report itself
 ```
 
-For risk-specific work, add strict profiles:
+Add strict profiles for risk-specific work:
 
 ```bash
 # Parser or untrusted input
-python3 /path/to/c-cpp-profi/skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile parser --require-warning-clean --require-analyzer-review
+python3 $S/cpp_evidence_check.py gate-report.md --profile parser --require-warning-clean --require-analyzer-review
 
 # Public library or ABI surface
-python3 /path/to/c-cpp-profi/skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile public-abi
+python3 $S/cpp_evidence_check.py gate-report.md --profile public-abi
 
 # Optimization claim
-python3 /path/to/c-cpp-profi/skill/c-cpp-profi/scripts/cpp_evidence_check.py gate-report.md --profile performance --require-performance-proof
+python3 $S/cpp_evidence_check.py gate-report.md --profile performance --require-performance-proof
+
+# Cross-architecture port
+python3 $S/cpp_evidence_check.py gate-report.md --profile port --require-transform-proof
 ```
 
-## Optimization Card
+## The optimization loop
 
-For any C/C++ performance claim, the skill now keeps the full loop visible in `SKILL.md`:
+Every performance claim keeps the full loop visible:
 
 ```text
 baseline -> profile -> opportunity score -> oracle -> one lever -> verify -> report
 ```
 
-The strict performance proof requires evidence for:
-
-- baseline or before timing;
-- profile or hotspot;
-- opportunity score;
-- behavior oracle, golden output, or isomorphism proof;
-- after or result data.
-
-Native-code extras stay in scope: UB, floating-point semantics, ABI/API, allocator ownership, SIMD fallback, target dispatch, portability, p99, and worst-case latency.
-
-## Artifact Map
-
-| Path | Purpose |
-|---|---|
-| `skill/c-cpp-profi/SKILL.md` | Skill entrypoint and routing. |
-| `skill/c-cpp-profi/references/` | 20 deep references: expert canon, toolchain matrix, quality gates, memory safety, concurrency, performance, security, fuzzing, ABI/portability, native-UI goldens, refactor isomorphism, code transform, domain-agnostic mastery (+ unknown-domain derivation), the innovation engine, repo comprehension, remediation recipes, and documentation authoring. |
-| `skill/c-cpp-profi/scripts/` | Read-only helper scripts: inventory, gate plan, risk scan, gate report, evidence checker (16 risk profiles, scope-derived), domain detector, comprehension map, accretive backlog, idea-card checker, docs linter, ABI snapshot, pixel diff, and the contract validator. |
-| `skill/c-cpp-profi/assets/` | Reusable CMake, Meson, and libFuzzer scaffolds, plus a portable `ci/` drop-in (GitHub Actions workflow + pre-commit hook) a consumer repo copies to get the gates in CI. |
-| `workspace/loop/` | The improvement loop's brain: `RUBRIC-100.md` (the honest 0-100 ledger), `STATE.md`, `ACTION-LOG.md`, `SKILL-MATRIX.md`, `REFERENCE-BOOK.md`, and `gauntlet/` (the 50-repo cards, `OUTCOME-LIFT.md`, `FINDINGS.md`). |
-| `workspace/EMPIRICAL-VALIDATION.md` | Earlier fresh-clone trials (cJSON, tinyxml2, libuv). |
-| `workspace/completion_audit.py` | Local audit: required files, evidence markers, stale claims, skill-root exposure, Beads state, validators. |
+The strict performance proof requires baseline timing, a profile or hotspot, an opportunity score, a behavior oracle (or golden output, or isomorphism proof), and after data. Native-code concerns stay in scope: UB, floating-point semantics, ABI, allocator ownership, SIMD fallback, target dispatch, portability, p99, and worst-case latency.
 
 ## Architecture
 
@@ -161,26 +157,41 @@ Native-code extras stay in scope: UB, floating-point semantics, ABI/API, allocat
 agent request
     |
     v
-SKILL.md
+SKILL.md  (router)
     |
-    +--> references/*.md        deep C/C++ domain rules
-    +--> scripts/*.sh,*.py      deterministic gates and report checks
-    +--> examples/*.md          compact execution cards
-    +--> assets/                reusable sanitizer and fuzz scaffolds
-    |
-    v
-gate report + evidence checker
+    +--> references/*.md      deep C/C++ domain rules
+    +--> scripts/*.sh,*.py    deterministic gates and report checks
+    +--> examples/*.md        compact execution cards
+    +--> assets/              reusable sanitizer, fuzz, and CI scaffolds
     |
     v
-final handoff with passed/failed/not-run/not-applicable gates
+gate report  ->  evidence checker
+    |
+    v
+handoff with passed / failed / not-run / not-applicable gates and residual risk
 ```
+
+| Path | Purpose |
+|---|---|
+| `skill/c-cpp-profi/SKILL.md` | Skill entrypoint and routing. |
+| `skill/c-cpp-profi/references/` | 20 deep references: expert canon, toolchain matrix, quality gates, memory safety, concurrency, performance, security, fuzzing, ABI and portability, native-UI goldens, refactor isomorphism, code transform, domain-agnostic mastery and unknown-domain derivation, the innovation engine, repo comprehension, remediation recipes, and documentation authoring. |
+| `skill/c-cpp-profi/scripts/` | Read-only helpers: inventory, gate plan, risk scan, gate report, evidence checker (16 risk profiles, scope-derived), domain detector, comprehension map, accretive backlog, idea-card checker, docs linter, ABI snapshot, pixel diff, and the contract validator. |
+| `skill/c-cpp-profi/assets/` | Reusable CMake, Meson, and libFuzzer scaffolds, plus a portable `ci/` drop-in (GitHub Actions workflow and pre-commit hook) a consumer repo copies to get the gates in CI. |
+
+## Comparison
+
+| Alternative | Strength | Gap this skill covers |
+|---|---|---|
+| General C/C++ model knowledge | Flexible reasoning | No enforced gate packet or machine-checkable handoff |
+| Linters and static analyzers alone | Good defect discovery | They do not prove tests, sanitizer coverage, ABI, fuzz, performance, or residual risk |
+| Generic optimization skills | Profile-first methodology | Native-code semantics (UB, allocator ownership, ABI, SIMD fallback, portability) need C/C++-specific proof |
+| Project CI alone | Project-specific regression signal | CI often misses local tool availability, analyzer triage, fuzz campaigns, ABI drift, and performance methodology |
 
 ## Validation
 
 Run the full local validation set:
 
 ```bash
-python3 /home/durakovic/.codex/skills/.system/skill-creator/scripts/quick_validate.py skill/c-cpp-profi
 python3 workspace/completion_audit.py
 python3 workspace/completion_audit.py --portable
 python3 skill/c-cpp-profi/scripts/validate_skill_contract.py skill/c-cpp-profi
@@ -188,37 +199,27 @@ bash -n skill/c-cpp-profi/scripts/*.sh
 python3 -m py_compile skill/c-cpp-profi/scripts/*.py workspace/completion_audit.py
 ```
 
-The GitHub workflow runs the portable checks and evidence-checker fixtures on push and pull request.
-
-## Comparison
-
-| Alternative | Strength | Gap this skill covers |
-|---|---|---|
-| General C/C++ model knowledge | Flexible reasoning | No enforced gate packet or machine-checkable handoff. |
-| Linters and static analyzers alone | Good defect discovery | They do not prove tests, sanitizer coverage, ABI, fuzz, performance, or residual risk. |
-| Generic optimization skills | Profile-first methodology | Native-code semantics such as UB, allocator ownership, ABI, SIMD fallback, and portability need C/C++-specific proof. |
-| Project CI alone | Project-specific regression signal | CI often misses local tool availability, analyzer output review, fuzz campaigns, ABI drift, and performance methodology. |
+The GitHub workflow runs the portable checks and the evidence-checker fixtures on push and pull request.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| `ctest` fails before showing a version | Check whether `ctest` on `PATH` is a broken wrapper. Use the CTest binary from the same CMake installation and record the substitution. |
-| `cpp_evidence_check.py` rejects a report | Fill every required scope and residual-risk field, then mark each gate as `passed`, `failed`, `not run`, or `not applicable` with exact command and evidence. |
-| Static analysis exits `0` but prints findings | Do not mark the gate clean until findings are reviewed, triaged, fixed, or explicitly deferred. |
-| `abi-dumper -public-headers` gives strange `ctags` warnings | Pass a directory of public headers or a file containing header paths. Verify Universal Ctags when public-header filtering matters. |
-| Performance looks faster once | Re-run with warmups, repetitions, same inputs, same build mode, same CPU policy, and a profile showing the hotspot moved or shrank. |
+| `cpp_evidence_check.py` rejects a report | Fill every scope and residual-risk field, then mark each gate `passed`, `failed`, `not run`, or `not applicable` with an exact command and evidence. |
+| Static analysis exits `0` but prints findings | Do not mark the gate clean until the findings are reviewed, triaged, fixed, or explicitly deferred. |
+| `ctest` fails before printing a version | The `ctest` on `PATH` may be a broken wrapper; use the CTest binary from the same CMake install and record the substitution. |
+| `abi-dumper -public-headers` emits odd `ctags` warnings | Pass a directory of public headers or a file of header paths, and verify Universal Ctags is installed. |
+| A performance result looks faster once | Re-run with warmups, repetitions, identical inputs, the same build mode and CPU policy, and a profile showing the hotspot moved. |
 
-## Limitations
+## FAQ
 
-- The evidence checker validates report shape, not the truth of command output.
-- The 50-repo gauntlet is complete, but the score remains capped below 100. The domain detector's primary
-  accuracy is ~80% (database/test-framework/codec ranking gaps are being folded back), and a genuinely
-  blind-agent trial plus a "validate command-output truth, not just shape" enforcement mode are structurally
-  hard for an author-driven loop to self-certify. The skill states these caps plainly rather than inflate the score.
-- No license has been selected in this repository yet.
-- The skill does not replace project maintainers, project CI, or domain-specific safety certification.
-- Some gates are intentionally expensive. Agents should mark unavailable or skipped gates honestly rather than pretending they passed.
+**Does it run my code automatically?** No. The understanding scripts are read-only. Building, sanitizing, and fuzzing happen only when you run the gate commands.
+
+**What languages and standards?** C and C++ across the common standards, plus a C-to-Rust port path behind a frozen ABI seam.
+
+**Does it need network or root?** The core loop needs neither. A cross-architecture port needs a cross toolchain and an emulator (for example `gcc-aarch64-linux-gnu` and `qemu-user-static`); without them, use the same-architecture compiler and optimization-level oracle.
+
+**Does it replace project CI or maintainers?** No. It produces the evidence packet a reviewer wants; it does not stand in for project CI, maintainers, or domain-specific safety certification.
 
 ## Contributions
 

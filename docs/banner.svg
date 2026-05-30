@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" width="900" height="260" font-family="'Segoe UI',system-ui,-apple-system,Helvetica,Arial,sans-serif" role="img" aria-label="c-cpp-profi — the plug-and-play C/C++ pro">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#13203b"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#14b8a6"/>
+    </linearGradient>
+    <linearGradient id="coral" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff8a73"/>
+      <stop offset="1" stop-color="#fb7185"/>
+    </linearGradient>
+    <linearGradient id="wordmark" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5eead4"/>
+      <stop offset="0.62" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#fb7185"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ground -->
+  <rect x="0" y="0" width="900" height="260" rx="22" fill="url(#bg)"/>
+  <!-- faint dot grid for a cool, technical texture -->
+  <g fill="#9fb3d1" opacity="0.07">
+    <circle cx="40" cy="40" r="2"/><circle cx="80" cy="40" r="2"/><circle cx="120" cy="40" r="2"/>
+    <circle cx="820" cy="220" r="2"/><circle cx="860" cy="220" r="2"/><circle cx="780" cy="220" r="2"/>
+    <circle cx="860" cy="40" r="2"/><circle cx="820" cy="40" r="2"/>
+    <circle cx="40" cy="220" r="2"/><circle cx="80" cy="220" r="2"/>
+  </g>
+
+  <!-- ===== mascot: a friendly systems-bot ===== -->
+  <g transform="translate(86,70)">
+    <!-- antenna -->
+    <line x1="60" y1="6" x2="60" y2="-16" stroke="#5eead4" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="60" cy="-22" r="8" fill="url(#coral)"/>
+    <!-- side bolts -->
+    <rect x="-8" y="44" width="12" height="26" rx="6" fill="#1f2d4d"/>
+    <rect x="116" y="44" width="12" height="26" rx="6" fill="#1f2d4d"/>
+    <!-- head -->
+    <rect x="4" y="6" width="112" height="104" rx="26" fill="#0f1b33" stroke="url(#teal)" stroke-width="5"/>
+    <!-- eyes: one teal, one coral — a little playful asymmetry -->
+    <circle cx="42" cy="52" r="13" fill="url(#teal)"/>
+    <circle cx="78" cy="52" r="13" fill="url(#coral)"/>
+    <circle cx="46" cy="48" r="4" fill="#0b1220"/>
+    <circle cx="82" cy="48" r="4" fill="#0b1220"/>
+    <!-- friendly smile -->
+    <path d="M40 82 Q60 98 80 82" fill="none" stroke="#5eead4" stroke-width="5" stroke-linecap="round"/>
+    <!-- it is holding a little wrench (the 'profi' tooling) -->
+    <g transform="translate(118,86) rotate(38)">
+      <rect x="0" y="0" width="34" height="9" rx="4.5" fill="#9fb3d1"/>
+      <circle cx="2" cy="4.5" r="9" fill="none" stroke="#9fb3d1" stroke-width="5"/>
+    </g>
+  </g>
+
+  <!-- ===== wordmark + tagline ===== -->
+  <text x="250" y="92" font-size="58" font-weight="800" fill="url(#wordmark)" letter-spacing="-1">c-cpp-profi</text>
+  <text x="252" y="126" font-size="20" font-weight="600" fill="#cdd9ee">the plug-and-play C / C++ pro — domain-agnostic, evidence-driven</text>
+
+  <!-- ===== capability chips ===== -->
+  <g font-size="16" font-weight="700">
+    <g transform="translate(252,150)">
+      <rect width="118" height="34" rx="17" fill="#0f1b33" stroke="url(#teal)" stroke-width="2"/>
+      <text x="59" y="22" text-anchor="middle" fill="#5eead4">understand</text>
+    </g>
+    <g transform="translate(380,150)">
+      <rect width="112" height="34" rx="17" fill="#0f1b33" stroke="url(#teal)" stroke-width="2"/>
+      <text x="56" y="22" text-anchor="middle" fill="#5eead4">transform</text>
+    </g>
+    <g transform="translate(502,150)">
+      <rect width="96" height="34" rx="17" fill="#0f1b33" stroke="url(#teal)" stroke-width="2"/>
+      <text x="48" y="22" text-anchor="middle" fill="#5eead4">improve</text>
+    </g>
+    <g transform="translate(608,150)">
+      <rect width="78" height="34" rx="17" fill="#0f1b33" stroke="url(#coral)" stroke-width="2"/>
+      <text x="39" y="22" text-anchor="middle" fill="#fda4af">ideate</text>
+    </g>
+    <g transform="translate(696,150)">
+      <rect width="84" height="34" rx="17" fill="#0f1b33" stroke="url(#coral)" stroke-width="2"/>
+      <text x="42" y="22" text-anchor="middle" fill="#fda4af">document</text>
+    </g>
+  </g>
+
+  <!-- ===== 'prove it' gate badge ===== -->
+  <g transform="translate(792,72)">
+    <circle cx="0" cy="0" r="34" fill="#0f1b33" stroke="url(#teal)" stroke-width="4"/>
+    <path d="M-15 2 L-4 14 L17 -12" fill="none" stroke="#5eead4" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="0" y="52" text-anchor="middle" font-size="13" font-weight="700" fill="#9fb3d1">prove it</text>
+  </g>
+
+  <!-- braces flourish -->
+  <text x="232" y="210" font-size="40" font-weight="800" fill="#1f2d4d">{</text>
+  <text x="664" y="210" font-size="40" font-weight="800" fill="#1f2d4d">}</text>
+  <text x="250" y="206" font-size="15" font-weight="600" fill="#7f93b3" font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace">gate the work · ship the evidence · no undefined behavior left behind</text>
+</svg>
