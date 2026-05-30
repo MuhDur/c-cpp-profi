@@ -21,7 +21,7 @@ The **effective type** of an object determines which lvalue types may legally ac
 - **Allocated storage duration**: from `malloc`/`calloc`/`realloc`/`aligned_alloc` until `free`/`realloc`. After `free`, the pointer value itself becomes **indeterminate** — even *reading or comparing* the freed pointer is UB (not just dereferencing it), per §6.2.4.
 
 ### Alignment
-Every type has an alignment requirement (a power of two). Accessing an object through a misaligned pointer is UB. `_Alignas` / `_Alignof` (C11; spelled `alignas`/`alignof` natively in C23, and via `<stdalign.h>` macros in C11/C17). `max_align_t` (in `<stddef.h>`) gives the strictest fundamental alignment; `malloc`-returned storage is suitably aligned for **any** object that fits. `aligned_alloc(alignment, size)` (C11) requires `size` be a multiple of `alignment`.
+Every type has an alignment requirement (a power of two). Accessing an object through a misaligned pointer is UB. `_Alignas` / `_Alignof` (C11; spelled `alignas`/`alignof` natively in C23, and via `<stdalign.h>` macros in C11/C17). `max_align_t` (in `<stddef.h>`) gives the strictest fundamental alignment; `malloc`-returned storage is suitably aligned for **any** object that fits. `aligned_alloc(alignment, size)` (C11): as **published**, C11 required `size` to be an integral multiple of `alignment` (otherwise UB), but **DR 460** (applied retroactively to C11/C17) relaxed this — an unsupported `alignment`/`size` is now a defined failure that returns `NULL`. In practice glibc does **not** enforce the size-multiple rule; portable code should still not rely on either behavior.
 
 ## Strict Aliasing Rule & Type Punning
 
