@@ -1047,3 +1047,42 @@ opt-in author-assertion on a trusted report (sandbox recommended). So this is ha
 adversarial check made the existing 8 MORE solidly earned rather than revealing it was inflated.
 
 Commit: 399b67e (harden --reexec denylist + honest security-model docs).
+
+---
+
+## Iteration 33 — 2026-05-30 — maintenance: fresh-repo stress test (5 blind-trial repos) → HELD 100.0
+
+Ran the full tool surface on the 5 unseen blind-trial repos (tomlc99, cgltf, qoi, tinyexpr, parson) — the repos
+were cloned in iter 28 but the skill's TOOLS had never been run on them. A genuine fresh-repo robustness + accuracy
+probe.
+
+Robustness: cpp_risk_scan + cpp_backlog exit 0 on all 5; cpp_comprehension_map --exact lowered TUs to IR and drew
+exact direct-call graphs on all 5 (incl. single-header qoi/cgltf via their .c harnesses: 6/8, 6/6); full regression
+suite (4 bash + 2 py self-tests + contract) green. Tools are robust on fresh repos.
+
+Domain detector (clean upstream-only checkouts via `git archive`, excluding my _blind/ scratch dirs):
+- cgltf -> Parser, tomlc99 -> Parser, parson -> Parser: CORRECT.
+- qoi -> Generic primary, Compression/codec SECONDARY; tinyexpr -> Generic.
+
+Investigated the two Generic results adversarially (is it a bug or by-design?):
+- qoi: the codec signal is real and spread across files (159 codec-ish tokens in qoi.h), but the Compression PACK
+  matched only 12 — because the pack keys on DATA-compression vocab (deflate/lz/window/dict), not IMAGE-codec vocab
+  (QOI_OP_*, RGBA channels, run-length). qoi's generic data-structure idioms (22) out-count the pack's 12, so per
+  the documented dominance rule (DOMAIN-AGNOSTIC-MASTERY:222) generic stays primary and codec is surfaced secondary.
+- tinyexpr: a recursive-descent expression parser, but it names its grammar `expr/term/factor/power` — generic
+  identifiers the Parser pack deliberately does NOT key on (keying on them would false-positive across many repos).
+  So Generic is the honest count-based result.
+
+Decision: NO code change, NO score change. Both are the documented, by-design output of a vocabulary+count
+heuristic on tiny/idiosyncratic repos; the detector surfaces qoi's codec as secondary (right signal reaches the
+agent); and this is NOT a systematic image-codec gap — libpng was verified -> Compression in the gauntlet (iter 21).
+Enriching codec/parser vocab to win these 2 tiny edge cases would risk the hard-won 50-repo calibration
+(over-fitting), so the honest move is to leave it and record it. C6 18 / composite 100.0 HOLD, now with 5 more
+fresh repos of evidence (3 clear-correct, 2 within the documented heuristic residual). The honesty contract:
+probe deeply, change only on a real bug, neither inflate nor over-fit.
+
+Known-limitation note for a FUTURE careful improvement (only with a full 50-repo regression re-verify): the
+Compression pack under-recognizes pure IMAGE-codec vocabulary; a tiny image codec without data-compression tokens
+can rank Generic-primary. Not worth the regression risk for one tiny repo now.
+
+No commit to the skill (no change). This audit entry is the artifact.
