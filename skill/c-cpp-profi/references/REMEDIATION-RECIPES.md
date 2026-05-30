@@ -207,6 +207,30 @@ Invariant restored: each allocation is freed exactly once (the owner clears the 
 Proving gate: Memory gate — ASan (double-free, heap-use-after-free); for TOCTOU, a security review note plus a stress/`rr record --chaos` repro of the race window. Validate `--profile memory` (and `--profile security` for the path/privilege boundary).
 Precedent: SQLite's fault-injection and corruption corpus exercise error-path cleanup; SECURITY-REVIEW.md lists path handling, temp files, and privileged helpers as high-risk surfaces.
 
+## Recipe 9 — Type-punning / strict-aliasing + over-read through a wider pointer cast
+
+Bug class: memory/UB — strict-aliasing violation AND out-of-bounds over-read when a pointer is cast to a **wider** type and dereferenced ([MEMORY-SAFETY.md](MEMORY-SAFETY.md); [SECURITY-REVIEW.md](SECURITY-REVIEW.md)). This is the real klib `knetfile.c:173` defect the gauntlet surfaced: `*((unsigned long*)hp->h_addr)` reads **8 bytes** (an `unsigned long` on LP64) through a pointer to a `struct in_addr` that is only **4 bytes** — both a strict-aliasing UB (reading an object through an incompatible lvalue type the compiler may assume cannot alias) and a 4-byte over-read past the object. `cpp_risk_scan.sh` flags this in its dedicated **aliasing / cast-width over-read hazard** lane (separate from the bulk pointer-retype cast lane).
+
+```c
+/* Before: 8-byte read of a 4-byte in_addr; strict-aliasing UB + over-read (klib knetfile.c:173). */
+server.sin_addr.s_addr = *((unsigned long*)hp->h_addr);
+/* Before (C++): the same hazard via reinterpret_cast to a wider type. */
+uint64_t v = *reinterpret_cast<uint64_t*>(p4);   /* p4 points at 4 bytes */
+```
+
+```c
+/* After: copy exactly the source width through unsigned char / memcpy — no aliasing, no over-read. */
+struct in_addr a;                       /* the real, correctly-sized destination type */
+memcpy(&a, hp->h_addr, sizeof a);       /* exactly 4 bytes; well-defined, no aliasing assumption */
+server.sin_addr = a;
+/* General rule: read through the OBJECT's type (or memcpy into a value of it), never a wider one.
+   memcpy through an unsigned char view is the standard, optimizer-recognized type-pun escape hatch. */
+```
+
+Invariant restored: a load reads exactly the bytes the source object owns, through a type compatible with that object (or via `memcpy`/`unsigned char`), so there is no strict-aliasing UB and no read past the object's storage. Width changes become explicit, sized copies.
+Proving gate: Memory/UB gate — ASan + UBSan (`-fsanitize=alignment` catches the misaligned wide load; ASan catches the over-read when the source is heap/stack-bounded), `-fstrict-aliasing -Wstrict-aliasing=2` clean, plus a regression test on the exact-width read. Validate `--profile memory`.
+Precedent: the Linux kernel and BearSSL/libsodium read multi-byte fields via `get_unaligned_*`/byte-wise loads rather than wide pointer casts; MEMORY-SAFETY.md lists type-punning through incompatible pointers as UB; this is the klib `knetfile.c:173` find recorded in the gauntlet FINDINGS.
+
 # Part B — Binary-Size Methodology
 
 ## Why size is a first-class budget

@@ -191,33 +191,133 @@ function strip(s,   out, i, c, nx, n) {
   return out
 }'
 
-# run_check PATTERN with whole-file comment/string filtering. Args: LABEL PATTERN [GLOB].
+# _match_rows PATTERN [GLOB] -> the comment/string-stripped "path:line:orig" rows
+# matching PATTERN, on stdout (no header, no "no matches" line). Shared matching
+# core used by run_check and the stratified cast scanner.
 # 1) rg -l finds candidate files (fast, on the shipped surface);
 # 2) the whole-file stripper rewrites each to "<cleaned>\t<path>:<line>:<orig>";
 # 3) rg re-applies PATTERN to the cleaned field; 4) cut recovers original rows.
 # File list is LC_ALL=C sorted so two runs byte-match (determinism). The optional
-# 3rd arg overrides the file-extension glob (default $SRC_GLOB) — used by the C++-
-# only new/delete category to restrict its surface to C++ TUs/headers (R1-mixed).
+# 2nd arg overrides the file-extension glob (default $SRC_GLOB).
+_match_rows() {
+  local pattern="$1"
+  local glob="${2:-$SRC_GLOB}"
+  local files
+  files="$(rg -l --glob "$glob" "${EXCLUDE_GLOBS[@]}" \
+            "$pattern" "${targets[@]}" 2>/dev/null | LC_ALL=C sort || true)"
+  [ -n "$files" ] || return 0
+  printf '%s\n' "$files" \
+    | awk 'NF' \
+    | tr '\n' '\0' \
+    | xargs -0 awk "$STRIP_COMMENTS_AWK" 2>/dev/null \
+    | rg -P "^[^\t]*(?:$pattern)" 2>/dev/null \
+    | cut -f2- || true
+}
+
+# run_check PATTERN with whole-file comment/string filtering. Args: LABEL PATTERN [GLOB].
+# The optional 3rd arg overrides the file-extension glob (default $SRC_GLOB) — used by
+# the C++-only new/delete category to restrict its surface to C++ TUs/headers (R1-mixed).
 run_check() {
   local label="$1"
   local pattern="$2"
   local glob="${3:-$SRC_GLOB}"
-  local files out
+  local out
   printf '\n[%s]\n' "$label"
-  files="$(rg -l --glob "$glob" "${EXCLUDE_GLOBS[@]}" \
-            "$pattern" "${targets[@]}" 2>/dev/null | LC_ALL=C sort || true)"
-  if [ -z "$files" ]; then
+  out="$(_match_rows "$pattern" "$glob")"
+  if [ -n "$out" ]; then
+    printf '%s\n' "$out"
+    status=1
+  else
+    printf 'no matches\n'
+  fi
+}
+
+# Wide integer/float types whose POINTER-CAST-AND-DEREF is a strict-aliasing + over-read
+# hazard when the source object is narrower (the klib knetfile.c:173 `*((unsigned
+# long*)hp->h_addr)` defect: an 8-byte read of a 4-byte in_addr on LP64). Used by the
+# dedicated aliasing lane. Kept conservative — wide scalar load types only, so the lane
+# stays a small, high-severity set and does not become the bulk pointer-retype noise.
+ALIAS_WIDE_TYPES='unsigned long long|unsigned long|uint64_t|uint_least64_t|uint_fast64_t|long long|int64_t|double|long double|size_t|ssize_t|intmax_t|uintmax_t|uintptr_t|intptr_t|ptrdiff_t'
+
+# Integer/scalar destination types for the cast lane's HIGH-severity width/sign-change
+# tier: a C-style cast to one of these (followed by an operand) is a narrowing, a
+# sign change, or a pointer-to-integer conversion — the bug-bearing cast shapes, as
+# opposed to a plain `(T*)` pointer-retype (the summarized lower tier).
+CAST_NARROW_TYPES='char|signed char|unsigned char|short|unsigned short|int|unsigned int|unsigned|long|unsigned long|long long|unsigned long long|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|size_t|ssize_t|intptr_t|uintptr_t|ptrdiff_t|float|double'
+
+# Aliasing / cast-width over-read lane (PRIORITY 1). Flags a DEREFERENCED read through
+# a pointer cast to a WIDER scalar type than the source likely is — the strict-aliasing
+# + over-read hazard the bulk cast lane buries among benign pointer-retypes. Two shapes:
+#   *( WIDE * ) expr            — C-style, incl. an extra grouping paren `*((WIDE*)x)`
+#   *reinterpret_cast<WIDE*>(x) — C++
+# This is a SEPARATE, higher-severity lane (cross-link REMEDIATION-RECIPES.md Recipe 9),
+# NOT folded into the cast-volume tiers. A benign `(char*)malloc` (no deref, narrow type)
+# never appears here. Sets `status` like the other lanes.
+run_alias_scan() {
+  local pattern out n
+  # The deref `*` may be followed by optional grouping parens before the cast `(`.
+  pattern="\\*\\s*\\(*\\s*\\(\\s*(${ALIAS_WIDE_TYPES})\\s*\\*\\s*\\)|\\*\\s*reinterpret_cast\\s*<\\s*(${ALIAS_WIDE_TYPES})\\s*\\*\\s*>"
+  printf '\n[aliasing / cast-width over-read hazard (HIGH; see REMEDIATION-RECIPES.md Recipe 9)]\n'
+  out="$(_match_rows "$pattern")"
+  if [ -z "$out" ]; then
     printf 'no matches\n'
     return 0
   fi
-  out="$(printf '%s\n' "$files" \
-        | awk 'NF' \
-        | tr '\n' '\0' \
-        | xargs -0 awk "$STRIP_COMMENTS_AWK" 2>/dev/null \
-        | rg -P "^[^\t]*(?:$pattern)" 2>/dev/null \
-        | cut -f2- || true)"
-  if [ -n "$out" ]; then
-    printf '%s\n' "$out"
+  n="$(printf '%s\n' "$out" | awk 'END { print NR }')"
+  printf 'a dereferenced read through a pointer cast to a WIDER type (strict-aliasing +\n'
+  printf 'over-read; read through the object'"'"'s own type or memcpy the exact width instead):\n'
+  printf '%s\n' "$out"
+  printf '(%s site(s); triage each: is the source object actually this wide? if not it is UB + an over-read.)\n' "$n"
+  status=1
+}
+
+# Stratified C-style / C++ cast lane (PRIORITY 2). The old single lane emitted every
+# cast flat (nginx 1326, duktape 2066) with no ranking. This splits it into:
+#   TIER 1 (HIGH): narrowing / width-or-sign change / pointer<->integer / reinterpret_/
+#                  const_cast / static_cast<...*> — the casts that actually carry bugs.
+#                  Printed in full, anchored.
+#   TIER 2 (bulk): plain `(T*)operand` pointer-RETYPE — the high-volume, low-signal
+#                  remainder. SUMMARIZED: a total count + a small deterministic sample,
+#                  not all N lines. So nginx's cast output becomes a ranked, actionable
+#                  list instead of 1326 flat lines.
+# The aliasing lane (run_alias_scan) already carried off the wide-deref hazard, so it is
+# excluded from both tiers here to avoid double-reporting.
+run_cast_scan() {
+  local high bulk high_n bulk_n
+  # TIER 1 patterns: C++ reinterpret_/const_cast and static_cast to a pointer; AND a
+  # C-style cast to a scalar integer/float type (CAST_NARROW_TYPES) followed by an
+  # operand (identifier / `(` / `&` / digit) — a width/sign/pointer-to-int conversion.
+  high="$(_match_rows '\b(reinterpret_cast|const_cast|static_cast<.*\*>)|\(\s*('"$CAST_NARROW_TYPES"')\s*\)\s*[A-Za-z_(&0-9]')"
+  # TIER 2 patterns: a `(T *)` POINTER cast (type ends in `*`) followed by an operand —
+  # the bulk pointer-retype. Exclude the TIER-1 shapes (handled above) by dropping rows
+  # that ALSO match a reinterpret_/const_/static_cast token (a `(T*)` next to a C++ cast).
+  bulk="$(_match_rows '\([A-Za-z_][A-Za-z0-9_:<>[:space:]]*\*\)\s*[A-Za-z_0-9(&]' \
+          | rg -vP '\b(reinterpret_cast|const_cast|static_cast)\b' 2>/dev/null || true)"
+
+  printf '\n[casts requiring review — TIER 1 HIGH: narrowing / width-or-sign change / pointer<->int / reinterpret_/const_/static_cast]\n'
+  if [ -n "$high" ]; then
+    high_n="$(printf '%s\n' "$high" | awk 'END { print NR }')"
+    # Print the high-severity tier in full when it is small enough to act on; on a big
+    # repo (nginx ~865 width/sign casts) cap the listing at 50 and state the total, so
+    # this tier stays a ranked, actionable head rather than another flat 865-line dump.
+    if [ "$high_n" -le 50 ]; then
+      printf '%s\n' "$high"
+    else
+      printf '%s\n' "$high" | awk 'NR<=50'
+      printf '... (%s total high-severity cast site(s); first 50 shown — review each for truncation / sign flip / pointer<->int.)\n' "$high_n"
+    fi
+    [ "$high_n" -le 50 ] && printf '(%s high-severity cast site(s) — review each for truncation / sign flip / type pun.)\n' "$high_n"
+    status=1
+  else
+    printf 'no matches\n'
+  fi
+
+  printf '\n[casts requiring review — TIER 2 (summarized): plain (T*) pointer-retype]\n'
+  if [ -n "$bulk" ]; then
+    bulk_n="$(printf '%s\n' "$bulk" | awk 'END { print NR }')"
+    printf '%s pointer-retype cast site(s) (lower signal; sample of up to 20 below — full\n' "$bulk_n"
+    printf 'list intentionally summarized so the high-severity tier above stays actionable):\n'
+    printf '%s\n' "$bulk" | awk 'NR<=20'
     status=1
   else
     printf 'no matches\n'
@@ -273,7 +373,15 @@ run_scan() {
   # deref; a real cast-then-deref `*(int *)p` still flags via the trailing `p`. (No
   # lookbehind: the operand requirement alone subsumes the sizeof exclusion, keeping
   # the file-list and re-match passes on one PCRE- and default-engine-valid pattern.)
-  run_check 'casts requiring review' '\b(reinterpret_cast|const_cast|static_cast<.*\*>)|\([A-Za-z_][A-Za-z0-9_:<>[:space:]]*\*\)\s*[A-Za-z_0-9(&]'
+  # PRIORITY 1: the aliasing / cast-width over-read hazard lane (a deref-read through a
+  # WIDER pointer type — the klib knetfile.c:173 strict-aliasing + over-read defect).
+  # Runs BEFORE the cast tiers so the highest-severity finding leads.
+  run_alias_scan
+  # PRIORITY 2: the cast lane, stratified — TIER 1 (narrowing/width-change/pointer<->int/
+  # reinterpret_/const_/static_cast) in full, TIER 2 (plain `(T*)` pointer-retype)
+  # summarized as a count + sample, so a big repo's casts become a ranked, actionable
+  # list instead of a flat dump (nginx 1326 / duktape 2066).
+  run_cast_scan
   run_check 'unchecked memory movement' '\b(memcpy|memmove|memset|memcmp)\s*\('
   run_check 'process or shell execution' '\b(system|popen|execl|execlp|execle|execv|execvp|execvpe|CreateProcess)\s*\('
   run_check 'assert-only validation' '\bassert\s*\('
@@ -469,15 +577,48 @@ static inline int bnew(struct buf *b) {
 }
 SRC
 
+  # --- Fixture 7 (P1 aliasing + P2 cast stratification): a pure-C TU carrying the REAL
+  # klib knetfile.c:173 over-read shape (`*((unsigned long*)x)`), a C++ `reinterpret_cast`
+  # wide deref, a benign `(char*)malloc` (must NOT be in the aliasing lane), a narrow
+  # `*(uint8_t*)` deref (NOT wide → NOT aliasing), a HIGH-severity width/sign cast
+  # (`(size_t)`/`(uintptr_t)`), and several plain `(T*)` pointer-retypes (TIER 2). ----
+  mkdir -p "$tmp/alias"
+  cat >"$tmp/alias/alias.c" <<'SRC'
+#include <stdlib.h>
+#include <stdint.h>
+unsigned long over_read(struct hostent *hp) {
+    /* the klib knetfile.c:173 defect: 8-byte read of a 4-byte in_addr (LP64) */
+    return *((unsigned long*)hp->h_addr);
+}
+size_t wide2(void *p) { return *(size_t *) p; }   /* wide deref via size_t* */
+void narrow(void *p) { uint8_t b = *(uint8_t *) p; (void)b; }  /* NARROW — not aliasing */
+void *benign(void) { return (char *)malloc(16); }              /* pointer-retype, TIER 2 */
+void retypes(void *raw, int *ip) {
+    char *a = (char *) raw;          /* pointer-retype, TIER 2 */
+    void *b = (void *) ip;           /* pointer-retype, TIER 2 */
+    size_t n = (size_t) raw;         /* HIGH: pointer-to-integer width change, TIER 1 */
+    uintptr_t u = (uintptr_t) ip;    /* HIGH: pointer-to-integer, TIER 1 */
+    (void)a; (void)b; (void)n; (void)u;
+}
+SRC
+  cat >"$tmp/alias/alias.cc" <<'SRC'
+#include <cstdint>
+uint64_t cpp_over_read(unsigned char *p4) {
+    /* C++ wide-pointer reinterpret_cast deref — the aliasing hazard in C++ form */
+    return *reinterpret_cast<uint64_t*>(p4);
+}
+SRC
+
   # Run with RELATIVE targets (cd into the fixture root) so the report carries no
   # absolute path — risk-scan echoes the path it is handed verbatim by design.
-  local purec_out cpp_out casts_out excl_out mixed_out exit_ok
+  local purec_out cpp_out casts_out excl_out mixed_out alias_out exit_ok
   cd "$tmp" || { printf 'cpp_risk_scan self-test: FAIL (cd to tmp)\n'; exit 1; }
   targets=("purec"); purec_out="$(run_scan)"; exit_ok=$?
   targets=("cpp");   cpp_out="$(run_scan)"
   targets=("casts"); casts_out="$(run_scan)"
   targets=("excl");  excl_out="$(run_scan)"
   targets=("mixed"); mixed_out="$(run_scan)"
+  targets=("alias"); alias_out="$(run_scan)"
 
   # R1: pure-C repo with CXX_STANDARD + test-only .cpp must report C++ signal: no
   if ! printf '%s\n' "$purec_out" | grep -qF 'C++ signal: no'; then
@@ -544,6 +685,67 @@ SRC
   fi
 
   # -------------------------------------------------------------------------
+  # P1 (aliasing / cast-width over-read lane): a deref-read through a WIDER pointer
+  # type is flagged in its OWN high-severity lane (the klib knetfile.c:173 defect);
+  # narrow derefs and benign `(char*)malloc` are NOT in that lane.
+  # -------------------------------------------------------------------------
+  # P1.0: the dedicated aliasing lane header is present.
+  if ! printf '%s\n' "$alias_out" | grep -qF 'aliasing / cast-width over-read hazard'; then
+    printf 'cpp_risk_scan self-test: FAIL (P1: aliasing lane header missing)\n'
+    printf '%s\n%s\n' '--- alias ---' "$alias_out"; exit 1
+  fi
+  # P1.1: extract ONLY the aliasing-lane body (header → its closing "site(s); triage"
+  # summary) so the following assertions check membership in THAT lane specifically.
+  local alias_body
+  alias_body="$(printf '%s\n' "$alias_out" | awk '/aliasing \/ cast-width over-read hazard/{f=1} f{print} /site\(s\); triage/{f=0}')"
+  # P1.2: the klib-shape over-read `*((unsigned long*)hp->h_addr)` IS in the aliasing lane.
+  if ! printf '%s\n' "$alias_body" | grep -qE 'alias\.c:[0-9]+:.*\*\(\(unsigned long\*\)hp->h_addr\)'; then
+    printf 'cpp_risk_scan self-test: FAIL (P1: klib-shape *(unsigned long*) over-read not flagged in aliasing lane)\n'
+    printf '%s\n%s\n' '--- alias_body ---' "$alias_body"; exit 1
+  fi
+  # P1.3: the C++ `*reinterpret_cast<uint64_t*>` wide deref IS in the aliasing lane.
+  if ! printf '%s\n' "$alias_body" | grep -qE 'alias\.cc:[0-9]+:.*reinterpret_cast<uint64_t\*>'; then
+    printf 'cpp_risk_scan self-test: FAIL (P1: C++ reinterpret_cast<uint64_t*> wide deref not flagged in aliasing lane)\n'
+    printf '%s\n%s\n' '--- alias_body ---' "$alias_body"; exit 1
+  fi
+  # P1.4: a benign `(char*)malloc` (no deref, narrow type) is NOT in the aliasing lane.
+  if printf '%s\n' "$alias_body" | grep -qE 'malloc'; then
+    printf 'cpp_risk_scan self-test: FAIL (P1: benign (char*)malloc leaked into the aliasing lane)\n'
+    printf '%s\n%s\n' '--- alias_body ---' "$alias_body"; exit 1
+  fi
+  # P1.5: a NARROW `*(uint8_t*)` deref is NOT in the aliasing lane (not a wider read).
+  if printf '%s\n' "$alias_body" | grep -qE '\*\(uint8_t \*\)'; then
+    printf 'cpp_risk_scan self-test: FAIL (P1: a narrow *(uint8_t*) deref leaked into the aliasing lane)\n'
+    printf '%s\n%s\n' '--- alias_body ---' "$alias_body"; exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # P2 (cast-volume stratification): the cast lane is split into a HIGH-severity
+  # tier (narrowing/width-change/pointer<->int) and a SUMMARIZED pointer-retype tier.
+  # -------------------------------------------------------------------------
+  # P2.0: both tier headers are present.
+  if ! printf '%s\n' "$alias_out" | grep -qF 'TIER 1 HIGH'; then
+    printf 'cpp_risk_scan self-test: FAIL (P2: cast TIER 1 header missing)\n'
+    printf '%s\n%s\n' '--- alias ---' "$alias_out"; exit 1
+  fi
+  if ! printf '%s\n' "$alias_out" | grep -qF 'TIER 2 (summarized): plain (T*) pointer-retype'; then
+    printf 'cpp_risk_scan self-test: FAIL (P2: cast TIER 2 summary header missing)\n'
+    printf '%s\n%s\n' '--- alias ---' "$alias_out"; exit 1
+  fi
+  # P2.1: a pointer-to-integer width cast `(size_t) raw`/`(uintptr_t) ip` lands in TIER 1.
+  local tier1_body
+  tier1_body="$(printf '%s\n' "$alias_out" | awk '/TIER 1 HIGH/{f=1} /TIER 2 \(summarized\)/{f=0} f{print}')"
+  if ! printf '%s\n' "$tier1_body" | grep -qE 'alias\.c:[0-9]+:.*\((size_t|uintptr_t)\)'; then
+    printf 'cpp_risk_scan self-test: FAIL (P2: a pointer-to-integer width cast did not land in TIER 1)\n'
+    printf '%s\n%s\n' '--- tier1 ---' "$tier1_body"; exit 1
+  fi
+  # P2.2: the TIER 2 summary states a pointer-retype count (the `(char*)`/`(void*)` casts).
+  if ! printf '%s\n' "$alias_out" | grep -qE '[0-9]+ pointer-retype cast site'; then
+    printf 'cpp_risk_scan self-test: FAIL (P2: TIER 2 did not summarize a pointer-retype count)\n'
+    printf '%s\n%s\n' '--- alias ---' "$alias_out"; exit 1
+  fi
+
+  # -------------------------------------------------------------------------
   # R3+ exclusions: ut-coverage/ut-stubs/CamelCase-Test/test_inc.h/single_include/
   # win32-include all dropped; the real fsw/ hit in the same repo SURVIVES.
   # -------------------------------------------------------------------------
@@ -589,7 +791,7 @@ SRC
   fi
 
   # No absolute path may leak.
-  if printf '%s\n' "$purec_out" "$cpp_out" "$casts_out" "$excl_out" "$mixed_out" | grep -qF "$tmp"; then
+  if printf '%s\n' "$purec_out" "$cpp_out" "$casts_out" "$excl_out" "$mixed_out" "$alias_out" | grep -qF "$tmp"; then
     printf 'cpp_risk_scan self-test: FAIL (absolute path leaked into output)\n'; exit 1
   fi
   # F4 holds: exit 0 on a successful run.
@@ -602,6 +804,13 @@ SRC
   if [ "$cpp_out" != "$cpp_out2" ]; then
     printf 'cpp_risk_scan self-test: FAIL (two runs did not byte-match)\n'
     diff <(printf '%s\n' "$cpp_out") <(printf '%s\n' "$cpp_out2") || true; exit 1
+  fi
+  # Reproducibility of the new aliasing + stratified-cast lanes (P1/P2).
+  local alias_out2
+  targets=("alias"); alias_out2="$(run_scan)"
+  if [ "$alias_out" != "$alias_out2" ]; then
+    printf 'cpp_risk_scan self-test: FAIL (aliasing/cast-tier output not reproducible)\n'
+    diff <(printf '%s\n' "$alias_out") <(printf '%s\n' "$alias_out2") || true; exit 1
   fi
 
   printf 'cpp_risk_scan self-test: PASS\n'

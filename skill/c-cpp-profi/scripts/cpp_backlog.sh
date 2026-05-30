@@ -495,6 +495,23 @@ EOF
 emit_test_fuzz() {
   local repo="$1"
   local has_fuzz fuzz_refs fuzz_files hits
+  # (a, R6) OSS-Fuzz / CIFuzz / ClusterFuzzLite INTEGRATION. A project wired into
+  # continuous fuzzing — a `.github/workflows/cifuzz.yml`, a `.clusterfuzzlite/` dir,
+  # or a workflow that references the `google/oss-fuzz`/`google/clusterfuzzlite` action
+  # or an `oss-fuzz-project-name:` key — ships fuzzing as infrastructure, not as a few
+  # in-tree harnesses we can resolve file-by-file. For these the lane must NOT emit
+  # "no fuzz harness" per entry point (nlohmann_json had 39, all false: it runs CIFuzz
+  # on every PR). We detect the integration and SUPPRESS per-entry flagging, emitting a
+  # single informational row instead. --hidden so a dot-prefixed CI layout is seen.
+  local fuzz_integration=no
+  if [ -f "$repo/.github/workflows/cifuzz.yml" ] \
+     || [ -d "$repo/.clusterfuzzlite" ] \
+     || [ -n "$(rg -l --hidden --no-messages \
+                  -e 'oss-fuzz-project-name' -e 'google/oss-fuzz' -e 'google/clusterfuzzlite' \
+                  "$repo/.github" 2>/dev/null || true)" ]; then
+    fuzz_integration=yes
+  fi
+
   # Does any fuzz harness exist at all?  A fuzz*/ dir, any *fuzz* source file, or
   # any LLVMFuzzerTestOneInput definition counts (F3b). --hidden so a dot-prefixed
   # OSS-Fuzz layout is still seen.
@@ -514,6 +531,14 @@ emit_test_fuzz() {
   fuzz_refs="$(printf '%s\n' "$refs_abs" | strip_repo_prefix "$repo" | awk 'NF')"
   if [ -n "$fuzz_files" ] || [ -n "$fuzz_refs" ]; then
     has_fuzz=yes
+  fi
+
+  # (a) When the project integrates continuous fuzzing, do NOT walk per-entry: emit
+  # one informational row and return (so the backlog records the fact without 39-402
+  # false "uncovered" rows). This is the single most impactful R6 false-positive fix.
+  if [ "$fuzz_integration" = yes ]; then
+    printf 'test-fuzz-coverage\tproject integrates continuous fuzzing (OSS-Fuzz/CIFuzz); per-entry coverage not flagged\t.github/workflows\n'
+    return 0
   fi
   # Repo-relative harness file list (so we never flag a harness as uncovered).
   local harness_index
@@ -548,6 +573,58 @@ $sig_hits"
       hits="$sig_hits"
     fi
   fi
+
+  # (c, R6) Keep only PUBLIC ENTRY-POINT DEFINITIONS. The raw regex matched any line
+  # containing a `*parse*(`/`*decode*(` token — including (1) internal-linkage
+  # definitions (`static`, `DUK_LOCAL`, `DUK_INTERNAL`, a private `duk__`/`_`-prefixed
+  # name), (2) prototypes/declarations and call statements (line ends with `;`), and
+  # (3) call-sites inside an expression (`x = foo_decode(...)`, `if (json_parse(...))`).
+  # None of those is a fuzzable PUBLIC entry point. The bulk of duktape's 402 false
+  # rows were exactly these (86 DUK_LOCAL + 41 DUK_INTERNAL + ~253 call/proto lines).
+  # This awk keeps a row only when the matched name is a function DEFINITION: external
+  # linkage, not a private prefix, not a `;`-terminated decl/call, not a control opener,
+  # not preceded by an operator/`.`/`->`/`(` (a call), and the line opens a body (`{`),
+  # continues a signature (`,`), or ends the parameter list (`)`) — the definition shapes.
+  hits="$(printf '%s\n' "$hits" | awk -F: '
+    # The entry-token regex: a function-CALL identifier whose name contains parse/decode
+    # (as a prefix, middle, or suffix: parse_packet, json_parse, duk_json_decode), OR the
+    # canonical fuzz-entry signature (a const byte-buffer + size_t). Both are entry shapes.
+    function has_token(c) {
+      return (c ~ /(^|[^A-Za-z0-9_])[A-Za-z0-9_]*(parse|decode|Parse|Decode)[A-Za-z0-9_]*[ \t]*\(/) \
+          || (c ~ /const[ \t]+(uint8_t|unsigned char)[ \t]*\*[A-Za-z0-9_ ]*,[ \t]*(size_t|std::size_t)/)
+    }
+    NF >= 2 {
+      path=$1; lineno=$2;
+      code=$0; sub(/^[^:]*:[^:]*:/, "", code); sub(/^[ \t]+/, "", code)
+      if (!has_token(code)) next
+      # Internal linkage / forward declaration macros are not public fuzz entry points.
+      if (code ~ /^static[ \t]/) next
+      if (code ~ /(^|[^A-Za-z0-9_])DUK_LOCAL([^A-Za-z0-9_]|$)/) next
+      # DUK_INTERNAL and DUK_INTERNAL_DECL (and any *_DECL prototype macro) are internal/
+      # forward declarations, not public definitions.
+      if (code ~ /(^|[^A-Za-z0-9_])DUK_INTERNAL/) next
+      if (code ~ /(^|[^A-Za-z0-9_])[A-Z][A-Z0-9_]*_DECL[ \t]/) next
+      # private-prefixed entry name (duk__foo / _foo / __foo) => internal, skip
+      if (code ~ /(^|[^A-Za-z0-9_])(duk__|__|_)[A-Za-z0-9_]*(parse|decode|Parse|Decode)[A-Za-z0-9_]*[ \t]*\(/) next
+      # prototype/declaration or statement/call (ends with ;) => not a definition
+      if (code ~ /;[ \t]*$/) next
+      # control-keyword opener => not a definition
+      if (code ~ /^(if|for|while|switch|return|else|do)([ \t]|\()/) next
+      # call/expression context: if a parse/decode-token call appears, inspect the char
+      # immediately before it — a definition has a TYPE/qualifier word char (or `*`)
+      # before the name; a call/expression has an operator/punctuator or `->`.
+      m = match(code, /[A-Za-z_][A-Za-z0-9_]*(parse|decode|Parse|Decode)[A-Za-z0-9_]*[ \t]*\(/)
+      if (m > 1) {
+        before = substr(code, 1, m - 1)
+        sub(/[ \t]+$/, "", before)
+        last = substr(before, length(before), 1)
+        if (last != "" && last !~ /[A-Za-z0-9_*]/) next
+        if (before ~ /->$/) next
+      }
+      # a definition line opens a body, continues a signature, or ends the param list
+      if (code !~ /[{,][ \t]*$/ && code !~ /\)[ \t]*$/) next
+      print path ":" lineno ":" code
+    }')"
 
   [ -n "$hits" ] || return 0
 
@@ -1048,6 +1125,99 @@ SRC
   if ! printf '%s\n' "$out_exclbl" | grep -qE 'src/core\.c:[0-9]+'; then
     printf 'cpp_backlog self-test: FAIL (R10 over-correction: real shipped src/core.c hit dropped)\n'
     printf '%s\n%s\n' '--- backlog ---' "$out_exclbl"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # R6.a (OSS-Fuzz/CIFuzz integration): a project wired into continuous fuzzing
+  # (a `.github/workflows/cifuzz.yml`) must NOT get per-entry "no fuzz harness"
+  # rows — it emits ONE informational row instead (nlohmann_json had 39 false).
+  # -------------------------------------------------------------------------
+  local cifztmp
+  cifztmp="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp' '$cpptmp' '$mixedtmp' '$exclbltmp' '$cifztmp'" EXIT
+  mkdir -p "$cifztmp/src" "$cifztmp/.github/workflows"
+  cat >"$cifztmp/.github/workflows/cifuzz.yml" <<'YML'
+name: CIFuzz
+on: [pull_request]
+jobs:
+  Fuzzing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
+YML
+  cat >"$cifztmp/src/api.c" <<'SRC'
+#include <stddef.h>
+int json_parse(const unsigned char *buf, size_t len) { return (int)(buf[0] + len); }
+int cbor_decode(const unsigned char *buf, size_t len) { return (int)(buf[0] + len); }
+SRC
+  local out_cifz
+  out_cifz="$(run_backlog "$cifztmp" no)"
+  # R6.a.1: NO per-entry "no fuzz harness" row on a CIFuzz-integrated project.
+  if printf '%s\n' "$out_cifz" | grep -qE 'test-fuzz-coverage \| parser/decoder entry point with no fuzz harness'; then
+    printf 'cpp_backlog self-test: FAIL (R6.a: per-entry no-fuzz row emitted on a CIFuzz-integrated project)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_cifz"
+    exit 1
+  fi
+  # R6.a.2: the single informational integration row IS present.
+  if ! printf '%s\n' "$out_cifz" | grep -qF 'project integrates continuous fuzzing'; then
+    printf 'cpp_backlog self-test: FAIL (R6.a: CIFuzz integration note missing)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_cifz"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # R6.c (entry-point precision): on a repo with NO fuzzing integration, the lane
+  # flags only PUBLIC ENTRY-POINT DEFINITIONS — not internal `static`/`DUK_LOCAL`
+  # functions, not prototypes/declarations (`;`), and not call-sites in expressions.
+  # -------------------------------------------------------------------------
+  local r6tmp
+  r6tmp="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp' '$cpptmp' '$mixedtmp' '$exclbltmp' '$cifztmp' '$r6tmp'" EXIT
+  mkdir -p "$r6tmp/src"
+  cat >"$r6tmp/src/codec.c" <<'SRC'
+#include <stddef.h>
+/* PUBLIC definition — MUST be flagged (no harness). */
+int json_decode(const unsigned char *buf, size_t len) {
+    return helper_decode(buf, len);
+}
+/* internal-linkage helper — must NOT be flagged */
+static int internal_parse(const unsigned char *b, size_t n) { return (int)(b[0] + n); }
+DUK_LOCAL int duk__base64_decode_helper(const unsigned char *b, size_t n) { return (int)(b[0] + n); }
+/* prototype/declaration — must NOT be flagged */
+int base64_decode(const unsigned char *buf, size_t len);
+int run(const unsigned char *p, size_t n) {
+    if (json_decode(p, n)) return 1;
+    int r = cbor_decode(p, n);
+    return r;
+}
+SRC
+  local out_r6
+  out_r6="$(run_backlog "$r6tmp" no)"
+  # R6.c.1: the PUBLIC json_decode DEFINITION (codec.c:3) IS flagged.
+  if ! printf '%s\n' "$out_r6" | grep -qE 'test-fuzz-coverage \| parser/decoder.*\| src/codec\.c:3$'; then
+    printf 'cpp_backlog self-test: FAIL (R6.c: the public json_decode definition was not flagged)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_r6"
+    exit 1
+  fi
+  # R6.c.2: the internal `static`/`DUK_LOCAL` helpers (codec.c:7/8) are NOT flagged.
+  if printf '%s\n' "$out_r6" | grep -qE 'test-fuzz-coverage \| parser/decoder.*\| src/codec\.c:(7|8)$'; then
+    printf 'cpp_backlog self-test: FAIL (R6.c: an internal static/DUK_LOCAL helper was flagged as an entry point)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_r6"
+    exit 1
+  fi
+  # R6.c.3: the prototype/declaration (codec.c:10, ends with ;) is NOT flagged.
+  if printf '%s\n' "$out_r6" | grep -qE 'test-fuzz-coverage \| parser/decoder.*\| src/codec\.c:10$'; then
+    printf 'cpp_backlog self-test: FAIL (R6.c: a prototype/declaration was flagged as an entry point)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_r6"
+    exit 1
+  fi
+  # R6.c.4: the call-sites (codec.c:4/12/13) are NOT flagged.
+  if printf '%s\n' "$out_r6" | grep -qE 'test-fuzz-coverage \| parser/decoder.*\| src/codec\.c:(4|12|13)$'; then
+    printf 'cpp_backlog self-test: FAIL (R6.c: a call-site was flagged as an entry-point definition)\n'
+    printf '%s\n%s\n' '--- backlog ---' "$out_r6"
     exit 1
   fi
 

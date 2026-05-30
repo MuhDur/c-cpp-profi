@@ -651,6 +651,34 @@ emit_exported_api() {
           # suffix, and must be followed by a TYPE token (letter), NOT by `(` (that
           # is the macro-WRAPPED case below) — so a `MACRO(args)` call is not eaten.
           had_export = 0
+          # P5 (libpng PNG_EXPORT idiom): `PNG_EXPORT(type, name, (args))` /
+          # `PNG_EXPORTA(...)` / `PNG_FP_EXPORT(...)` / `PNG_FIXED_EXPORT(...)` (and any
+          # `<UPPER>_EXPORT[A](...)` macro of the same shape) carry the function NAME as
+          # the SECOND comma-separated macro argument, NOT as a normal `<ret> <name>(`
+          # decl — so the generic extractor saw nothing (libpng exported ZERO symbols).
+          # Detect the macro, split its argument list on top-level commas, and take arg
+          # #2 as the name. Emit it directly (it is, by construction, a public export)
+          # and skip the rest of the generic logic for this statement. The arg-2 result
+          # must be a plain identifier (not ALL-CAPS) for the row to be emitted, so a
+          # macro of a different shape cannot inject a garbage symbol.
+          if (match(c, /^[A-Z][A-Z0-9_]*_EXPORT[A]?[ \t]*\(/)) {
+            ap = index(c, "(")
+            d = 0; m = length(c); argstr = ""
+            argn = 1; arg2 = ""
+            for (j = ap; j <= m; j++) {
+              ch = substr(c, j, 1)
+              if (ch == "(") { d++; if (d == 1) continue }
+              if (ch == ")") { d--; if (d == 0) break }
+              if (ch == "," && d == 1) { argn++; continue }
+              if (argn == 2) arg2 = arg2 ch
+            }
+            gsub(/[ \t]/, "", arg2)
+            if (arg2 ~ /^[A-Za-z_][A-Za-z0-9_]*$/ && arg2 !~ /^[A-Z0-9_]+$/) {
+              rank = 0   # a PNG_EXPORT-declared symbol is public by construction
+              printf "%d\t%s\t%d\t%s\n", rank, FILENAME, declline, arg2
+            }
+            next
+          }
           if (match(c, /^[A-Z][A-Za-z0-9_]*[ \t]+[A-Za-z_]/)) {
             mtok = substr(c, RSTART, RLENGTH)
             sub(/[ \t]+[A-Za-z_]$/, "", mtok)
@@ -678,6 +706,23 @@ emit_exported_api() {
               if (tail ~ /^[ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*\(/) { c = tail; macro_wrapped = 1; had_export = 1 }
             }
             sub(/^[ \t]+/, "", c)
+          }
+          # P5 (redis fn-pointer-typedef): a function-POINTER declaration
+          # `REDISMODULE_API double (*RedisModule_LoadDouble)(RedisModuleIO *io)` is NOT
+          # a function whose name is the return type — the generic extractor landed on
+          # the return TYPE `double` and emitted the garbage symbol `double()`. The real
+          # public symbol is the identifier inside `(*NAME)`. Detect the `(*NAME)(` form
+          # and rewrite it to `<ret> NAME (` so name-extraction lands on NAME; if there
+          # is no inner identifier (an anonymous fn-ptr), skip the statement entirely.
+          if (match(c, /\([ \t]*\*[ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*\)[ \t]*\(/)) {
+            grp = substr(c, RSTART, RLENGTH)
+            gpos = RSTART
+            if (match(grp, /[A-Za-z_][A-Za-z0-9_]*/)) {
+              inner = substr(grp, RSTART, RLENGTH)
+              c = substr(c, 1, gpos - 1) " " inner " ("
+            }
+          } else if (c ~ /\([ \t]*\*[ \t]*\)[ \t]*\(/) {
+            next                                # anonymous function pointer: not a named API
           }
           # Paren-wrapped name: `<ret> ( <name> ) ( <args> )` — Lua dodges macro
           # expansion this way (`int (lua_absindex)(...)`) (R4.1). Detect a
@@ -708,6 +753,11 @@ emit_exported_api() {
           # C API — real names are lowercase or mixedCase (R4.2).
           if (tok ~ /^__/) next               # leading `__`: reserved / asm token
           if (tok ~ /^[A-Z0-9_]+$/) next      # ALL-CAPS / ALL-UPPER+underscore
+          # P5: a C TYPE/keyword as the "name" means the extractor landed on the RETURN
+          # TYPE, not a function name — the fn-pointer-typedef leak (`double (*Name)` →
+          # `double`) or a goto-label-prefixed / keyword-return statement (quickjs
+          # cutils.h `if (...)`, `free(...)`). These are never real exported symbols.
+          if (tok ~ /^(void|int|char|short|long|float|double|signed|unsigned|bool|size_t|ssize_t|ptrdiff_t|wchar_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|intptr_t|uintptr_t|if|else|for|while|do|switch|case|return|goto|break|continue|sizeof|free|typedef|struct|union|enum|const|static|extern|inline|volatile|register|auto)$/) next
           # Require a return-type-ish prefix before the name (so a bare "NAME(" —
           # a macro invocation or call — is rejected). The prefix must carry a
           # word/pointer token.
@@ -1069,6 +1119,11 @@ int util_create( int a,
 /* R4.2 macro noise / reserved tokens that must NOT be surfaced as API: */
 int marker UTIL_PRIVATE(field);                  /* struct-field name-mangler, not a function */
 #define UTIL_OP(x) __asm__ __volatile__("nop")   /* macro body w/ asm token (preprocessor: ignored) */
+/* P5 idioms: */
+UTIL_EXPORT(int, util_export_macro_name, (int a, int b));
+UTIL_EXPORTA(void, util_export_attr_name, (void), UTIL_EMPTY);
+UTIL_API double (*util_load_double)(struct io *io);
+UTIL_API void *(*util_alloc)(size_t n);
 #endif
 SRC
   # A vendored-style single-TU lib whose main() lives behind a *_MAIN self-test
@@ -1349,6 +1404,38 @@ SRC
   # R4.3b: an ordinary C++ member function still surfaces (no over-correction).
   if ! printf '%s\n' "$out1" | grep -qE '^Put\(\) \| include/db\.hpp:[0-9]+'; then
     printf 'cpp_comprehension_map self-test: FAIL (R4.3: ordinary C++ member Put not surfaced)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # P5 assertions: export-precision — the PNG_EXPORT name-as-2nd-macro-arg idiom is
+  # surfaced; fn-pointer-typedef decls do NOT leak their return type as the symbol.
+  # -------------------------------------------------------------------------
+  # P5.1: a `UTIL_EXPORT(int, util_export_macro_name, (args))` (PNG_EXPORT idiom) is
+  # surfaced by its SECOND macro argument (the name), not missed entirely (libpng).
+  if ! printf '%s\n' "$out1" | grep -qE '^util_export_macro_name\(\) \| include/util\.h:[0-9]+'; then
+    printf 'cpp_comprehension_map self-test: FAIL (P5: PNG_EXPORT-style name-as-2nd-arg util_export_macro_name not surfaced)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # P5.1b: the PNG_EXPORTA variant is likewise surfaced by its 2nd macro arg.
+  if ! printf '%s\n' "$out1" | grep -qE '^util_export_attr_name\(\) \| include/util\.h:[0-9]+'; then
+    printf 'cpp_comprehension_map self-test: FAIL (P5: PNG_EXPORTA-style util_export_attr_name not surfaced)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # P5.2: a fn-pointer-typedef decl `UTIL_API double (*util_load_double)(...)` must NOT
+  # leak its return TYPE as a symbol (the redis `double()`/`void()` leak) — it is
+  # surfaced by the inner pointer name OR not at all, never as `double`/`void`.
+  if printf '%s\n' "$out1" | grep -qE '^(double|void|int|float|long|char|size_t)\(\) \|'; then
+    printf 'cpp_comprehension_map self-test: FAIL (P5: fn-pointer-typedef return type leaked as a symbol — redis double() case)\n'
+    printf '%s\n%s\n' '--- map ---' "$out1"
+    exit 1
+  fi
+  # P5.2b: the inner fn-pointer name IS surfaced (better than skipping): util_load_double.
+  if ! printf '%s\n' "$out1" | grep -qE '^util_load_double\(\) \| include/util\.h:[0-9]+'; then
+    printf 'cpp_comprehension_map self-test: FAIL (P5: inner fn-pointer name util_load_double not surfaced)\n'
     printf '%s\n%s\n' '--- map ---' "$out1"
     exit 1
   fi

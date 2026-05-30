@@ -357,12 +357,33 @@ pack_regex() {
     hpc)         printf '%s' '-ffast-math|_mm_[a-z]|vld1|svptrue|Eigen/|highway|#pragma omp|<cfenv>' ;;
     crypto)      printf '%s' 'constant.time|secret-dependent|\bEVP_|crypto_[a-z]|explicit_bzero|memset_s|\bFIPS\b|test.vector|\bhmac\b|\baead\b|\bblake|\bsha[0-9]?\b|\bsha3\b|\bmd5\b|\bchacha\b|\bpoly1305\b|\bkeystream\b|\bnonce\b|\bdigest\b|\bcipher\b|\baes\b|\bgcm\b|\bccm\b|\brsa\b|\becdsa\b|\becdh\b|\becdhe\b|\bx509\b|\bpkcs\b|\bpsk\b|\bcamellia\b|\bblowfish\b|\baria\b|\bsalsa20\b|\bcurve25519\b|\bed25519\b|\bsiphash\b|\bencrypt\b|\bdecrypt\b|\bciphertext\b|\bplaintext\b|\bkeypair\b|(crypto|secure|keyed|message|one.?way)[a-z0-9_]*hash|hash[a-z0-9_]*(256|512|384|224|md5|sha)|(sha|blake|md5|hmac|keccak)[a-z0-9_]*hash' ;;
     networking)  printf '%s' '\bntohl\b|\bhtons\b|\bntohs\b|\bhtonl\b|parse_packet|RFC[0-9]|__attribute__.*packed|#pragma pack|\bsocket\b|\blistener\b|\bdialer\b|\bsockaddr|\bsetsockopt\b|\bgetsockopt\b|\bendpoint\b|\btransport\b|(?-i:\bconnect\b|\bbind\b|\baccept\b|\bsend\b|\brecv\b|\bsendto\b|\brecvfrom\b|\bpoll\b|\bepoll\b)' ;;
-    compression) printf '%s' '\bdeflate\b|\binflate\b|\binflateBack\b|(?-i:\bLZ4_|\bLZ77\b|\bZSTD_)|\blz4\b|\bzstd\b|\bhuffman\b|\bcompress\b|\buncompress\b|\bdecompress\b|\bgzip\b|\bgzopen\b|\bcrc32\b|\badler32\b|literal.length|sliding.window' ;;
-    compilers)   printf '%s' 'LLVMContext|llvm::|IRBuilder|emitOpcode|(?-i:\bopcode\b|\bOPCODE\b)|\bbytecode\b|interpreter|codegen|opt -verify' ;;
+    # COMPRESSION (R9-vocab + codec-WRAPPER vocab): the codec ENTROPY/stream core
+    # (`deflate`/`inflate`/`huffman`/`LZ4_`/`crc32`/`adler32`) PLUS the container/
+    # wrapper vocabulary a real image/byte-stream codec carries — without the wrapper
+    # tokens a PNG codec (libpng) mis-primaried HPC off its few NEON `vld1` filter
+    # files while the codec itself was invisible to the pack. PNG chunk names
+    # (`IDAT`/`IHDR`/`IEND`/`PLTE`) are case-sensitive (the 4-byte FourCC spelling),
+    # the wrapper verbs (`zstream`/`png_inflate`/`png_deflate`/`unfilter`/`filter_row`/
+    # `scanline`/`png_palette`/`png_read`/`png_write`) stay loose. These also fire on
+    # other byte-stream codecs (the `*_inflate`/`*_deflate`/`scanline`/`palette` idiom).
+    compression) printf '%s' '\bdeflate\b|\binflate\b|\binflateBack\b|(?-i:\bLZ4_|\bLZ77\b|\bZSTD_|\bIDAT\b|\bIHDR\b|\bIEND\b|\bPLTE\b)|\blz4\b|\bzstd\b|\bhuffman\b|\bcompress\b|\buncompress\b|\bdecompress\b|\bgzip\b|\bgzopen\b|\bcrc32\b|\badler32\b|literal.length|sliding.window|\bzstream\b|[a-z]+_inflate\b|[a-z]+_deflate\b|\bunfilter|\bfilter_row\b|\bscanline\b|[a-z]+_palette\b|png_read_|png_write_' ;;
+    compilers)   printf '%s' 'LLVMContext|llvm::|IRBuilder|emitOpcode|(?-i:\bopcode\b|\bOPCODE\b)|\bbytecode\b|interpreter|codegen|opt -verify|\bluaV_|\bluaK_|\bluaD_|\bProto\b|\bInstruction\b|\bvmcase\b|\bvmdispatch\b|\bdumpvar\b|\bast_node\b|\bcompile_stmt\b' ;;
     databases)   printf '%s' '\bfsync\b|fdatasync|write-ahead|write.?ahead|\bWAL\b|\bMVCC\b|crash.consistency|page_checksum|page.?cache|\bpwrite\b|dm-flakey|\bALICE\b|\bsqlite3?\b|\bbtree\b|b-tree|\bpager\b|\bvdbe\b|opcode.*VDBE|\browid\b|(?-i:\bPRAGMA\b|\bPragma)|\bvacuum\b|\bredis\b|\bredisDb\b|\brobj\b|\bRDB\b|\bAOF\b|\brdbSave\b|\brdbAdd|\bkeyspace\b|dict.*entry|\btransaction\b|\bcommit\b|\brollback\b|\bcompaction\b|\bmemtable\b|\bsstable\b|\bmanifest\b|\bsnapshot\b|write.?batch' ;;
     audio)       printf '%s' 'audio_?callback|audio_?buffer|process_block|\bdenormal|\bxrun\b|\bjack_|kAudioUnit|\bVST3\b|\bASIO\b|\bCoreAudio\b|flush.to.zero|samples?_per_(buffer|frame)' ;;
-    filesystems) printf '%s' '\bsuperblock\b|\binode\b|on-disk|\bmount\b|\bfsck\b|dm-flakey|\bFUA\b|crash.injection|barrier' ;;
-    parser)      printf '%s' '\b(json|xml|yaml|toml|ini|csv|protobuf|msgpack|riff|fourcc)\b|\bhttp_?(parse|request|response)|[a-z0-9]+_parse\b|\bparse_[a-z]|\btokeniz|\blexer\b|\bgrammar\b|\b(json|xml|yaml|toml|http|url|base64|hex|utf8?|token|field|header|message)[a-z0-9]*_decode\b|\bdeserialize\b|\bphr_|\byy(parse|lex|_)|\bdr(wav|flac|mp3)_' ;;
+    # FILESYSTEMS: `barrier` is word-BOUNDED (`\bbarrier\b`) so it matches a genuine
+    # I/O / write barrier but NOT a GC write-barrier identifier like lua's
+    # `luaC_barrier`/`luaC_barrierback` (the leading `_` is a word char, so there is
+    # no `\b` before `barrier` there). Without the boundary the bare token matched 44
+    # lua GC calls → lua mis-primaried Filesystems over its real Compilers/VM domain.
+    filesystems) printf '%s' '\bsuperblock\b|\binode\b|on-disk|\bmount\b|\bfsck\b|dm-flakey|\bFUA\b|crash.injection|\bbarrier\b|write.?barrier' ;;
+    # PARSER (+ CamelCase serialization vocab): the snake_case `*_parse`/`parse_*`
+    # idiom PLUS the CamelCase `ParseXxx`/`SkipWhitespace`/`kParseError*` vocabulary a
+    # header-only C++ serializer uses (rapidjson) — case-sensitive `(?-i:...)` so it
+    # matches `ParseValue`/`ParseString`/`SkipWhitespace`/`kParseFlag` but NOT a codec's
+    # lowercase `decode`/`partial_decode` (which would steal a codec into Parser). Before
+    # this, rapidjson scored only 11 Parser (its core uses CamelCase, not `*_parse`) and
+    # mis-primaried HPC off its 2 SIMD scan headers.
+    parser)      printf '%s' '\b(json|xml|yaml|toml|ini|csv|protobuf|msgpack|riff|fourcc)\b|\bhttp_?(parse|request|response)|[a-z0-9]+_parse\b|\bparse_[a-z]|\btokeniz|\blexer\b|\bgrammar\b|\b(json|xml|yaml|toml|http|url|base64|hex|utf8?|token|field|header|message)[a-z0-9]*_decode\b|\bdeserialize\b|\bphr_|\byy(parse|lex|_)|\bdr(wav|flac|mp3)_|(?-i:\bParse[A-Z][a-z]|\bSkipWhitespace\b|\bkParse[A-Z])' ;;
     generic)     printf '%s' '\bKHASH|\bkh_init\b|\bkvec_t\b|kv_(init|push)\b|\bUT_hash|HASH_(ADD|FIND|DEL)\b|stb_ds|\bsds[a-z]+\(|typedef +struct[^;]*\{|[A-Za-z][A-Za-z0-9]*_(init|free|destroy|new)\b|#define +[A-Z0-9_]*IMPLEMENTATION' ;;
     *)           printf '%s' 'a^' ;;   # never matches
   esac
@@ -419,25 +440,32 @@ pack_mode() {
 # ---------------------------------------------------------------------------
 detect() {
   local repo="$1"
-  local id label rx anchor count prio anchors
+  local id label rx anchor count files prio anchors
   local raw=""
   while IFS= read -r id; do
     [ -n "$id" ] || continue
     rx="$(pack_regex "$id")"
     # Materialize the anchor list once (avoids re-running rg, and avoids a
     # `head`-on-a-huge-`sort` SIGPIPE on big repos like dr_libs). The first line
-    # is the anchor; the line count is the code-match count.
+    # is the anchor; the line count is the code-match count; the distinct path
+    # count (`files`) is the match SPREAD used by the file-spread floor below.
     anchors="$(pack_anchors "$rx" "$repo" "$(pack_mode "$id")")"
     [ -n "$anchors" ] || continue
     count="$(printf '%s\n' "$anchors" | awk 'END { print NR }')"
     # Drop single incidental hits (count<=1): F2b. They are the __packed__ ->
     # Networking, "ideal%" -> Crypto, "coordinate system" class of false packs.
     [ "$count" -ge 2 ] || continue
+    # Distinct-file spread: anchors are "path:line"; the path is everything up to
+    # the LAST colon. A pack concentrated in one file (klib SIMD in ksw.c only,
+    # sds packed-structs in sds.h only) must not out-promote a broadly-spread
+    # domain/generic pack (the SIMD-density steal). Counted from the de-duplicated
+    # anchor list so it is deterministic.
+    files="$(printf '%s\n' "$anchors" | awk -F: '{ sub(/:[0-9]+$/, "", $0); print }' | LC_ALL=C sort -u | awk 'END { print NR }')"
     anchor="$(printf '%s\n' "$anchors" | awk 'NR==1 { print; exit }')"
     [ -n "$anchor" ] || continue
     label="$(pack_label "$id")"
     prio="$(pack_priority "$id")"
-    raw="${raw}${prio}\t${count}\t${id}\t${label}\t${anchor}"$'\n'
+    raw="${raw}${prio}\t${count}\t${id}\t${label}\t${anchor}\t${files}"$'\n'
   done < <(pack_ids)
 
   [ -n "$raw" ] || return 0
@@ -445,12 +473,12 @@ detect() {
   # Base order: COUNT desc, then original pack order asc (the priority column is
   # carried for the tier-1 floor logic but is NOT the primary sort key any more).
   printf '%b' "$raw" \
-    | awk -F'\t' 'NF>=5 { print NR "\t" $0 }' \
+    | awk -F'\t' 'NF>=6 { print NR "\t" $0 }' \
     | LC_ALL=C sort -t$'\t' -k3,3nr -k1,1n \
     | awk -F'\t' '
-        BEGIN { TIER1_FLOOR = 3; TIER1_RATIO = 10; GENERIC_FLOOR = 3 }
+        BEGIN { TIER1_FLOOR = 3; TIER1_RATIO = 10; GENERIC_FLOOR = 3; SPECIFIC_FILE_FLOOR = 2; GENERIC_DOMINANCE = 4 }
         { order[NR]=$1; prio[NR]=$2; count[NR]=$3
-          id[NR]=$4; label[NR]=$5; anchor[NR]=$6; n=NR }
+          id[NR]=$4; label[NR]=$5; anchor[NR]=$6; files[NR]=$7; n=NR }
         END {
           # Count leader (row 1 after the count-desc sort).
           leader = 1
@@ -468,11 +496,26 @@ detect() {
           }
           primary = (tier1 > 0 ? tier1 : leader)
           # (c) Generic demotion: if the chosen primary is generic but a specific
-          # pack clears GENERIC_FLOOR, the best-supported specific pack wins.
+          # pack clears GENERIC_FLOOR, the best-supported specific pack wins — but
+          # only if that specific pack is (i) SPREAD across >= SPECIFIC_FILE_FLOOR
+          # files AND (ii) DOMINANT enough that generic does not out-count it by more
+          # than GENERIC_DOMINANCE (i.e. specific*DOMINANCE >= generic).
+          #   (i)  A pack whose entire signal lives in ONE file is incidental density,
+          #        not a domain (klib SIMD in ksw.c alone, sds packed-structs in sds.h
+          #        alone) — it must not out-promote the honest Generic classification.
+          #   (ii) A grab-bag library (klib) carries a small REAL networking module
+          #        (knetfile/kopen: 21 socket/connect hits across 5 files) that clears
+          #        both the count- and file-floors yet is dwarfed 12x by the 267
+          #        container/string idioms — that minority domain is not the identity.
+          #        The legitimate promotions (nng Net 497 vs generic 1593 = 3.2x,
+          #        mbedtls Net 294 vs 780 = 2.6x, redis DB 2625 vs 4399 = 1.7x) all sit
+          #        within 4x, so DOMINANCE=4 keeps them while dropping klib (21*4 < 267)
+          #        back to the honest Generic primary.
+          # When no specific pack clears ALL gates, generic stays primary.
           if (id[primary] == "generic") {
             best_specific = 0
             for (i = 1; i <= n; i++) {
-              if (id[i] != "generic" && count[i] >= GENERIC_FLOOR) { best_specific = i; break }
+              if (id[i] != "generic" && count[i] >= GENERIC_FLOOR && files[i] >= SPECIFIC_FILE_FLOOR && count[i] * GENERIC_DOMINANCE >= count[primary]) { best_specific = i; break }
             }
             if (best_specific > 0) primary = best_specific
           }
@@ -925,10 +968,216 @@ SRC
 int jimsh_opcode_bytecode_interpreter(void) { return 0; }
 SRC
 
+  # Fixture PNG (P4 codec-WRAPPER vocab + SIMD-density tie-break): an image codec
+  # shaped like libpng. Its codec identity is the chunk/wrapper vocabulary
+  # (IDAT/IHDR/IEND/PLTE/zstream/png_inflate/unfilter/scanline/palette) spread across
+  # MANY files, but it ALSO ships ONE dense ARM-NEON filter file full of `vld1` HPC
+  # intrinsics. Before P4 the Compression pack lacked the wrapper vocab, so the dense
+  # 1-file NEON intrinsics won HPC primary off a real codec (libpng HPC 75 vs Compression
+  # 18). It must now select Compression PRIMARY; the dense NEON file must NOT steal it.
+  mkdir -p "$tmp/pngish/arm"
+  cat >"$tmp/pngish/pngread.c" <<'SRC'
+#include "png.h"
+int png_read_IDAT_data(void *png_ptr) { return png_inflate(png_ptr); }
+int png_handle_IHDR(void *png_ptr) { return 0; }
+int png_handle_IEND(void *png_ptr) { return 0; }
+int png_handle_PLTE(void *png_ptr) { return 0; }
+void png_read_filter_row(void *rp) { (void)rp; }
+SRC
+  cat >"$tmp/pngish/pngwutil.c" <<'SRC'
+#include "png.h"
+int png_write_IDAT(void *png_ptr) { return png_deflate(png_ptr); }
+int png_do_unfilter(void *row) { return 0; }
+int png_build_scanline(void *png_ptr) { return 0; }
+int png_set_palette(void *png_ptr) { return 0; }
+SRC
+  cat >"$tmp/pngish/pngrutil.c" <<'SRC'
+#include "png.h"
+struct zstream { int x; };
+int png_inflate(void *png_ptr) { return 0; }
+int png_deflate(void *png_ptr) { return 0; }
+int png_read_scanline(void *png_ptr) { return 0; }
+SRC
+  cat >"$tmp/pngish/arm/filter_neon_intrinsics.c" <<'SRC'
+#include <arm_neon.h>
+void png_read_filter_row_up_neon(unsigned char *rp, const unsigned char *pp) {
+    uint8x16_t a = vld1q_u8(rp);
+    uint8x16_t b = vld1q_u8(pp);
+    uint8x16_t c = vld1q_u8(rp + 16);
+    uint8x16_t d = vld1q_u8(pp + 16);
+    uint8x16_t e = vld1q_u8(rp + 32);
+    vst1q_u8(rp, a); vst1q_u8(rp + 16, b); vst1q_u8(rp + 32, c);
+    (void)d; (void)e;
+}
+SRC
+
+  # Fixture RJSON (P4 CamelCase parser vocab + R1± header-only C++): a header-only
+  # C++ JSON serializer shaped like rapidjson. Its parse API is CamelCase
+  # (`ParseValue`/`ParseString`/`SkipWhitespace`/`kParseErrorNone`) spread across
+  # headers, but it ALSO carries SSE2/NEON scan intrinsics in two headers. Before P4
+  # the Parser pack only knew snake_case `*_parse`, so rapidjson scored 11 Parser and
+  # mis-primaried HPC off its 2 SIMD scan headers. It must now select Parser PRIMARY.
+  mkdir -p "$tmp/rjsonish/include/rj"
+  cat >"$tmp/rjsonish/include/rj/reader.h" <<'SRC'
+namespace rj {
+template <typename T> struct GenericReader {
+    void SkipWhitespace(T &is) { (void)is; }
+    int ParseValue(T &is) { return ParseString(is); }
+    int ParseString(T &is) { (void)is; return kParseErrorNone; }
+    int ParseNumber(T &is) { (void)is; return 0; }
+    /* SSE2 fast scan */
+    void Scan() { __m128 v = _mm_set1_ps(0.0f); (void)v; }
+};
+enum { kParseErrorNone = 0, kParseErrorValueInvalid = 1 };
+}
+SRC
+  cat >"$tmp/rjsonish/include/rj/writer.h" <<'SRC'
+namespace rj {
+template <typename T> struct GenericWriter {
+    int ParseObject(T &is) { (void)is; return 0; }
+    void Scan() { __m128 v = _mm_set1_ps(1.0f); (void)v; }
+};
+}
+SRC
+  cat >"$tmp/rjsonish/include/rj/document.h" <<'SRC'
+namespace rj {
+template <typename T> struct GenericDocument {
+    int ParseStream(T &is) { (void)is; return 0; }
+    int ParseInsitu(T &is) { (void)is; return kParseDefaultFlags; }
+};
+enum { kParseDefaultFlags = 0 };
+}
+SRC
+
+  # Fixture GRABBAG (P4 file-spread + dominance floors): a grab-bag C library shaped
+  # like klib — its identity is many container/string idioms (`*_init`/`*_free`/
+  # `typedef struct {`/`KHASH`) across MANY files (the Generic count leader), PLUS a
+  # SMALL real networking module (`socket`/`connect`/`setsockopt` across 2 files) AND
+  # ONE dense SIMD file. Before P4 the dense SIMD won HPC (file floor fixes that), and
+  # then the minority networking module won Networking via generic-demotion even though
+  # generic out-counts it >10x. With BOTH the file-spread floor and the 4x dominance
+  # floor it must settle on Generic — the honest "it is just a C library" answer.
+  mkdir -p "$tmp/grabbag"
+  # Many container/string idioms (the Generic count leader). The grab-bag must carry
+  # FAR more generic idioms than the minority networking module (target >4x) so the
+  # dominance floor keeps it Generic — exactly the klib shape (267 generic vs 21 net).
+  cat >"$tmp/grabbag/khash.h" <<'SRC'
+#define KHASH_MAP_INIT_INT(name, khval_t)
+typedef struct kh_s { int n_buckets; int *keys; } khash_t;
+static inline khash_t *kh_init_int(void) { return 0; }
+static inline void kh_destroy_int(khash_t *h) { (void)h; }
+static inline khash_t *kh_new_int(void) { return 0; }
+typedef struct khm_s { int n; } khashmap_t;
+static inline khashmap_t *khm_init(void) { return 0; }
+static inline void khm_free(khashmap_t *h) { (void)h; }
+static inline void khm_destroy(khashmap_t *h) { (void)h; }
+SRC
+  cat >"$tmp/grabbag/kvec.h" <<'SRC'
+typedef struct kvec_s { int n, m; int *a; } kvec_int_t;
+static inline kvec_int_t *kvec_init(void) { return 0; }
+static inline void kvec_free(kvec_int_t *v) { (void)v; }
+static inline void kvec_destroy(kvec_int_t *v) { (void)v; }
+static inline kvec_int_t *kvec_new(void) { return 0; }
+typedef struct kbuf_s { int n; } kbuf_t;
+static inline kbuf_t *kbuf_init(void) { return 0; }
+static inline void kbuf_free(kbuf_t *b) { (void)b; }
+static inline void kbuf_destroy(kbuf_t *b) { (void)b; }
+SRC
+  cat >"$tmp/grabbag/kstring.h" <<'SRC'
+typedef struct kstr_s { int l, m; char *s; } kstring_t;
+static inline kstring_t *kstr_init(void) { return 0; }
+static inline void kstr_free(kstring_t *s) { (void)s; }
+static inline kstring_t *kstr_new(void) { return 0; }
+static inline void kstr_destroy(kstring_t *s) { (void)s; }
+typedef struct kpool_s { int n; } kpool_t;
+static inline kpool_t *kpool_init(void) { return 0; }
+static inline void kpool_free(kpool_t *p) { (void)p; }
+static inline void kpool_destroy(kpool_t *p) { (void)p; }
+SRC
+  cat >"$tmp/grabbag/klist.h" <<'SRC'
+typedef struct klist_s { void *head; } klist_t;
+static inline klist_t *klist_init(void) { return 0; }
+static inline void klist_free(klist_t *l) { (void)l; }
+static inline void klist_destroy(klist_t *l) { (void)l; }
+static inline klist_t *klist_new(void) { return 0; }
+typedef struct kdeque_s { void *head; } kdeque_t;
+static inline kdeque_t *kdeque_init(void) { return 0; }
+static inline void kdeque_free(kdeque_t *d) { (void)d; }
+static inline void kdeque_destroy(kdeque_t *d) { (void)d; }
+SRC
+  cat >"$tmp/grabbag/knetfile.c" <<'SRC'
+#include "knetfile.h"
+int knet_connect(int port) {
+    int s = socket(2, 1, 0);
+    connect(s, 0, 0);
+    setsockopt(s, 0, 0, 0, 0);
+    recv(s, 0, 0, 0);
+    return s;
+}
+SRC
+  cat >"$tmp/grabbag/kopen.c" <<'SRC'
+#include "knetfile.h"
+int knet_open(void) {
+    int s = socket(2, 1, 0);
+    connect(s, 0, 0);
+    setsockopt(s, 0, 0, 0, 0);
+    return s;
+}
+SRC
+  cat >"$tmp/grabbag/ksw.c" <<'SRC'
+#include <emmintrin.h>
+int ksw_align(void) {
+    __m128i a = _mm_set1_epi8(0);
+    __m128i b = _mm_add_epi8(a, a);
+    __m128i c = _mm_max_epu8(a, b);
+    __m128i d = _mm_subs_epu8(c, a);
+    (void)d; return 0;
+}
+SRC
+
+  # Fixture LUAISH (P4 Filesystems barrier narrowing + Compilers vocab): a stack VM
+  # shaped like lua. Its real domain is interpreter/VM (`opcode`/`bytecode`/
+  # `interpreter`/`luaV_`/`luaK_`/`Proto`/`Instruction`) but it ALSO calls a GC write
+  # barrier `luaC_barrier`/`luaC_barrierback` everywhere. Before P4 the bare
+  # Filesystems `barrier` token matched all 44 `luaC_barrier` calls → lua mis-primaried
+  # Filesystems. With `\bbarrier\b` (no boundary before `barrier` in `luaC_barrier`) the
+  # GC calls no longer match, and the VM vocabulary selects Compilers PRIMARY.
+  mkdir -p "$tmp/luaish"
+  cat >"$tmp/luaish/lvm.c" <<'SRC'
+#include "lvm.h"
+int luaV_execute(void *L) {
+    luaC_barrier(L, 0, 0);
+    luaC_barrierback(L, 0, 0);
+    return 0;   /* opcode bytecode interpreter dispatch */
+}
+int interpreter_step(void *L) { luaC_objbarrier(L, 0, 0); return 0; }
+SRC
+  cat >"$tmp/luaish/lcode.c" <<'SRC'
+#include "lcode.h"
+int luaK_code(void *fs, int opcode) { return opcode; }   /* codegen */
+int luaK_codeABC(void *fs) { luaC_barrier(fs, 0, 0); return 0; }
+SRC
+  cat >"$tmp/luaish/lopcodes.h" <<'SRC'
+#ifndef LOPCODES_H
+#define LOPCODES_H
+typedef struct Proto { int sizecode; } Proto;
+typedef unsigned int Instruction;
+/* opcode table for the bytecode interpreter */
+enum OpCode { OP_MOVE, OP_LOADK };
+#endif
+SRC
+  cat >"$tmp/luaish/lgc.c" <<'SRC'
+#include "lgc.h"
+void luaC_barrier(void *L, void *p, void *v) { (void)L; (void)p; (void)v; }
+void luaC_barrierback(void *L, void *p, void *v) { (void)L; (void)p; (void)v; }
+void luaC_objbarrier(void *L, void *p, void *v) { (void)L; (void)p; (void)v; }
+SRC
+
   local gpu_out kernel_out plain_out hpc_out parser_out generic_out comments_out
   local zlibish_out cfsish_out fprimeish_out
   local codec_out net_out cry_out fp2_out
   local db_out pragmaonly_out data_out catch_out deps_out
+  local pngish_out rjsonish_out grabbag_out luaish_out
   gpu_out="$(run_detect "$tmp/gpu" no)"
   kernel_out="$(run_detect "$tmp/kernel" no)"
   plain_out="$(run_detect "$tmp/plain" no)"
@@ -948,6 +1197,10 @@ SRC
   data_out="$(run_detect "$tmp/jsvm" no)"
   catch_out="$(run_detect "$tmp/catchfw" no)"
   deps_out="$(run_detect "$tmp/depsrepo" no)"
+  pngish_out="$(run_detect "$tmp/pngish" no)"
+  rjsonish_out="$(run_detect "$tmp/rjsonish" no)"
+  grabbag_out="$(run_detect "$tmp/grabbag" no)"
+  luaish_out="$(run_detect "$tmp/luaish" no)"
 
   # Assertion 1: the CUDA fixture selects the GPU pack as primary, anchored to
   # the .cu file. Output format: "pack[<role>]: <label> | <anchor> (N code matches)".
@@ -980,7 +1233,8 @@ SRC
              "$parser_out" "$generic_out" "$comments_out" \
              "$zlibish_out" "$cfsish_out" "$fprimeish_out" \
              "$codec_out" "$net_out" "$cry_out" "$fp2_out" \
-             "$db_out" "$pragmaonly_out" "$data_out" "$catch_out" "$deps_out"; do
+             "$db_out" "$pragmaonly_out" "$data_out" "$catch_out" "$deps_out" \
+             "$pngish_out" "$rjsonish_out" "$grabbag_out" "$luaish_out"; do
     if printf '%s\n' "$out" | grep -qF "$tmp"; then
       printf 'cpp_domain_detect self-test: FAIL (absolute path leaked into output)\n'
       printf '%s\n%s\n' '--- out ---' "$out"
@@ -1152,6 +1406,68 @@ SRC
   if printf '%s\n' "$deps_out" | grep -qE 'deps/|singleheader/|autosetup/|jimsh0\.c'; then
     printf 'cpp_domain_detect self-test: FAIL (R10: a vendored deps/singleheader/autosetup/jimsh0 anchor leaked)\n'
     printf '%s\n%s\n' '--- depsrepo ---' "$deps_out"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # P4 assertions: codec-WRAPPER vocab + SIMD-density tie-break + grab-bag dominance
+  # floor. Each locks a real reclassification proven on the cloned repos:
+  # libpng HPC→Compression, rapidjson HPC→Parser, klib/sds →Generic, lua →Compilers.
+  # -------------------------------------------------------------------------
+  # P4.1: the PNG-shaped codec selects Compression PRIMARY off the chunk/wrapper
+  # vocabulary (IDAT/IHDR/zstream/png_inflate/unfilter/scanline/palette), NOT HPC off
+  # its one dense NEON `vld1` filter file (the libpng HPC→Compression reclassification).
+  if ! printf '%s\n' "$pngish_out" | grep -qE 'pack\[primary\]: Compression / codec \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (P4: PNG-shaped codec did not select Compression — wrapper vocab missing or SIMD density stole it)\n'
+    printf '%s\n%s\n' '--- pngish ---' "$pngish_out"
+    exit 1
+  fi
+  # P4.2: the PNG codec must NOT be HPC-primary (the SIMD-density steal it had before).
+  if printf '%s\n' "$pngish_out" | grep -qE 'pack\[primary\]: HPC'; then
+    printf 'cpp_domain_detect self-test: FAIL (P4: dense 1-file NEON intrinsics stole PRIMARY from a real codec)\n'
+    printf '%s\n%s\n' '--- pngish ---' "$pngish_out"
+    exit 1
+  fi
+  # P4.3: the rapidjson-shaped header-only C++ serializer selects Parser PRIMARY off
+  # the CamelCase ParseValue/ParseString/SkipWhitespace/kParse vocabulary, NOT HPC off
+  # its two SSE2 scan headers (the rapidjson HPC→Parser reclassification).
+  if ! printf '%s\n' "$rjsonish_out" | grep -qE 'pack\[primary\]: Parser / text-format / serialization \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (P4: rapidjson-shaped serializer did not select Parser — CamelCase parse vocab missing)\n'
+    printf '%s\n%s\n' '--- rjsonish ---' "$rjsonish_out"
+    exit 1
+  fi
+  if printf '%s\n' "$rjsonish_out" | grep -qE 'pack\[primary\]: HPC'; then
+    printf 'cpp_domain_detect self-test: FAIL (P4: SSE2 scan headers stole PRIMARY from a CamelCase parser)\n'
+    printf '%s\n%s\n' '--- rjsonish ---' "$rjsonish_out"
+    exit 1
+  fi
+  # P4.4: the klib-shaped grab-bag library settles on Generic PRIMARY — the dense
+  # 1-file SIMD is blocked by the file-spread floor, and the minority networking module
+  # (real socket/connect across 2 files, but dwarfed >10x by the container idioms) is
+  # blocked by the 4x dominance floor (the klib/sds →Generic reclassification).
+  if ! printf '%s\n' "$grabbag_out" | grep -qE 'pack\[primary\]: Generic library / data-structures / strings \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (P4: grab-bag lib did not settle on Generic — a minority/dense pack stole primary)\n'
+    printf '%s\n%s\n' '--- grabbag ---' "$grabbag_out"
+    exit 1
+  fi
+  # P4.5: the grab-bag must NOT be HPC (file floor) or Networking (dominance floor) primary.
+  if printf '%s\n' "$grabbag_out" | grep -qE 'pack\[primary\]: (HPC|Networking)'; then
+    printf 'cpp_domain_detect self-test: FAIL (P4: grab-bag mis-primaried on a 1-file SIMD or a minority networking module)\n'
+    printf '%s\n%s\n' '--- grabbag ---' "$grabbag_out"
+    exit 1
+  fi
+  # P4.6: the lua-shaped stack VM selects Compilers PRIMARY — the GC `luaC_barrier`
+  # calls no longer match the now word-bounded Filesystems `\bbarrier\b` token, and the
+  # opcode/bytecode/interpreter/luaV_/luaK_ vocabulary wins (the lua Filesystems→Compilers fix).
+  if ! printf '%s\n' "$luaish_out" | grep -qE 'pack\[primary\]: Compilers / interpreters / VMs \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (P4: lua-shaped VM did not select Compilers — barrier token or VM vocab issue)\n'
+    printf '%s\n%s\n' '--- luaish ---' "$luaish_out"
+    exit 1
+  fi
+  # P4.7: the lua VM must NOT be Filesystems-primary (the `luaC_barrier` mis-match).
+  if printf '%s\n' "$luaish_out" | grep -qE 'pack\[primary\]: Filesystems'; then
+    printf 'cpp_domain_detect self-test: FAIL (P4: GC luaC_barrier matched Filesystems barrier token → false Filesystems primary)\n'
+    printf '%s\n%s\n' '--- luaish ---' "$luaish_out"
     exit 1
   fi
 
