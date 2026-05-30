@@ -444,7 +444,7 @@ Each entry: **mechanism** (one line) + **when-to-use** + **gotchas/version**. Tr
 - ISO C++ Core Guidelines (B. Stroustrup & H. Sutter) — RAII, Rule of 0/3/5 (C.20/C.21/C.67), NVI, special-member suppression. https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines
 - Herb Sutter, *GotW* (esp. #91 smart-pointer params, #100/#101 PIMPL/compilation firewalls) and *Exceptional C++* — PIMPL, copy-and-swap, NVI. https://herbsutter.com/gotw/
 - Scott Meyers, *Effective Modern C++* (Items 25 `std::move`/`forward` & return, 41 by-value sinks) and *Effective C++* (Item 11 copy-and-swap) — move semantics, copy-elision/`std::move`-in-return pitfalls.
-- WG21 papers: P0135 (guaranteed copy elision), P0840 (`[[no_unique_address]]`), P0608/P0798 (`optional` monadic), P0323/P2505 (`expected` + monadic), P1895 (`tag_invoke`); SEI CERT C (DCL38-C flexible array members). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/
+- WG21 papers: P0135 (guaranteed copy elision), P0840 (`[[no_unique_address]]`), P0798 (`optional` monadic), P0323/P2505 (`expected` + monadic), P1895 (`tag_invoke`); SEI CERT C (DCL38-C flexible array members). https://www.open-std.org/jtc1/sc22/wg21/docs/papers/
 
 ## How to use this canon
 
@@ -464,7 +464,7 @@ These are *standard guarantees*. Violating them is UB; an agent must never produ
 
 ### Sequencing & evaluation order
 **Rule.** Within an expression, evaluations are *sequenced-before*, *sequenced-after*, or **unsequenced/indeterminately-sequenced**. Modifying a scalar twice, or modifying and separately reading it, with **no** sequencing between them is **UB** (C++) / UB (C). Classic UB: `i = i++;`, `a[i] = i++;`, `f(i++, i++)`.
-**Why/Version nuance.** C++11 replaced "sequence points" with the sequenced-before relation. **C++17 (P0145)** tightened ordering: in `a.b`, `a->b`, `a[b]`, `a << b`, `a >> b`, assignment `a = b`/`a @= b`, the LHS/postfix-expr is now sequenced *before* the RHS; and `a(b1,b2,...)` the function expression is sequenced before the args — but **argument evaluations remain indeterminately sequenced relative to each other** (not unsequenced, not ordered). So `f(g(), h())` still has no guaranteed g/h order in any standard.
+**Why/Version nuance.** C++11 replaced "sequence points" with the sequenced-before relation. **C++17 (P0145)** tightened ordering: in `a.b`, `a->b`, `a[b]`, `a << b`, `a >> b`, the LHS/postfix-expr is now sequenced *before* the RHS; **assignment is the exception** — in `a = b` and `a @= b` the RHS (right operand) is sequenced *before* the LHS ([expr.ass]); and `a(b1,b2,...)` the function expression is sequenced before the args — but **argument evaluations remain indeterminately sequenced relative to each other** (not unsequenced, not ordered). So `f(g(), h())` still has no guaranteed g/h order in any standard.
 **Check.** `-Wsequence-point` (GCC), `clang-tidy bugprone-*`, CERT **EXP30-C / EXP50-CPP**. Grep for `++`/`--` appearing twice on one line referencing the same object; multiple unsequenced modifications.
 
 ### Lifetime & object model
@@ -534,7 +534,7 @@ The Core Guidelines (Stroustrup & Sutter) are the canonical *style* law. High-va
 ### Design canon (umbrella maxims an expert applies)
 - **Value semantics by default.** Prefer regular, copyable, comparable value types (`std::regular`, C++20); reach for reference semantics/`shared_ptr` only when identity/sharing is essential. Values compose, are race-free when copied, and play with the STL.
 - **Liskov Substitution Principle (LSP).** A derived type must be usable wherever its base is expected without breaking base invariants/contracts (no strengthened preconditions, no weakened postconditions). Core Guidelines C.120–C.129 (use hierarchies for inherent is-a). **Slicing** (passing a derived by value as base) silently breaks this.
-- **Prefer composition over inheritance.** Inherit only for *is-a* polymorphism; otherwise contain. (Core Guidelines C.121/C.129: distinguish implementation inheritance from interface inheritance.)
+- **Prefer composition over inheritance.** Inherit only for *is-a* polymorphism; otherwise contain. (Core Guidelines C.129: distinguish implementation inheritance from interface inheritance; C.121: if a base class is used as an interface, make it a pure abstract class.)
 - **Zero-overhead principle (Stroustrup).** "What you don't use, you don't pay for; and what you do use, you couldn't hand-code better." Abstractions (`unique_ptr`, ranges, `span`) compile to what an expert would write by hand. Exceptions to scrutinize: RTTI/`dynamic_cast`, exceptions on the *throw* path (zero-cost on the happy path under table-based EH), `std::function` (type erasure heap-allocates), virtual dispatch in hot inner loops.
 
 ---
@@ -588,7 +588,7 @@ MISRA targets embedded/safety-critical (automotive, medical, aero). Editions: **
 
 ## Contracts & assertions discipline
 
-- **`assert` (C `<assert.h>` / C++ `<cassert>`)** checks programmer assumptions (preconditions/invariants) and is **compiled out when `NDEBUG` is defined**. *Rule:* an assertion must be **side-effect free** — never `assert(x = foo())` or `assert(do_work())`, because release builds drop it (CERT **MSC11-C**/**EXP06-C**). Use it for *programming errors*, never for *runtime/recoverable* errors (bad input, I/O failure → return error / throw / `std::expected` C++23).
+- **`assert` (C `<assert.h>` / C++ `<cassert>`)** checks programmer assumptions (preconditions/invariants) and is **compiled out when `NDEBUG` is defined**. *Rule:* an assertion must be **side-effect free** — never `assert(x = foo())` or `assert(do_work())`, because release builds drop it (CERT **MSC11-C**; **ERR06-C** covers assert/abort termination behavior). Use it for *programming errors*, never for *runtime/recoverable* errors (bad input, I/O failure → return error / throw / `std::expected` C++23).
 - **`static_assert`** (C++11; **C11** `_Static_assert`, and C23 makes `static_assert` a keyword) — compile-time checks; zero runtime cost; the first line of defense for size/layout/concept assumptions.
 - **C++ Core Guidelines I.5–I.7 / Pro.bounds / `gsl::Expects`/`gsl::Ensures`** express pre/postconditions today. The standard **Contracts** facility (`pre`/`post`/`contract_assert`) targets **C++26** (P2900) — do not assume it in C++23 or earlier code.
 - **`[[assume(expr)]]`** (**C++23**, P1774): tells the optimizer `expr` is true; if it is *false at runtime that is UB*. Use only when provably true; it is an optimization hint, not a check. Earlier: `__builtin_assume`/`__assume`.
