@@ -703,18 +703,35 @@ build_backlog() {
   if [ -x "$SELF_DIR/cpp_inventory.sh" ] || [ -f "$SELF_DIR/cpp_inventory.sh" ]; then
     inv="$(bash "$SELF_DIR/cpp_inventory.sh" "$repo" 2>/dev/null || true)"
   fi
-  # cpp_risk_scan.sh is invoked for parity / side-effect-free triage; its file:line
-  # anchors are reproduced here via rg_code so output stays deterministic.
-  if [ -f "$SELF_DIR/cpp_risk_scan.sh" ]; then
-    bash "$SELF_DIR/cpp_risk_scan.sh" "$repo" >/dev/null 2>&1 || true
-  fi
+  # NOTE (G2 fold-back): cpp_backlog reproduces the risk anchors it needs via its own
+  # rg_code lanes below; it does NOT consume cpp_risk_scan.sh's output. A previous
+  # version still RAN cpp_risk_scan.sh here and discarded the result (>/dev/null) "for
+  # parity" — pure dead weight that added risk_scan's full runtime to every backlog
+  # invocation (52s on the mongoose amalgamation, seconds on every repo) and caused
+  # cpp_backlog to time out on large repos (nuttx, mongoose) in the 100-repo gauntlet.
+  # Removed: the output was unused, so deleting the call changes nothing but the speed.
 
+  # G2 fold-back (large-repo guard, same pattern as cpp_comprehension_map --exact):
+  # the per-hit/per-entry lanes (hardening-calls, api-ergonomics, test-fuzz) loop in
+  # shell over every match, so on a huge tree (nuttx: 16915 source files) they blow
+  # past any sane budget and the tool effectively hangs. Above BACKLOG_FILE_CAP run
+  # only the cheap repo-level lanes (hardening-build, portability) + a scope note;
+  # the per-hit lanes are honest to skip there ("scope to a subdirectory"), and they
+  # also flood low-signal rows at that scale anyway. Small/normal repos are untouched.
+  local srcn
+  srcn="$(rg --files --no-messages --glob '*.{c,cc,cpp,cxx,h,hh,hpp,hxx}' \
+      --glob '!**/.git/**' "${EXCLUDE_GLOBS[@]}" "$repo" 2>/dev/null | wc -l | tr -d ' ')"
   {
     emit_hardening_build "$repo" "$inv"
-    emit_hardening_calls "$repo"
-    emit_api_ergonomics "$repo"
     emit_portability "$repo"
-    emit_test_fuzz "$repo"
+    if [ "${srcn:-0}" -le "${BACKLOG_FILE_CAP:-8000}" ]; then
+      emit_hardening_calls "$repo"
+      emit_api_ergonomics "$repo"
+      emit_test_fuzz "$repo"
+    else
+      printf 'backlog-scope\trepo too large (%s source files > %s): per-hit lanes (unsafe-call / api-ergonomics / test-fuzz-coverage) skipped to stay in budget — run cpp_backlog.sh on a touched subdirectory for those\t(repo root)\n' \
+        "$srcn" "${BACKLOG_FILE_CAP:-8000}"
+    fi
   } | awk 'NF' | LC_ALL=C sort -u
 }
 
