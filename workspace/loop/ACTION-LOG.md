@@ -1226,3 +1226,31 @@ addressed with cited references -> C1-C3 are more solidly earned at their marks,
 Not a 9th dimension; a depth/coverage strengthening of existing ones.
 
 Commits: d97094c (3 refs + wiring + validator fix) + this log + push.
+
+---
+
+## Iteration 38 — 2026-05-30 — adversarial fact-check of the 3 new references → 8 errors fixed; 100.0 held
+
+The right skeptical follow-through after authoring 176KB of LLM-written reference content: a reference with a WRONG
+claim is worse than none. Workflow `waniz4v3k` ran 9 expert reviewers (one per authored section), each verifying
+every claim against AUTHORITATIVE sources (cppreference, ISO C/C++ drafts & WG14/WG21 papers, C++ Core Guidelines,
+Itanium C++ ABI) and flagging only GENUINE, source-backed errors.
+
+Result: EXCELLENT accuracy — 5 of 9 sections fully clean (FP, C-internals, templates, C-standards, C++-standards);
+8 genuine errors total across 176KB, all minor precision/citation issues, all fixed + source-backed (commit
+`2ba57a1`):
+- deducing-this MSVC compiler version 19.36 -> 19.32 (VS2022 17.2); RTTI type_info "per complete object" -> "per
+  most-derived type" (Itanium ABI).
+- Itanium destructor variants corrected (complete object = D1, deleting = D0, base = D2 which is non-virtual /
+  NOT in the vtable); exception object is allocated by __cxa_allocate_exception (then __cxa_throw), not __cxa_throw.
+- dropped misattributed P0608 (it is "a sane variant converting constructor", not optional-monadic); assignment is
+  the C++17 eval-order EXCEPTION (RHS sequenced before LHS, [expr.ass]); impl-vs-interface inheritance is Core
+  Guideline C.129 (not C.121); assert side-effect rule cite ERR06-C not EXP06-C (sizeof).
+
+Rating: composite HOLDS 100.0. The new references are now accuracy-verified against authoritative sources (not just
+spot-checked), so the iter-37 C1-C3 deepening is solid rather than assumed. This is the honesty contract: after a
+big authored addition, adversarially verify it and fix what is genuinely wrong before relying on it. Reviewers also
+confirmed all Sources URLs live + correctly attributed (except the P0608 misattribution, fixed). contract refs=23 +
+audit green.
+
+Commits: 2ba57a1 (8 fact-check fixes) + this log + push.
