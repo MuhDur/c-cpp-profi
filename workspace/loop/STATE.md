@@ -1,8 +1,12 @@
 # STATE — current loop state (read me first each iteration)
 
 - **Skill under improvement:** `skill/c-cpp-profi/`
-- **Honest composite (RUBRIC-100):** **99.0 / 100** (iteration 28, 2026-05-30).
-  Per-dim: C1 **14.5** · C2 12 · C3 15 · C4 12 · C5 8 · C6 18 · Q1 7.5 · Q2 **12**. SIX dims at full marks.
+- **Honest composite (RUBRIC-100):** **99.25 / 100** (iteration 29, 2026-05-30).
+  Per-dim: C1 **14.5** · C2 12 · C3 15 · C4 12 · C5 8 · C6 18 · Q1 **7.75** · Q2 12. SIX dims at full marks.
+- **Iteration 29 — Q1 7.5→7.75 (artifact-TRUTH verification):** added `cpp_evidence_check.py --verify-evidence`
+  (commit `c722abb`) — `@verify-exists/@verify-sha256/@verify-contains` directives the checker re-checks itself
+  (recompute digest / stat / grep). Demonstrated on the real cross-arch `out_a64.txt`: genuine digest passes,
+  one-hex-flip FAILS. cflow/clangd/cscope absent → C1 exact-graph not reachable in-sandbox without root.
 - **Iteration 28 — BLIND outcome-lift (Q2 11.5→12):** workflow `wau9ep8wo` — 5 fresh subagents, 5 UNSEEN un-seeded
   repos, skill-only, no hints. Author-reproduced 3 real defects (cgltf misaligned-load UB via public API on a
   validate-accepted file; tinyexpr + tomlc99 unbounded-recursion stack-overflows, CWE-674) + 2 honest clean
@@ -10,10 +14,10 @@
   cgltf UB) + Recipe 10 (recursion depth cap). Composite 98.5→99.0.
 - **NOTE (user rule):** the rating lives ONLY here in `workspace/loop/` (the loop audit). It is deliberately NOT in
   `skill/c-cpp-profi/` and NOT in the root README (verified: `grep /100` over the skill = none).
-- **Target:** 100 / 100. Residual **1.0 pt** = C1 0.5 (exact clangd graph + fn-ptr/vtable + codegen) + Q1 0.5
-  (validate command-output truth, not shape — partially tractable via artifact/sha re-checking; fully general
-  re-exec is hard/side-effecting). Q2 was closed iter 28 by the author-verified blind trial. Pursue only genuine
-  fixes, never fabricate.
+- **Target:** 100 / 100. Residual **0.75 pt** = C1 0.5 (exact compiler-driven callgraph + indirect-call
+  resolution — blocked: cflow/clangd/cscope absent, need root; indirect calls are also fundamentally static-
+  unsolvable) + Q1 0.25 (arbitrary command-output truth + safe re-exec; the artifact-integrity slice was closed
+  iter 29). Q2 closed iter 28 (blind trial). Pursue only genuine fixes, never fabricate.
 - **Phase:** ▶ broke past the prior 97.5 ceiling — the user installed the cross toolchain, so C2's ENV cap was
   FIXED (not documented). Next: the README+image deliverable the user asked for (see below), then genuine fixes only.
 - **Last iteration (26):** **C2 11→12 — TRUE cross-arch port landed.** User installed `gcc-aarch64-linux-gnu`,

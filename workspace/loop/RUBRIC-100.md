@@ -104,20 +104,22 @@ self-score, no blind-agent trial"; C1 "no mental-model-first phase"; C6 "domains
 
 | 28 | 2026-05-30 | **99.0** | Q2 11.5→12 (BLIND outcome-lift, author-verified) | **The blind-agent trial I'd called Q2's structural cap — done and author-verified.** Workflow `wau9ep8wo`: 5 fresh subagents (clean context, no rubric/gauntlet/bug-location knowledge), each given ONLY the skill + one UNSEEN, un-seeded repo (tomlc99, cgltf, qoi, tinyexpr, parson). Result, **each defect independently rebuilt + reproduced by the author**: cgltf misaligned-load UB at `cgltf.h:2224` via the public `cgltf_accessor_read_float` on a `validate`-accepted file (Recipe 9 class); tinyexpr + tomlc99 unbounded-recursion stack-overflows (CWE-674), recursion entirely in library code; qoi + parson HONEST clean negatives (~4M execs each, no fabrication). Three real, disclosable bugs in widely-used libraries, found with no author hints → genuinely blind. **Q2 11.5→12.** The trial also FORCED two skill fixes (commit `326c064`): UBSan `-fno-sanitize-recover=all`/`halt_on_error` (it had silently recovered and masked the cgltf UB) + Recipe 10 (recursion depth cap; deep-nesting fuzzing blind-spot). Composite **98.5→99.0**. |
 
-## Convergence — 99.0/100; residual 1.0 (2026-05-30)
+| 29 | 2026-05-30 | **99.25** | Q1 7.5→7.75 (artifact-TRUTH verification) | Closed the tractable slice of Q1's "validate output truth, not shape." cflow/clangd/cscope are all absent (no exact-callgraph tool to install without root), so C1 stayed; instead added `cpp_evidence_check.py --verify-evidence` (commit `c722abb`): the evidence cell may carry `@verify-exists{path}` / `@verify-sha256{hex}{path}` / `@verify-contains{path}{substr}` directives that the checker re-checks INDEPENDENTLY — recomputes the digest, stats the file, greps the bytes. Demonstrated on the real cross-arch `out_a64.txt`: the genuine digest passes (2 assertions), a one-hex-flipped digest FAILS ("claimed …c6a, actual …c67"). An agent can no longer assert an artifact it didn't produce. Added `--self-test` (correct pass / tampered fail). **Q1 7.5→7.75** (artifact-integrity truth now machine-verified; arbitrary command-output truth + re-exec still rests on honest reporting, so not a full 8). Documented in QUALITY-GATES.md. Composite **99.0→99.25**. |
 
-Iteration 28's blind trial closed the Q2 0.5 with author-verified evidence (a fresh agent, not the author, found
-real bugs in unseen repos using only the skill). The remaining **1.0 point**:
-- **C1 14.5→15 (0.5)** — exact clangd `callHierarchy` graph + function-pointer/vtable resolution + a codegen/ISA
-  probe. The heuristic now handles self-recursion; the exact-graph + indirect-call resolution is the residual.
-- **Q1 7.5→8 (0.5)** — gates must validate command-output *truth*, not just shape. The checker reads report shape;
-  re-executing arbitrary gate commands to verify the *output* is the residual (partially tractable: artifact/sha
-  re-checking; fully general re-exec is hard and side-effecting).
+## Convergence — 99.25/100; residual 0.75 (2026-05-30)
 
-Six of eight dimensions are at full marks (C2, C3, C4, C5, C6, **Q2**). The last 1.0 point is exact-graph tooling
-(C1) and command-output-truth re-execution (Q1) — pursue only as genuine fixes, never fabricate. The honesty
-contract has held across every row, including two honest down-rates and a blind trial whose result I re-verified
-by hand rather than trusting the agents' self-reports.
+The remaining **0.75 point**:
+- **C1 14.5→15 (0.5)** — an exact compiler-driven callgraph with indirect-call (fn-ptr/vtable) resolution. Blocked
+  on tooling: cflow/clangd/cscope are not installed and need root to add; the heuristic (now incl. self-recursion)
+  is the honest best in-sandbox. Indirect-call resolution is also fundamentally unsolvable by pure static analysis.
+- **Q1 7.75→8 (0.25)** — validating *arbitrary command-output* truth (output with no persisted artifact, e.g.
+  "tests: 42 passed" with no log) and safe re-execution. The artifact-integrity slice is done; the general case is
+  side-effecting and context-dependent, so it rests on the honest-reporting contract.
+
+Six of eight dimensions are at full marks (C2, C3, C4, C5, C6, Q2). The last 0.75 is exact-graph tooling the
+sandbox lacks (C1) and arbitrary-output re-execution (Q1) — pursue only as genuine fixes, never fabricate. The
+honesty contract has held across every row, including two honest down-rates, a blind trial re-verified by hand,
+and conservative fractional rates for partial closes.
 
 ## Approaching the structural ceiling
 

@@ -913,3 +913,39 @@ genuinely blind. **Q2 11.5→12.** (Documented in gauntlet/OUTCOME-LIFT.md "Blin
 (exact clangd graph) + Q1 0.5 (validate command-output truth). contract refs=20 + audit + docs-check all green.
 
 **Commits:** `326c064` (skill fold-backs) + this re-rate (OUTCOME-LIFT/RUBRIC/STATE/ACTION-LOG) + push.
+
+---
+
+## Iteration 29 — 2026-05-30 — Q1 7.5→7.75: artifact-TRUTH verification in the checker → 99.25
+
+Targeted the residual 1.0 (C1 exact-graph + Q1 output-truth). Probed C1 first: cflow, clangd, cscope are ALL
+absent (only ctags, which gives tags not a callgraph), and installing them needs root — so an exact
+compiler-driven callgraph is not reachable in-sandbox. Did not chase it with fragile plumbing or another install
+request. Turned to Q1, the tractable half.
+
+**`cpp_evidence_check.py --verify-evidence` (commit `c722abb`).** The checker validated report SHAPE (gate marked
+passed with non-placeholder command+evidence) but never that the evidence was TRUE. Added a directive grammar the
+report author embeds in an evidence cell, which the checker re-checks INDEPENDENTLY (no arbitrary command re-exec
+— that is side-effecting/unsafe):
+- `@verify-exists{path}` — artifact must exist
+- `@verify-sha256{hex}{path}` — checker recomputes sha256(path), must equal hex
+- `@verify-contains{path}{substr}` — artifact bytes must contain substr
+Paths resolve against `--verify-base` (default: report dir). Added `--self-test` (correct claims pass, tampered
+fail) and made the `report` positional optional so `--self-test` runs standalone.
+
+**Demonstrated on a REAL artifact.** The cross-arch trial's `out_a64.txt` (sha `724ca465…a8c67`): a report citing
+`@verify-sha256{724ca465…a8c67}{out_a64.txt}` + `@verify-contains{out_a64.txt}{fnv=}` PASSES (2 assertions
+re-checked); flipping the last hex digit FAILS with "claimed …c6a, actual …c67". An agent can no longer assert a
+digest/artifact it didn't actually produce. Existing behavior unchanged (cross-arch + modernize gates still PASS
+without the flag); contract refs=20 + audit + all py compile green. Documented in QUALITY-GATES.md.
+
+**Honest rating: Q1 7.5→7.75 (not 8).** This closes the artifact-integrity slice of "validate output, not shape"
+(digests/existence/content of persisted artifacts are now machine-verified). It does NOT validate arbitrary
+command-output that leaves no artifact (e.g. "tests: 42 passed" with no log) and does not re-run commands, so the
+general case still rests on the honest-reporting contract. Conservative +0.25, consistent with prior partial-close
+granularity.
+
+**Rubric:** 99.0 → **99.25/100**. Residual 0.75 = C1 0.5 (exact graph, tooling-blocked) + Q1 0.25 (arbitrary-output
+re-exec). Six dims at full marks.
+
+**Commits:** `c722abb` (skill: --verify-evidence + QUALITY-GATES) + this re-rate + push.
