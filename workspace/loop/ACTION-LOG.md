@@ -1254,3 +1254,25 @@ confirmed all Sources URLs live + correctly attributed (except the P0608 misattr
 audit green.
 
 Commits: 2ba57a1 (8 fact-check fixes) + this log + push.
+
+---
+
+## Iteration 39 — 2026-05-30 — mechanical paradigm-signal lane (operationalizes DESIGN-PARADIGMS) → 100.0 held
+
+The skill had a mechanical DOMAIN detector but no mechanical PARADIGM read. Added a "Paradigm signals" lane to
+cpp_comprehension_map.sh (commit this) so the comprehension read includes HOW the code is built (OOP / functional /
+C-OOP), not just what it exposes — operationalizing the iter-37 DESIGN-PARADIGMS.md reference. Marker counts (comment/
+string-stripped) + first anchor + a soft dominant read with an explicit "heuristic; read the counts, not the label"
+caveat (an evidence report, not a hard classification, so it is noise-robust). One rg pass per paradigm -> cheap
+(nuttx 17k files: 23s, no hang). Deterministic (LC_ALL=C sort on the anchor; reproducibility was broken until that
+fix — rg doesn't sort). Self-test extended (fixture class -> OOP markers > 0 + section + dominant line).
+
+Calibrated + verified on real repos: cJSON -> C-OOP (hooks), nuttx -> C-OOP (3807 function-pointer driver-table
+markers, exactly the RTOS file_operations idiom), tinyxml2 -> OOP (149), fmt -> OOP (318) + functional (90).
+contract refs=23 + audit green. Cross-linked from DESIGN-PARADIGMS.md.
+
+Rating: composite HOLDS 100.0 — this deepens C1 (understand at every angle now includes a mechanical paradigm read)
+and makes the new paradigm reference actionable, not just prose. Quality enhancement of an existing dimension, not
+a new one; honestly framed (heuristic signal report, calibrated + verified).
+
+Commit: paradigm-lane commit + this log + push.
