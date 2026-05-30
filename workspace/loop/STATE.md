@@ -7,17 +7,25 @@
   self-providable by an author-driven sandbox loop). The honest ceiling is 97.5; the residual 2.5 pts are documented.
 - **Phase:** ■ CONVERGED. Active score-chasing stopped (iter 24). Loop stays armed for maintenance / genuine
   accretive improvement only — NOT to fabricate the last 2.5 pts (doing so would break the honesty contract).
-- **Last iteration (24):** auto-drew the L3 touched-path callgraph in `cpp_comprehension_map.sh` (commit `c10ecd6`,
+- **Last iteration (25, maintenance):** probed the two "reachable-if-environment-allows" caps; BOTH dead-ended
+  honestly, composite HELD at 97.5 (no inflation). (a) **C2 12 cross-arch port — confirmed doubly-blocked with
+  sharper evidence:** no GCC cross-compilers, no qemu, no root for apt; `clang --target=aarch64/riscv64` does
+  codegen for *freestanding* snippets but real repos fail at `bits/libc-header-start.h` (no target SYSROOT), so
+  libc-using code can't even be cross-*compiled*, let alone run. (b) **`-Wcast-align` / `-fsanitize=alignment`**
+  for the klib unaligned-cast bug class — already shipped (QUALITY-GATES.md C+C++ flag sets; REMEDIATION Recipe 9).
+  Regression sweep green: 4 bash self-tests + cpp_docs_check PASS; L3 callgraph bounded+correct on lua (large repo).
+- **Iteration 24:** auto-drew the L3 touched-path callgraph in `cpp_comprehension_map.sh` (commit `c10ecd6`,
   verified on cJSON/inih incl. C++ method dispatch) → **C1 14→14.5** (heuristic-only: no clangd-exact/codegen probe);
   3rd outcome-lift on **lz4** (compression) — removed one term of the safe decoder's output guard → ASan overflow
   localized to lz4.c:2343, clean→rejects, restore→rejects (OUTCOME-LIFT Trial 3). 3 lifts / 3 codebases / 2 domains.
   **Q2 held at 11.5** (breadth, not blindness). Composite 97.0→**97.5**.
 - **Residual 2.5 pts (documented, not faked):** C1 14.5→15 (clangd-exact graph + codegen probe; diminishing),
-  C2 11→12 (true cross-arch port — no cross-toolchain in sandbox = ENV cap), Q1 7.5→8 (validate output truth not
-  shape = STRUCTURAL), Q2 11.5→12 (a genuinely BLIND agent = STRUCTURAL, author can't be blind to own work).
-- **Environment/structural cap (honest):** C2 12 needs a cross-arch toolchain (aarch64-gcc/qemu) ABSENT in-sandbox;
-  Q1 8 ("validate output truth not shape") + Q2 12 (a BLIND agent, not the author) can't be self-certified here.
-  The loop converges at ~98 (after C1 15) with these documented as real caps — not a faked 100.
+  C2 11→12 (true cross-arch port — see below = ENV cap), Q1 7.5→8 (validate output truth not shape = STRUCTURAL),
+  Q2 11.5→12 (a genuinely BLIND agent = STRUCTURAL, author can't be blind to own work).
+- **Environment/structural cap (honest, sharpened iter 25):** C2 12 is blocked at TWO layers — no target sysroot
+  (cross-compile of libc-using code fails) AND no qemu (can't run target binaries); no root to `apt` either. The
+  same-arch compiler/opt-level differential oracle (iter 22-23) remains the honest best available. Q1 8 + Q2 12
+  can't be self-certified here. The ceiling is 97.5 with these documented as real caps — not a faked 100.
 - **Per-iteration now also (user instruction):** push to `origin` after committing; refresh `README.md` via
   /readme-writing + /de-slopify whenever the composite moves or the skill materially changes (see LOOP-PROTOCOL step 7).
 - **Last iteration (12):** integrated batch-2 (12 repos → 25/50; 34 findings → regressions R1–R7) and **folded

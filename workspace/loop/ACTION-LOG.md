@@ -766,3 +766,39 @@ STRUCTURAL). 100 needs an independent/blind verifier + a cross-arch toolchain, n
 Active score-chasing stops. Loop stays armed at a slow heartbeat for maintenance / genuine improvement only.
 
 **Commits:** `c10ecd6` (L3 callgraph) + this re-rate/convergence commit + push.
+
+---
+
+## Iteration 25 — 2026-05-30 — maintenance: two caps probed, both dead-ended honestly → HELD 97.5
+
+First maintenance iteration after convergence. Per STATE: no score-chasing; attempt genuine improvement only, else
+hold honestly. Probed the two "reachable-if-environment-allows" caps and ran a regression sweep.
+
+**(a) C2 12 — true cross-arch port: CONFIRMED doubly-blocked (sharper evidence than "no cross-toolchain").**
+- No GCC cross-compilers (`aarch64-linux-gnu-gcc`/`arm-`/`riscv64-`/`musl-gcc` all MISSING), no qemu-user
+  (`qemu-aarch64`/`-arm`/`-riscv64` MISSING), no root for `apt` (present but uid≠0).
+- `clang --target=aarch64-linux-gnu`/`riscv64` DOES emit valid target object files for *freestanding* code
+  (verified: ARM aarch64 + UCB RISC-V ELFs). BUT real repos fail: `#include <stdint.h>` → `bits/libc-header-start.h`
+  not found — **no target sysroot**, so libc-using code can't be cross-*compiled*, let alone run under an emulator.
+- Verdict: C2 12 stays blocked at two layers (no sysroot + no qemu). The same-arch compiler/opt differential oracle
+  (iter 22-23) remains the honest best. C2 HELD at 11. (Was going to attempt a clang cross-codegen "static port";
+  abandoned once the sysroot wall was hit — recording rather than faking a partial.)
+
+**(b) `-Wcast-align` / `-fsanitize=alignment` for the klib unaligned-cast bug class: already shipped, no gap.**
+- Hypothesis (x86 hides the unaligned cast, aarch64 flags it) was WRONG: clang's x86-64 default `-Wcast-align`
+  already warns (alignment 1→4). And the skill already carries the standard detectors: `-Wcast-align` in
+  QUALITY-GATES.md's C (line 259) and C++ (line 266) flag sets, `-fsanitize=alignment` + `-fstrict-aliasing
+  -Wstrict-aliasing=2` in REMEDIATION Recipe 9. The bug class is fully covered (custom rg lane + compile flag +
+  UBSan + regression test). No edit — adding more would be churn against the file-sprawl/de-slopify discipline.
+
+**Regression sweep (maintenance duty): GREEN.** 4 bash self-tests (comprehension/domain/risk/backlog) PASS;
+cpp_docs_check.py --self-test PASS; cpp_idea_check.py has no --self-test (card validator, exercised by
+contract+audit which PASS + the C4 trial) — a false alarm in the test loop, not a regression. New L3 callgraph
+stress-tested on lua (large repo): bounded, correct edges (`lua_gc -> [8 callees]`, `report -> l_message`,
+`lua_close -> close_state`), no hang.
+
+**Rubric:** HELD at **97.5/100** (no dimension moved). This is the honesty contract working — a maintenance pass
+that found no real improvement available correctly changes nothing rather than inflating. Loop stays armed at the
+slow maintenance heartbeat.
+
+**Commits:** this STATE/RUBRIC/ACTION-LOG sharpening commit + push.
