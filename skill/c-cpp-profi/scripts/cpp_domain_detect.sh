@@ -394,7 +394,7 @@ pack_anchors() {
 pack_ids() {
   printf '%s\n' \
     space embedded kernel gpu hpc crypto networking compression \
-    compilers databases audio filesystems parser generic
+    compilers linker emulator databases audio filesystems parser generic
 }
 
 pack_label() {
@@ -408,6 +408,8 @@ pack_label() {
     networking)  printf 'Networking / protocols' ;;
     compression) printf 'Compression / codec' ;;
     compilers)   printf 'Compilers / interpreters / VMs' ;;
+    linker)      printf 'Linker / binary tools / object formats' ;;
+    emulator)    printf 'Emulator / hardware & ISA emulation' ;;
     databases)   printf 'Databases / storage engines' ;;
     audio)       printf 'Audio / DSP / real-time media' ;;
     filesystems) printf 'Filesystems / block storage' ;;
@@ -442,7 +444,7 @@ pack_regex() {
     space)       printf '%s' '\bMISRA\b|rules? of ten|Power of Ten|(?-i:\bcFE_|\bCFE_|\bOS_(?:API|printf|[A-Z][a-z])|\bCCSDS\b|\bFramer\b|\bDeframer\b|\bTlm\b|\bAPID\b|\bFwOpcode|\bCmdResponse)|\btelemetry\b|\bspacecraft\b|\bwatchdog\b|\bRTEMS\b|EXPORT_SYMBOL_NASA' ;;
     embedded)    printf '%s' '\bFreeRTOS\b|\bZephyr\b|xTaskCreate|-ffreestanding|\bvolatile\b.*(0x[0-9A-Fa-f]+|register)|ISR_HANDLER|\bHAL_' ;;
     kernel)      printf '%s' '(^|[^A-Za-z0-9_])__user([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])copy_(to|from)_user([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])MODULE_LICENSE([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])EXPORT_SYMBOL([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])spin_lock([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])GFP_(KERNEL|ATOMIC)([^A-Za-z0-9_]|$)' ;;
-    gpu)         printf '%s' '(^|[^A-Za-z0-9_])__global__([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])__device__([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])__syncthreads([^A-Za-z0-9_]|$)|\bcudaMalloc\b|\bcudaMemcpy\b|\bhipMalloc\b|sycl::|-fsycl' ;;
+    gpu)         printf '%s' '(^|[^A-Za-z0-9_])__global__([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])__device__([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])__syncthreads([^A-Za-z0-9_]|$)|\bcudaMalloc\b|\bcudaMemcpy\b|\bhipMalloc\b|sycl::|-fsycl|\bhipError_t\b|\bhipStream_t\b|\bhipEvent_t\b|\bhipMemcpyKind\b|\bhipMemcpyHostToDevice\b|\bhipMemcpyDeviceToHost\b|\bhipDeviceptr_t\b|\bhipModule_t\b|\bhipFunction_t\b|\bhipDeviceProp_t\b|__HIP_PLATFORM_AMD__|\b__HIPCC__\b|defined\(__HIP__\)' ;;
     hpc)         printf '%s' '-ffast-math|_mm_[a-z]|vld1|svptrue|Eigen/|highway|#pragma omp|<cfenv>' ;;
     crypto)      printf '%s' 'constant.time|secret-dependent|\bEVP_|crypto_[a-z]|explicit_bzero|memset_s|\bFIPS\b|test.vector|\bhmac\b|\baead\b|\bblake|\bsha[0-9]?\b|\bsha3\b|\bmd5\b|\bchacha\b|\bpoly1305\b|\bkeystream\b|\bnonce\b|\bdigest\b|\bcipher\b|\baes\b|\bgcm\b|\bccm\b|\brsa\b|\becdsa\b|\becdh\b|\becdhe\b|\bx509\b|\bpkcs\b|\bpsk\b|\bcamellia\b|\bblowfish\b|\baria\b|\bsalsa20\b|\bcurve25519\b|\bed25519\b|\bsiphash\b|\bencrypt\b|\bdecrypt\b|\bciphertext\b|\bplaintext\b|\bkeypair\b|(crypto|secure|keyed|message|one.?way)[a-z0-9_]*hash|hash[a-z0-9_]*(256|512|384|224|md5|sha)|(sha|blake|md5|hmac|keccak)[a-z0-9_]*hash' ;;
     networking)  printf '%s' '\bntohl\b|\bhtons\b|\bntohs\b|\bhtonl\b|parse_packet|RFC[0-9]|__attribute__.*packed|#pragma pack|\bsocket\b|\blistener\b|\bdialer\b|\bsockaddr|\bsetsockopt\b|\bgetsockopt\b|\bendpoint\b|\btransport\b|(?-i:\bconnect\b|\bbind\b|\baccept\b|\bsend\b|\brecv\b|\bsendto\b|\brecvfrom\b|\bpoll\b|\bepoll\b)' ;;
@@ -457,6 +459,22 @@ pack_regex() {
     # other byte-stream codecs (the `*_inflate`/`*_deflate`/`scanline`/`palette` idiom).
     compression) printf '%s' '\bdeflate\b|\binflate\b|\binflateBack\b|(?-i:\bLZ4_|\bLZ77\b|\bZSTD_|\bIDAT\b|\bIHDR\b|\bIEND\b|\bPLTE\b|\bVP8\b|\bVP8L\b|\bWEBP\b|\bMCU\b|\bjp2\b|\bJP2\b)|\blz4\b|\bzstd\b|\bhuffman\b|\bcompress\b|\buncompress\b|\bdecompress\b|\bgzip\b|\bgzopen\b|\bcrc32\b|\badler32\b|literal.length|sliding.window|\bzstream\b|[a-z]+_inflate\b|[a-z]+_deflate\b|\bunfilter|\bfilter_row\b|\bscanline\b|[a-z]+_palette\b|png_read_|png_write_|\bIDCT\b|\bFDCT\b|\bYCbCr\b|\bYCCK\b|\bchroma\b|\bmacroblock\b|\bcodestream\b|\bopj_|\bjpeg_|\bjpeg2000\b|\bcinfo\b|\bdjpeg\b|\bcjpeg\b' ;;
     compilers)   printf '%s' 'LLVMContext|llvm::|IRBuilder|emitOpcode|(?-i:\bopcode\b|\bOPCODE\b)|\bbytecode\b|interpreter|codegen|opt -verify|\bluaV_|\bluaK_|\bluaD_|\bProto\b|\bInstruction\b|\bvmcase\b|\bvmdispatch\b|\bdumpvar\b|\bast_node\b|\bcompile_stmt\b' ;;
+    # G24 (150-repo gauntlet): linker pack uses ONLY linker-IMPLEMENTATION tokens
+    # (mold-style *Section C++ class-name suffixes + get_*_addr accessors). The ELF-ABI
+    # tokens (R_*, Elf_* structs, SHT_/SHF_/STT_/STB_/SHN_, st_shndx, section-name
+    # strings, gotplt/dynsym) were DROPPED by the collision audit: they also fire on an
+    # OS that LOADS ELF (nuttx ships a multi-arch ELF loader) and on stb_* macros
+    # (raylib), so no ELF-ABI regex separates "linker" from "ELF consumer". This narrow
+    # set flips mold from a wrong Parser-primary to a correct Linker-primary at zero
+    # control risk; it will not (over-)claim tinycc/stella, which is the accepted price.
+    linker)      printf '%s' '\b(?:Got|Plt|GotPlt|RelPlt|Dynsym|Symtab|MergedSection|OutputSection|InputSection)Section\b|\bget_(?:got|plt|gotplt|tlsgd)_addr\b' ;;
+    # G24: emulator/ISA-emulation pack, grounded in mgba/stella/dosbox. Collision-pruned:
+    # dropped MBC[0-9] (nuttx memory-bank-controller regs) and VRAM (raylib/nuttx),
+    # narrowed IO_Read/IO_Write to case-sensitive (Lua io_read/io_write collided), and
+    # poke to memory-poke function shapes (bare "poke" is prose). Surfaces as a strong,
+    # correct SECONDARY on emulators (zero hits on any control); the over-broad Parser/
+    # Networking packs still out-count it for PRIMARY (a separate documented residual).
+    emulator)    printf '%s' '\bcartridge\b|\bbankswitch|\bIWRAM\b|(?-i:\bIO_Read[BWD]?\b)|(?-i:\bIO_Write[BWD]?\b)|\bCPU_Cycles\b|\bcyclesLate\b|RaiseIRQ|\bphys_page|\bvblank\b|\bhblank\b|\b(?:poke(?:8|16|32|b|w|l)|(?:mem|bus|io|cpu|ram|reg)_poke|poke_(?:byte|word|mem|addr))\b' ;;
     databases)   printf '%s' '\bfsync\b|fdatasync|write-ahead|write.?ahead|\bWAL\b|\bMVCC\b|crash.consistency|page_checksum|page.?cache|\bpwrite\b|dm-flakey|\bALICE\b|\bsqlite3?\b|\bbtree\b|b-tree|\bpager\b|\bvdbe\b|opcode.*VDBE|\browid\b|(?-i:\bPRAGMA\b|\bPragma)|\bvacuum\b|\bredis\b|\bredisDb\b|\brobj\b|\bRDB\b|\bAOF\b|\brdbSave\b|\brdbAdd|\bkeyspace\b|dict.*entry|\btransaction\b|\bcommit\b|\brollback\b|\bcompaction\b|\bmemtable\b|\bsstable\b|\bmanifest\b|\bsnapshot\b|write.?batch' ;;
     audio)       printf '%s' 'audio_?callback|audio_?buffer|process_block|\bdenormal|\bxrun\b|\bjack_|kAudioUnit|\bVST3\b|\bASIO\b|\bCoreAudio\b|flush.to.zero|samples?_per_(buffer|frame)' ;;
     # FILESYSTEMS: `barrier` is word-BOUNDED (`\bbarrier\b`) so it matches a genuine
@@ -496,8 +514,8 @@ pack_priority() {
 # its toolchain signals from build files and uses the wide ('all') set.
 pack_mode() {
   case "$1" in
-    parser|generic) printf 'code' ;;
-    *)              printf 'all' ;;
+    parser|generic|linker) printf 'code' ;;
+    *)                     printf 'all' ;;
   esac
 }
 
@@ -1296,6 +1314,69 @@ void luaC_barrierback(void *L, void *p, void *v) { (void)L; (void)p; (void)v; }
 void luaC_objbarrier(void *L, void *p, void *v) { (void)L; (void)p; (void)v; }
 SRC
 
+  # Fixture LINKER (G24): a mold-shaped linker using ONLY the de-collided linker-
+  # implementation tokens (*Section class-name suffixes + get_*_addr accessors). The
+  # raw ELF-ABI tokens are deliberately NOT the signal (they also fire on an ELF
+  # loader), so this fixture proves the implementation tokens alone select Linker.
+  mkdir -p "$tmp/linkerish/src"
+  cat >"$tmp/linkerish/src/output-chunks.cc" <<'SRC'
+#include "mold.h"
+class GotSection { public: int idx; };
+class PltSection { public: int idx; };
+class GotPltSection { public: int idx; };
+class OutputSection { public: int idx; };
+class InputSection { public: int idx; };
+unsigned long get_got_addr(void *ctx) { return 0; }
+unsigned long get_plt_addr(void *ctx) { return 0; }
+SRC
+  cat >"$tmp/linkerish/src/passes.cc" <<'SRC'
+#include "mold.h"
+unsigned long get_gotplt_addr(void *ctx) { return 0; }
+unsigned long get_tlsgd_addr(void *ctx) { return 0; }
+class MergedSection { public: int idx; };
+SRC
+
+  # Fixture EMULATOR (G24): an mgba/dosbox-shaped ISA emulator using the de-collided
+  # emulator tokens (cartridge/bankswitch/CPU_Cycles/cyclesLate, case-sensitive
+  # IO_Read*/IO_Write*, phys_page, vblank/hblank, RaiseIRQ, memory-poke shapes).
+  mkdir -p "$tmp/emuish/src/cpu"
+  cat >"$tmp/emuish/src/cpu/core.c" <<'SRC'
+#include "core.h"
+int CPU_Cycles;
+int cyclesLate;
+unsigned char IO_ReadB(unsigned addr) { return 0; }
+void IO_WriteB(unsigned addr, unsigned char v) { (void)addr; (void)v; }
+void poke8(unsigned addr, unsigned char v) { (void)addr; (void)v; }
+void mem_poke(unsigned addr, unsigned v) { (void)addr; (void)v; }
+void RaiseIRQ(int n) { (void)n; }
+int phys_page_lookup(unsigned a) { return 0; }
+SRC
+  cat >"$tmp/emuish/src/cpu/ppu.c" <<'SRC'
+#include "ppu.h"
+int load_cartridge(const char *rom) { return 0; }
+int bankswitch_select(int bank) { return bank; }
+int IWRAM[0x8000];
+void on_vblank(void) {}
+void on_hblank(void) {}
+SRC
+
+  # Fixture HIP (G24): a ROCm/HIP host-API repo using the HIP type tokens appended to
+  # the gpu pack; must select GPU primary (the HIP -> GPU reclassification).
+  mkdir -p "$tmp/hipish/src"
+  cat >"$tmp/hipish/src/runtime.cpp" <<'SRC'
+#include <hip/hip_runtime.h>
+hipError_t run(void) {
+    hipStream_t stream;
+    hipEvent_t ev;
+    void *d;
+    hipMalloc(&d, 1024);
+    hipMemcpyKind k = hipMemcpyHostToDevice;
+    hipMemcpy(d, 0, 1024, k);
+    hipMemcpy(0, d, 1024, hipMemcpyDeviceToHost);
+    return hipSuccess;
+}
+SRC
+
   local gpu_out kernel_out plain_out hpc_out parser_out generic_out comments_out
   local zlibish_out cfsish_out fprimeish_out
   local codec_out net_out cry_out fp2_out
@@ -1324,6 +1405,10 @@ SRC
   rjsonish_out="$(run_detect "$tmp/rjsonish" no)"
   grabbag_out="$(run_detect "$tmp/grabbag" no)"
   luaish_out="$(run_detect "$tmp/luaish" no)"
+  local linkerish_out emuish_out hipish_out
+  linkerish_out="$(run_detect "$tmp/linkerish" no)"
+  emuish_out="$(run_detect "$tmp/emuish" no)"
+  hipish_out="$(run_detect "$tmp/hipish" no)"
 
   # Assertion 1: the CUDA fixture selects the GPU pack as primary, anchored to
   # the .cu file. Output format: "pack[<role>]: <label> | <anchor> (N code matches)".
@@ -1671,6 +1756,25 @@ SRC
   if printf '%s\n' "$gpu_js" | grep -qF "$tmp"; then
     printf 'cpp_domain_detect self-test: FAIL (absolute path leaked into JSON)\n'
     printf '%s\n%s\n' '--- json ---' "$gpu_js"
+    exit 1
+  fi
+
+  # -------------------------------------------------------------------------
+  # G24 assertions: the three new/extended packs (linker, emulator, gpu+HIP).
+  # -------------------------------------------------------------------------
+  if ! printf '%s\n' "$linkerish_out" | grep -qE 'pack\[primary\]: Linker / binary tools / object formats \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (G24: linker-implementation tokens did not select Linker primary)\n'
+    printf '%s\n%s\n' '--- linkerish ---' "$linkerish_out"
+    exit 1
+  fi
+  if ! printf '%s\n' "$emuish_out" | grep -qE 'pack\[primary\]: Emulator / hardware & ISA emulation \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (G24: emulator tokens did not select Emulator primary on an isolated emulator fixture)\n'
+    printf '%s\n%s\n' '--- emuish ---' "$emuish_out"
+    exit 1
+  fi
+  if ! printf '%s\n' "$hipish_out" | grep -qE 'pack\[primary\]: GPU \(CUDA / SYCL / HIP\) \|'; then
+    printf 'cpp_domain_detect self-test: FAIL (G24: HIP host-API tokens did not select GPU primary)\n'
+    printf '%s\n%s\n' '--- hipish ---' "$hipish_out"
     exit 1
   fi
 
