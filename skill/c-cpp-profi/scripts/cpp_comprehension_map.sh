@@ -113,6 +113,39 @@ R3PLUS_GLOBS=(
   --glob '!**/jimsh0.c'
 )
 
+# Extra exclusions for the paradigm lane (G13): a repo's paradigm is its OWN code,
+# not a vendored test framework, bundled dep, contrib add-on, or example. Combined
+# with R3PLUS_GLOBS at the call site. Keeps miniz's catch_amalgamated, NNPACK's
+# bench, mosquitto's test/fuzzing, zlib's contrib/iostream and openjpeg's
+# thirdparty/astyle from driving a pure-C core's dominant paradigm label.
+PARADIGM_GLOBS=(
+  --glob '!**/build/**'
+  --glob '!**/_deps/**'
+  --glob '!**/third_party/**'
+  --glob '!**/thirdparty/**'
+  --glob '!**/third-party/**'
+  --glob '!**/3rdparty/**'
+  --glob '!**/3rd_party/**'
+  --glob '!**/vendor/**'
+  --glob '!**/external/**'
+  --glob '!**/contrib/**'
+  --glob '!**/test/**'
+  --glob '!**/tests/**'
+  --glob '!**/testing/**'
+  --glob '!**/bench/**'
+  --glob '!**/benchmark/**'
+  --glob '!**/benchmarks/**'
+  --glob '!**/fuzz/**'
+  --glob '!**/fuzzing/**'
+  --glob '!**/example/**'
+  --glob '!**/examples/**'
+  --glob '!**/*catch_amalgamated*'
+  --glob '!**/catch.hpp'
+  --glob '!**/doctest.h'
+  --glob '!**/*gtest*'
+  --glob '!**/*gmock*'
+)
+
 rg_code() {
   # rg over C/C++ sources, vendored/build trees excluded. Args: PATTERN REPO
   rg -n --no-heading --no-messages \
@@ -209,6 +242,52 @@ drop_comment_lines() {
       if (content ~ /^\/\*/) next
       print
     }'
+}
+
+# Candidate files for the paradigm lane (G13): C/C++ sources containing ANY paradigm
+# marker token (a superset — comment/string-only hits are removed by the whole-file
+# strip below). test/bench/vendored/contrib/example trees excluded. Args: PATTERN
+# REPO. Bounded (6000 files) so a pathological repo cannot blow up the lane.
+rg_paradigm_files() {
+  { rg --files-with-matches -P --no-messages \
+      --glob '*.{c,cc,cpp,cxx,h,hh,hpp,hxx}' \
+      --glob '!**/.git/**' \
+      "${PARADIGM_GLOBS[@]}" \
+      "${R3PLUS_GLOBS[@]}" \
+      "$1" "$2" 2>/dev/null || true; } | LC_ALL=C sort | awk 'NR<=6000'
+}
+
+# Whole-file comment/string strip with cross-line block-comment + string state
+# (G12). A match-only rg pipeline CANNOT carry block-comment state across lines, so
+# `virtual`/`override` inside a multi-line /* ... */ whose continuation lines have no
+# leading `*` (sljit-style) would leak. This reads each candidate file whole, tracks
+# inblock state, and blanks /* */ (multi-line), // and "..."/'...' literals. Reads
+# repo-absolute paths on stdin; emits repo-relative "path:line:strippedcontent" for
+# lines that still hold code. Arg: REPO. (Same strip discipline as emit_callgraph.)
+strip_files_stream() {
+  local repo="$1"
+  tr '\n' '\0' | xargs -0 -r awk -v repo="$repo" '
+    FNR == 1 {
+      inblk = 0
+      rel = FILENAME; sub(/^\.\//, "", rel)
+      pfx = repo "/"
+      if (substr(rel, 1, length(pfx)) == pfx) rel = substr(rel, length(pfx) + 1)
+    }
+    {
+      line = $0; out = ""; i = 1; n = length(line); instr = 0; inchr = 0
+      while (i <= n) {
+        ch = substr(line, i, 1); two = substr(line, i, 2)
+        if (inblk) { if (two == "*/") { inblk = 0; i += 2 } else i++; continue }
+        if (instr) { if (ch == "\\") { i += 2; continue } if (ch == "\"") instr = 0; i++; continue }
+        if (inchr) { if (ch == "\\") { i += 2; continue } if (ch == "\x27") inchr = 0; i++; continue }
+        if (two == "/*") { inblk = 1; i += 2; continue }
+        if (two == "//") break
+        if (ch == "\"") { instr = 1; i++; continue }
+        if (ch == "\x27") { inchr = 1; i++; continue }
+        out = out ch; i++
+      }
+      if (out ~ /[^ \t]/) print rel ":" FNR ":" out
+    }' 2>/dev/null || true
 }
 
 # Dedup + cap a list of "key\tanchor" rows (F5): LC_ALL=C sort -u for determinism,
@@ -1308,12 +1387,17 @@ emit_exact_callgraph() {
   fi
   local tmp; tmp="$(mktemp -d 2>/dev/null)" || { printf '(could not allocate scratch dir; skipped)\n'; return 0; }
   local files
-  files="$(rg --files --no-messages --glob '*.{c,cc,cpp,cxx}' \
+  # G1: `|| true` so rg's no-match exit 1 does not abort under `set -euo pipefail`
+  # on header-only repos (all .c under test/), and an awk truncation instead of
+  # `head -n` so the producing `sort` is never SIGPIPE'd on huge file lists
+  # (head closes the pipe early -> exit 141). Mirrors the N-cmphang fixes above.
+  files="$( { rg --files --no-messages --glob '*.{c,cc,cpp,cxx}' \
       --glob '!**/.git/**' --glob '!**/build/**' --glob '!**/_deps/**' \
       --glob '!**/third_party/**' --glob '!**/vendor/**' --glob '!**/external/**' \
       --glob '!**/test/**' --glob '!**/tests/**' --glob '!**/example*/**' \
       --glob '!**/deps/**' --glob '!**/dependencies/**' \
-      "${R3PLUS_GLOBS[@]}" "$repo" 2>/dev/null | LC_ALL=C sort | head -n "$EXACT_TU_CAP")"
+      "${R3PLUS_GLOBS[@]}" "$repo" 2>/dev/null || true; } \
+      | LC_ALL=C sort | awk -v cap="$EXACT_TU_CAP" 'NR<=cap')"
   local llall="$tmp/all.ll"; : > "$llall"
   local compiled=0 total=0 f
   while IFS= read -r f; do
@@ -1396,14 +1480,26 @@ emit_paradigm_signals() {
   local repo="$1"
   local oop_pat fp_pat coop_pat
   oop_pat='\bvirtual\b|\boverride\b|\bdynamic_cast\b|\b(public|protected|private)[ \t]*:|:[ \t]*(public|protected|private)[ \t]'
-  fp_pat='std::function|std::ranges|\branges::|std::views|\bviews::|std::transform|std::accumulate|std::for_each|std::reduce|std::find_if|std::optional|std::expected|\[(&|=|this)?\][ \t]*\('
+  # G21: anchor the lambda arm to a leading boundary so `operator[](` (preceded by
+  # a word char) no longer matches a lambda introducer `[](`/`[&](`/`[=](`/`[this](`.
+  fp_pat='std::function|std::ranges|\branges::|std::views|\bviews::|std::transform|std::accumulate|std::for_each|std::reduce|std::find_if|std::optional|std::expected|(^|[ \t=(,{])\[(&|=|this)?\][ \t]*\('
   coop_pat='\([ \t]*\*[ \t]*[a-z_][A-Za-z0-9_]*[ \t]*\)[ \t]*\(|typedef[^;]*\([ \t]*\*'
   local pfx="$repo/"
-  # each: "count<TAB>file:line" of the first match (repo-relative)
-  local oop_s fp_s coop_s
-  oop_s="$(rg_code "$oop_pat" "$repo" | drop_comment_lines | LC_ALL=C sort | awk -F: 'NR==1{a=$1":"$2} END{printf "%d\t%s", NR, a}')"
-  fp_s="$(rg_code "$fp_pat" "$repo" | drop_comment_lines | LC_ALL=C sort | awk -F: 'NR==1{a=$1":"$2} END{printf "%d\t%s", NR, a}')"
-  coop_s="$(rg_code "$coop_pat" "$repo" | drop_comment_lines | LC_ALL=C sort | awk -F: 'NR==1{a=$1":"$2} END{printf "%d\t%s", NR, a}')"
+  # G12/G13: build the comment/string-stripped code stream ONCE over the candidate
+  # files (test/bench/vendored excluded; whole-file strip carries block-comment state
+  # across lines), then count + first-anchor each pattern against it. A token that
+  # lives only in a comment or string literal does not count.
+  local oop_s fp_s coop_s sf
+  sf="$(mktemp 2>/dev/null)" || sf=""
+  if [ -n "$sf" ]; then
+    rg_paradigm_files "(${oop_pat})|(${fp_pat})|(${coop_pat})" "$repo" \
+      | strip_files_stream "$repo" > "$sf" 2>/dev/null || true
+  fi
+  local _count_anchor='NR==1{a=$1":"$2} END{printf "%d\t%s", NR, a}'
+  oop_s="$( { rg -P --no-messages "$oop_pat" "$sf" 2>/dev/null || true; } | LC_ALL=C sort | awk -F: "$_count_anchor")"
+  fp_s="$( { rg -P --no-messages "$fp_pat" "$sf" 2>/dev/null || true; } | LC_ALL=C sort | awk -F: "$_count_anchor")"
+  coop_s="$( { rg -P --no-messages "$coop_pat" "$sf" 2>/dev/null || true; } | LC_ALL=C sort | awk -F: "$_count_anchor")"
+  [ -n "$sf" ] && rm -f "$sf" 2>/dev/null || true
   local oop fp coop oop_a fp_a coop_a
   oop="${oop_s%%	*}"; oop_a="${oop_s#*	}"; oop_a="${oop_a#"$pfx"}"
   fp="${fp_s%%	*}";  fp_a="${fp_s#*	}";   fp_a="${fp_a#"$pfx"}"
@@ -1412,12 +1508,17 @@ emit_paradigm_signals() {
   printf 'object-oriented (C++): %s markers (virtual/override/dynamic_cast/access-specifier/inheritance)%s\n' "${oop:-0}" "${oop_a:+ | e.g. $oop_a}"
   printf 'functional/declarative: %s markers (lambda/std::function/ranges/algorithms/optional/expected)%s\n' "${fp:-0}" "${fp_a:+ | e.g. $fp_a}"
   printf 'C-OOP / callback tables: %s markers (function-pointer members & typedefs)%s\n' "${coop:-0}" "${coop_a:+ | e.g. $coop_a}"
+  # G14: require >=2 markers (PARADIGM_MIN) for a non-procedural dominant label, so
+  # a single function-pointer typedef or a lone access-specifier (often a CLI/test
+  # helper) does not flip a procedural C library to "C object-orientation". Near-
+  # zero signal reads as procedural. The counts are still printed above verbatim.
+  local pmin="${PARADIGM_MIN:-2}"
   local dom
-  if [ "${oop:-0}" -ge "${fp:-0}" ] && [ "${oop:-0}" -ge "${coop:-0}" ] && [ "${oop:-0}" -gt 0 ]; then
+  if [ "${oop:-0}" -ge "${fp:-0}" ] && [ "${oop:-0}" -ge "${coop:-0}" ] && [ "${oop:-0}" -ge "$pmin" ]; then
     dom="object-oriented (C++ classes + virtual dispatch)"
-  elif [ "${fp:-0}" -gt "${oop:-0}" ] && [ "${fp:-0}" -ge "${coop:-0}" ]; then
+  elif [ "${fp:-0}" -gt "${oop:-0}" ] && [ "${fp:-0}" -ge "${coop:-0}" ] && [ "${fp:-0}" -ge "$pmin" ]; then
     dom="functional/declarative-leaning C++ (algorithms/ranges/value types)"
-  elif [ "${coop:-0}" -gt 0 ]; then
+  elif [ "${coop:-0}" -ge "${oop:-0}" ] && [ "${coop:-0}" -ge "${fp:-0}" ] && [ "${coop:-0}" -ge "$pmin" ]; then
     dom="C object-orientation (function-pointer dispatch tables / opaque handles)"
   else
     dom="procedural (free functions; little OOP/FP/dispatch-table signal)"
