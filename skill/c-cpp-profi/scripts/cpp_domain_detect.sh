@@ -398,7 +398,7 @@ pack_anchors() {
 pack_ids() {
   printf '%s\n' \
     space embedded kernel gpu hpc crypto networking compression \
-    compilers linker emulator databases audio graphics profiler filesystems parser generic
+    compilers linker emulator databases audio graphics profiler filesystems assetloader parser generic
 }
 
 pack_label() {
@@ -419,6 +419,7 @@ pack_label() {
     graphics)    printf 'Graphics / windowing / native UI / rendering' ;;
     profiler)    printf 'Benchmarking / profiling' ;;
     filesystems) printf 'Filesystems / block storage' ;;
+    assetloader) printf '3D asset / model-format import (glTF/OBJ/FBX/COLLADA)' ;;
     parser)      printf 'Parser / text-format / serialization' ;;
     generic)     printf 'Generic library / data-structures / strings' ;;
     *)           printf 'unknown' ;;
@@ -490,12 +491,44 @@ pack_regex() {
     # dropped — cuda-samples). API/handle spellings are word-bounded in (?-i:...) groups.
     # Flips glfw/bgfx/nanovg/Nuklear/nanogui to Graphics-primary; SDL/raylib/sokol/imgui
     # get a correct Graphics SECONDARY (their primary-making GL-primitive tokens collided).
-    graphics)    printf '%s' '(?-i:\bglfwCreateWindow\b|\bGLFWwindow\b|\bglfwPollEvents\b|\bglfwSwapBuffers\b|\bglfwMakeContextCurrent\b|\bglfwSwapInterval\b)|(?-i:\bSDL_CreateWindow\b|\bSDL_GL_SwapWindow\b|\bSDL_GL_CreateContext\b|\bSDL_CreateRenderer\b)|(?-i:\bsg_make_buffer\b|\bsg_apply_pipeline\b|\bsg_begin_pass\b|\bsg_make_shader\b|\bsapp_run\b)|bgfx::|(?-i:\bnvgBeginFrame\b|\bnvgBeginPath\b|\bNVGcontext\b)|\bnk_begin\b|\bnk_layout_row\b|\bBeginDrawing\b|\bEndDrawing\b|\bClearBackground\b|\brlglInit\b|(?-i:\bVkSwapchainKHR\b|\bvkCreateSwapchainKHR\b|\bVkRenderPass\b|\bVkCommandBuffer\b|\bVkPipelineLayout\b)' ;;
-    # G24 (iter42): Benchmarking/profiling pack — gperftools-only tokens (google/benchmark
-    # API tokens like benchmark::State were DEFERRED: they are shared infra that collide on
-    # abseil/json/leveldb/re2/rocksdb/snappy/spdlog/xtensor). \bProfilerStart\b excludes
-    # cudaProfilerStart. Flips gperftools Generic→Profiling; 0 on jemalloc/abseil/controls.
-    profiler)    printf '%s' '\bProfilerStart\b|\bProfilerEnable\b|\bProfilerFlush\b|\bProfilerRegisterThread\b|\bHeapProfilerStart\b|\bIsHeapProfilerRunning\b|\bHeapProfilerDump\b|\bMallocExtension\b' ;;
+    # iter43 graphics-PRIMARY promotion: append the four repos' OWN library-NAMESPACE
+    # identity tokens (NOT gl*/GL_* primitives — they wrongly flip dosbox/nuttx/glew —
+    # and NOT the public SDL_[A-Z] surface consumers call — it collides on dosbox/mgba/
+    # FFmpeg). These fire only on the libraries themselves and flip SDL/raylib/sokol/imgui
+    # from Generic/Audio/Compression to Graphics-PRIMARY at zero control risk. The sokol
+    # clause deliberately OMITS `_sg_[a-z]` (it substring-matched `_sg_reduce` WebGPU
+    # subgroup-shader strings in ggml/llama.cpp/whisper.cpp — an ML control); the surviving
+    # `_sapp_[a-z]` is sokol-unique. (Collision audit: 0 hits on any listed control repo.)
+    graphics)    printf '%s' '(?-i:\bglfwCreateWindow\b|\bGLFWwindow\b|\bglfwPollEvents\b|\bglfwSwapBuffers\b|\bglfwMakeContextCurrent\b|\bglfwSwapInterval\b)|(?-i:\bSDL_CreateWindow\b|\bSDL_GL_SwapWindow\b|\bSDL_GL_CreateContext\b|\bSDL_CreateRenderer\b)|(?-i:\bsg_make_buffer\b|\bsg_apply_pipeline\b|\bsg_begin_pass\b|\bsg_make_shader\b|\bsapp_run\b)|bgfx::|(?-i:\bnvgBeginFrame\b|\bnvgBeginPath\b|\bNVGcontext\b)|\bnk_begin\b|\bnk_layout_row\b|\bBeginDrawing\b|\bEndDrawing\b|\bClearBackground\b|\brlglInit\b|(?-i:\bVkSwapchainKHR\b|\bvkCreateSwapchainKHR\b|\bVkRenderPass\b|\bVkCommandBuffer\b|\bVkPipelineLayout\b)|(?-i:\bRLAPI\b|\bTRACELOG\b|\brlgl[A-Z]|\brlEnable[A-Z]|\brlDisable[A-Z]|\brlLoad[A-Z]|\brlSetUniform)|(?-i:\bSOKOL_API_IMPL\b|\b_SOKOL_PRIVATE\b|\bSOKOL_ASSERT\b|\b_sapp_[a-z])|(?-i:\bImGui[A-Z]|\bImVec[234]\b|\bImDraw[A-Z]|\bImFont[A-Z]|\bIMGUI_API\b|\bImU32\b|\bImGuiContext\b)|(?-i:\bSDL_VideoDevice\b|\bSDL_Renderer\b|\bSDL_RenderCommand|\bSDL_WindowData\b|\bSDL_GLContext\b|\bSDL_GPUDevice\b|\bSDL_GPU[A-Z]|\bSDL_Texture\b|\bSDL_Surface\b|\bSDL_DisplayMode\b|\bSDL_VideoData\b|\bSDL_RenderDriver\b|\bSDL_DisplayData\b)' ;;
+    # G24 (iter42): Benchmarking/profiling pack — gperftools tokens PLUS google/benchmark's
+    # IMPLEMENTATION-INTERNAL symbols. The framework's PUBLIC API (`benchmark::State`/
+    # `BENCHMARK_MAIN`/`DoNotOptimize`) was DEFERRED and stays out: those are shared infra
+    # that collide on every repo that USES google/benchmark (abseil/json/leveldb/re2/rocksdb/
+    # snappy/spdlog/xtensor + Catch2/gemmlowp/highway) — they are indistinguishable between
+    # "I AM the framework" and "I USE the framework". The benchmark[detect] audit (workspace/
+    # loop) instead added the framework's own engine internals — its registry
+    # (`BenchmarkFamilies`/`RegisterBenchmarkInternal`), runner (`BenchmarkRunner`), reporter
+    # hierarchy (`BenchmarkReporter`), colorprint (`ColorPrintf`/`ColorParseFormatLength`) and
+    # sysinfo (`GetCacheSizesFromKVFS`/`GetNumCPUsImpl`) symbols. These live ONLY in google/
+    # benchmark's own src/ (107 matches / 14 files) and an API CONSUMER never writes them: a
+    # full 150-repo sweep with the standard vendored/bench/test excludes leaks them on ZERO
+    # non-benchmark repos (vs. the API tokens which leaked on 6, abseil alone 50 files). They
+    # `\bProfilerStart\b` still excludes cudaProfilerStart. VERIFIED (independent, path-arg
+    # mode): gperftools -> Profiling PRIMARY; 0 on jemalloc/abseil and every other control,
+    # incl. the abseil/json/leveldb/re2/rocksdb/snappy/spdlog/xtensor repos that USE google/
+    # benchmark (they write the public API, never these engine internals). CAVEAT (honest):
+    # google/benchmark THE REPO still self-excludes under `cpp_domain_detect.sh <path-ending-
+    # in-/benchmark>` because `!**/benchmark/**` matches its own root dir name (the engine
+    # tokens here DO classify it when run from INSIDE the repo as `... .`). That single-repo
+    # dir-name quirk is a documented residual, NOT a domain gap — the profiling DOMAIN is
+    # covered via gperftools. Engine tokens kept: collision-free, add signal from-inside.
+    # iter43 collision hardening: `BenchmarkReporter` is word-anchored `\b...\b` so it no
+    # longer substring-matches Catch2's user class `CumulativeBenchmarkReporter` (unit-test
+    # domain, distinct from Google-Benchmark microbench) — that Catch2 file also lives under
+    # tests/ so it was already excluded, but the anchor is correct defense-in-depth. The dead
+    # token `ColorParseFormatLength` (0 hits anywhere, including the benchmark target) was
+    # dropped as it contributes no signal.
+    profiler)    printf '%s' '\bProfilerStart\b|\bProfilerEnable\b|\bProfilerFlush\b|\bProfilerRegisterThread\b|\bHeapProfilerStart\b|\bIsHeapProfilerRunning\b|\bHeapProfilerDump\b|\bMallocExtension\b|\bBenchmarkRunner\b|\bBenchmarkFamilies\b|\bBenchmarkReporter\b|\bRegisterBenchmarkInternal\b|\bColorPrintf\b|\bGetCacheSizesFromKVFS\b|\bGetNumCPUsImpl\b' ;;
     # FILESYSTEMS: `barrier` is word-BOUNDED (`\bbarrier\b`) so it matches a genuine
     # I/O / write barrier but NOT a GC write-barrier identifier like lua's
     # `luaC_barrier`/`luaC_barrierback` (the leading `_` is a word char, so there is
@@ -509,6 +542,19 @@ pack_regex() {
     # lowercase `decode`/`partial_decode` (which would steal a codec into Parser). Before
     # this, rapidjson scored only 11 Parser (its core uses CamelCase, not `*_parse`) and
     # mis-primaried HPC off its 2 SIMD scan headers.
+    # iter43 ASSET-LOADER pack: 3D model-format import (tinyobjloader/cgltf/assimp). These
+    # mis-primaried as generic Parser, but the domain carries hazards a text-format Parser
+    # does not model: bounds-checked accessor/bufferView indexing into a BINARY buffer
+    # (cgltf `req_size = offset + stride*(count-1) + element_size` validated vs buffer length
+    # before the pointer add), mesh-topology/index validation (face indices within vertex/
+    # normal/texcoord array bounds), untrusted-asset fuzzing of every decoder, and coordinate-
+    # system/handedness/winding/unit handling. Ranked AHEAD of parser/generic so the more-
+    # specific domain wins a count tie. Token set is the collision-audited API spellings;
+    # `shape_t`/`attrib_t` were EXCLUDED as fundamentally ambiguous (shape_t = tensor-shape in
+    # ncnn/xtensor; attrib_t = a POSIX fs-attr struct in libuv). Residual hits on bgfx(8)/
+    # raylib(26)/bullet3(1) are LEGITIMATE embedded loaders (those repos vendor cgltf/tinyobj)
+    # and land as a correct weak SECONDARY, dwarfed by each repo's own primary.
+    assetloader) printf '%s' '(?-i:\btinyobj::|\bLoadObj\b)|\bcgltf_parse\b|\bcgltf_data\b|\bcgltf_accessor\b|\bcgltf_buffer_view\b|\bcgltf_mesh\b|\bcgltf_primitive\b|\bcgltf_node\b|\bcgltf_skin\b|\bcgltf_animation\b|(?-i:\baiScene\b|\baiMesh\b|\baiNode\b|\baiImporter\b|\baiMaterial\b|\baiAnimation\b|\baiTexture\b)|Assimp::Importer' ;;
     parser)      printf '%s' '\b(json|xml|yaml|toml|ini|csv|protobuf|msgpack|riff|fourcc)\b|\bhttp_?(parse|request|response)|[a-z0-9]+_parse\b|\bparse_[a-z]|\btokeniz|\blexer\b|\bgrammar\b|\b(json|xml|yaml|toml|http|url|base64|hex|utf8?|token|field|header|message)[a-z0-9]*_decode\b|\bdeserialize\b|\bphr_|\byy(parse|lex|_)|\bdr(wav|flac|mp3)_|(?-i:\bParse[A-Z][a-z]|\bSkipWhitespace\b|\bkParse[A-Z])' ;;
     generic)     printf '%s' '\bKHASH|\bkh_init\b|\bkvec_t\b|kv_(init|push)\b|\bUT_hash|HASH_(ADD|FIND|DEL)\b|stb_ds|\bsds[a-z]+\(|typedef +struct[^;]*\{|[A-Za-z][A-Za-z0-9]*_(init|free|destroy|new)\b|#define +[A-Z0-9_]*IMPLEMENTATION' ;;
     *)           printf '%s' 'a^' ;;   # never matches
@@ -533,7 +579,7 @@ pack_priority() {
 # its toolchain signals from build files and uses the wide ('all') set.
 pack_mode() {
   case "$1" in
-    parser|generic|linker|graphics) printf 'code' ;;
+    parser|generic|linker|graphics|assetloader) printf 'code' ;;
     *)                     printf 'all' ;;
   esac
 }
@@ -644,6 +690,22 @@ detect() {
               if (id[i] != "generic" && count[i] >= GENERIC_FLOOR && files[i] >= SPECIFIC_FILE_FLOOR && count[i] * GENERIC_DOMINANCE >= count[primary]) { best_specific = i; break }
             }
             if (best_specific > 0) primary = best_specific
+          }
+          # (d) iter43 protocol-rank file-spread flip: a PROTOCOL library (curl/libcoap)
+          # spreads its networking signal across the whole transfer engine while concentrating
+          # crypto in a TLS-backend subdir (curl lib/vtls + lib/vauth), so net touches MORE
+          # files than crypto; a true crypto lib does the opposite (secp256k1 net 7f vs crypto
+          # 17f, wolfssl 60 vs 367, libsodium 2 vs 236). When crypto is the chosen primary but
+          # networking is spread across > NET_SPREAD x its files, flip primary to networking.
+          # Promotion-only and crypto->networking-only. K=1.3 sits mid-window in the empirically
+          # safe range [0.92, 1.48): libcoap (net 34f / crypto 23f = 1.48) flips, libwebsockets
+          # (151/165 = 0.92) correctly does NOT. mbedtls is already Networking-primary by count
+          # (so untouched). Full 160-repo sweep: exactly curl + libcoap flip, all else identical.
+          NET_SPREAD = 1.3
+          if (id[primary] == "crypto") {
+            ci = primary; ni = 0
+            for (i = 1; i <= n; i++) if (id[i] == "networking") { ni = i; break }
+            if (ni > 0 && files[ni] > files[ci] * NET_SPREAD) primary = ni
           }
           # Emit: primary first, then the rest in count order; generic always
           # last (it is the least-specific label whenever a real pack exists).
@@ -1209,6 +1271,49 @@ enum { kParseDefaultFlags = 0 };
 }
 SRC
 
+  # Fixture ASSET (iter43 asset-loader): a cgltf-shaped 3D model importer. Its identity
+  # is the cgltf_* binary-buffer accessor API plus a bounds-checked bufferView indexing
+  # line — NOT generic text parsing. It must select the asset-loader pack PRIMARY, NOT
+  # Parser, proving the new pack out-ranks Parser on a real model loader.
+  mkdir -p "$tmp/assetish/src"
+  cat >"$tmp/assetish/src/loader.c" <<'SRC'
+#include "cgltf.h"
+cgltf_result load_model(const char *path, cgltf_data **out) {
+    cgltf_options opts = {0};
+    cgltf_data *data = NULL;
+    cgltf_result r = cgltf_parse(&opts, path, 0, &data);
+    if (r != cgltf_result_success) return r;
+    for (cgltf_size i = 0; i < data->meshes_count; ++i) {
+        cgltf_mesh *mesh = &data->meshes[i];
+        for (cgltf_size p = 0; p < mesh->primitives_count; ++p) {
+            cgltf_primitive *prim = &mesh->primitives[p];
+            cgltf_accessor *acc = prim->indices;
+            cgltf_buffer_view *view = acc->buffer_view;
+            cgltf_size req_size = acc->offset + acc->stride * (acc->count - 1);
+            if (view->size < req_size) return cgltf_result_data_too_short;
+            char *ptr = (char*)view->buffer->data + acc->offset + view->offset;
+            (void)ptr;
+        }
+    }
+    *out = data;
+    return cgltf_result_success;
+}
+SRC
+  cat >"$tmp/assetish/src/scene.c" <<'SRC'
+#include "cgltf.h"
+void walk_scene(cgltf_data *data) {
+    for (cgltf_size i = 0; i < data->nodes_count; ++i) {
+        cgltf_node *node = &data->nodes[i];
+        cgltf_skin *skin = node->skin;
+        (void)skin;
+    }
+    for (cgltf_size a = 0; a < data->animations_count; ++a) {
+        cgltf_animation *anim = &data->animations[a];
+        (void)anim;
+    }
+}
+SRC
+
   # Fixture GRABBAG (P4 file-spread + dominance floors): a grab-bag C library shaped
   # like klib — its identity is many container/string idioms (`*_init`/`*_free`/
   # `typedef struct {`/`KHASH`) across MANY files (the Generic count leader), PLUS a
@@ -1460,6 +1565,7 @@ SRC
   hipish_out="$(run_detect "$tmp/hipish" no)"
   gfxish_out="$(run_detect "$tmp/gfxish" no)"
   profish_out="$(run_detect "$tmp/profish" no)"
+  assetish_out="$(run_detect "$tmp/assetish" no)"
 
   # Assertion 1: the CUDA fixture selects the GPU pack as primary, anchored to
   # the .cu file. Output format: "pack[<role>]: <label> | <anchor> (N code matches)".
@@ -1698,6 +1804,18 @@ SRC
   if printf '%s\n' "$rjsonish_out" | grep -qE 'pack\[primary\]: HPC'; then
     printf 'cpp_domain_detect self-test: FAIL (P4: SSE2 scan headers stole PRIMARY from a CamelCase parser)\n'
     printf '%s\n%s\n' '--- rjsonish ---' "$rjsonish_out"
+    exit 1
+  fi
+  # iter43: the cgltf-shaped model importer selects the asset-loader pack PRIMARY off the
+  # cgltf_* binary-buffer accessor API, NOT the generic Parser pack.
+  if ! printf '%s\n' "$assetish_out" | grep -qE 'pack\[primary\]: 3D asset / model-format import'; then
+    printf 'cpp_domain_detect self-test: FAIL (iter43: cgltf-shaped importer did not select asset-loader — out-ranked by Parser?)\n'
+    printf '%s\n%s\n' '--- assetish ---' "$assetish_out"
+    exit 1
+  fi
+  if printf '%s\n' "$assetish_out" | grep -qE 'pack\[primary\]: Parser'; then
+    printf 'cpp_domain_detect self-test: FAIL (iter43: Parser stole PRIMARY from a real 3D asset loader)\n'
+    printf '%s\n%s\n' '--- assetish ---' "$assetish_out"
     exit 1
   fi
   # P4.4: the klib-shaped grab-bag library settles on Generic PRIMARY — the dense
