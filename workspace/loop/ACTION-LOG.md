@@ -1166,3 +1166,31 @@ solidly earned); composite HOLDS 100.0. GAUNTLET-2.md codec residual is now part
 openjpeg corrected; libwebp documented as legitimately SIMD-dominant with codec secondary).
 
 Commit: this codec-vocab commit + push.
+
+---
+
+## Iteration 36 — 2026-05-30 — clean sequential sweep of all 58 gauntlet-2 clones; fixed 2 more backlog timeouts → HELD 100.0
+
+Gauntlet-2's concurrent run only returned 40 clean probes (shared-scratch-dir losses), so I ran a CLEAN SEQUENTIAL
+sweep over all 58 cloned repos (no concurrency = no contamination), timing cpp_backlog + cpp_comprehension_map +
+cpp_risk_scan (90s caps) and capturing domain primaries. Also did the og-card / social-preview deliverable (the
+gh-og-share-images skill) and the verified codec-vocab fold-back (iter 35) in adjacent turns.
+
+Sweep result: 56/58 fully clean; domain primaries sane (no new misclassification). TWO real backlog timeouts found
+(nuttx, mongoose) — both FIXED + verified (commit c54bb6c):
+1. DEAD-WEIGHT call: build_backlog RAN cpp_risk_scan.sh and discarded the output (>/dev/null) "for parity", adding
+   risk_scan's full runtime to every backlog invocation. Traced it: at 25s on mongoose, backlog was blocked inside
+   the risk_scan subprocess (risk_scan standalone = 52s on the 34k-line mongoose amalgamation). The output was
+   never consumed (anchors reproduced via rg_code), so removed the call. mongoose 90s+timeout -> 43s; ALL backlog
+   runs now faster.
+2. LARGE-REPO guard (same pattern as the iter-34 comprehension fix): above 8000 source files the per-hit lanes
+   (unsafe-call/api-ergonomics/test-fuzz) loop in shell over every match and exceed budget. Above the cap, run only
+   the cheap repo-level lanes + a "scope to a subdirectory" note. nuttx (16872 files) 90s+timeout -> 5s.
+Verified: cJSON unchanged (38), self-test + contract + audit green.
+
+This is the 100-repo stress test continuing to pay back: it found 3 tool bugs in iter-34 and 2 more here, all
+robustness/perf defects (timeouts/dead-weight), all fixed + verified. Composite HOLDS 100.0 (latent robustness
+bugs now resolved, not capability gaps; recorded transparently). The sweep also confirmed the codec-vocab fold-back
+(iter 35) and that the broad cloned set is otherwise clean.
+
+Commits: c54bb6c (backlog timeout fixes) + this log + push.
