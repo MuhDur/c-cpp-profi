@@ -100,12 +100,25 @@ EXCLUDE_GLOBS=(
   --glob '!**/{third_party,thirdparty,vendor,extern,external,_deps,deps,test,tests,testing}/**/gmock/**'
   --glob '!**/*_test.*'
   --glob '!**/*_tests.*'
-  --glob '!**/*test*.c'
-  --glob '!**/*test*.cc'
-  --glob '!**/*test*.cpp'
-  --glob '!**/*test*.cxx'
+  # G7 (150-repo gauntlet): anchored test-SOURCE forms replacing the old UNANCHORED
+  # `*test*.c{,c,pp,xx}` that dropped real shipped code (attestation.c/fastest.c).
+  # Suffix `_test.`/`_tests.` is covered above; this adds the `test_` prefix. Kept
+  # IDENTICAL to cpp_risk_scan.sh.
+  --glob '!**/test_*.c'
+  --glob '!**/test_*.cc'
+  --glob '!**/test_*.cpp'
+  --glob '!**/test_*.cxx'
   --glob '!**/*_bench*.*'
   --glob '!**/ltests.*'
+  # G6 (150-repo gauntlet): test-only HEADER conventions (secp256k1 tests_impl.h /
+  # tests_exhaustive_impl.h / testrand_impl.h / testutil.h). IDENTICAL to risk scan.
+  --glob '!**/tests_impl.*'
+  --glob '!**/tests_exhaustive*'
+  --glob '!**/testrand*'
+  --glob '!**/testutil.*'
+  --glob '!**/tests_common.*'
+  --glob '!**/unit_test.*'
+  --glob '!**/wycheproof/**'
   # R3+ test/vendored/generated conventions that path-segment + suffix globs miss
   # (kept identical to cpp_risk_scan.sh so anchors line up): NASA cFE `ut-coverage/`/
   # `ut-stubs/`; CamelCase test roots (`STest/`, `FppTestProject/`, any `[A-Z]*Test/`
@@ -131,7 +144,9 @@ EXCLUDE_GLOBS=(
   --glob '!**/test-app/**'
   --glob '!**/test-apps/**'
   --glob '!**/minimal-examples/**'
-  --glob '!**/bench*.{c,cc,cpp,cxx,h,hh,hpp,hxx}'
+  # G7: source-named benches only (a public benchmark.h API header must survive).
+  # IDENTICAL to cpp_risk_scan.sh.
+  --glob '!**/bench*.{c,cc,cpp,cxx}'
   --glob '!**/*fuzzer.*'
 )
 

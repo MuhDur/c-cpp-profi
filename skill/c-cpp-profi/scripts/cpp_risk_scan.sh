@@ -74,12 +74,28 @@ EXCLUDE_GLOBS=(
   # (lua ltests.*) that no dir-glob catches (R3).
   --glob '!**/*_test.*'
   --glob '!**/*_tests.*'
-  --glob '!**/*test*.c'
-  --glob '!**/*test*.cc'
-  --glob '!**/*test*.cpp'
-  --glob '!**/*test*.cxx'
+  # G7 (150-repo gauntlet): anchored test-SOURCE forms replacing the old UNANCHORED
+  # `*test*.c{,c,pp,xx}` substring that silently dropped REAL shipped code whose name
+  # merely contains "test" (attestation.c, fastest.c, contest.c). Suffix `_test.`/
+  # `_tests.` (all extensions) is already covered above; this adds the `test_` prefix.
+  --glob '!**/test_*.c'
+  --glob '!**/test_*.cc'
+  --glob '!**/test_*.cpp'
+  --glob '!**/test_*.cxx'
   --glob '!**/*_bench*.*'
   --glob '!**/ltests.*'
+  # G6 (150-repo gauntlet): test-only HEADER conventions that the suffix + dir globs
+  # missed, so they leaked into output the [scope] banner claims excludes tests —
+  # secp256k1's tests_impl.h / tests_exhaustive_impl.h / testrand_impl.h / testutil.h
+  # were ~33% of its risk hits. Anchored to test-specific names (never a lib header).
+  # Kept IDENTICAL in cpp_backlog.sh so anchors line up.
+  --glob '!**/tests_impl.*'
+  --glob '!**/tests_exhaustive*'
+  --glob '!**/testrand*'
+  --glob '!**/testutil.*'
+  --glob '!**/tests_common.*'
+  --glob '!**/unit_test.*'
+  --glob '!**/wycheproof/**'
   # R3+ test/vendored/generated conventions that path-segment + suffix globs miss:
   #  - NASA cFE unit-test dirs `ut-coverage/`/`ut-stubs/` (77% of cFE's risk hits).
   #  - CamelCase test roots: F´ `STest/`, `FppTestProject/`, and any `*Test/` dir
@@ -114,7 +130,10 @@ EXCLUDE_GLOBS=(
   --glob '!**/test-app/**'
   --glob '!**/test-apps/**'
   --glob '!**/minimal-examples/**'
-  --glob '!**/bench*.{c,cc,cpp,cxx,h,hh,hpp,hxx}'
+  # G7: source-named benches only — the header extensions were dropping a top-level
+  # public bench.h / benchmark.h (e.g. google/benchmark's own API header). A bench
+  # HARNESS header is rare; a public API header named benchmark.h is not.
+  --glob '!**/bench*.{c,cc,cpp,cxx}'
   --glob '!**/*fuzzer.*'
 )
 
@@ -351,9 +370,29 @@ run_scan() {
   # code, and that suffix-named tests / the testing/ gerund are excluded too (R3).
   printf '[scope] shipped library code only; excludes tests/, test/, testing/, bench*/,\n'
   printf '        examples/, extras/, docs/, third_party/, vendor/, extern/, vendored test\n'
-  printf '        frameworks, and suffix-named tests (*_test.*, *test*.cc, ltests.*).\n'
+  printf '        frameworks, and named tests (*_test.*, test_*.c*, tests_impl.*, ltests.*).\n'
   printf '[scope] C++ signal: %s (raw new/delete category %s)\n' \
     "$HAS_CPP" "$([ "$HAS_CPP" = yes ] && printf 'enabled, scanned over C++ TUs/headers only (.cc/.cpp/.cxx/.hpp/.hh/.hxx)' || printf 'suppressed (pure-C)')"
+
+  # G8 (150-repo gauntlet): large-repo guard, mirroring cpp_backlog.sh. Every lane
+  # post-processes its hits in a shell loop (O(hits)), so on a huge tree (nuttx
+  # ~16.9k files) the full scan ran ~87s with NO scope note. Above RISK_FILE_CAP,
+  # emit the file-count note and run only the two cheapest high-signal lanes
+  # (unsafe string/format + raw allocation), then return — advising the caller to
+  # scope to a touched subdirectory for the heavier cast/alias/memory/threading
+  # lanes. Normal/small repos are completely unaffected.
+  local srcn
+  srcn="$(rg --files --no-messages --glob "$SRC_GLOB" --glob '!**/.git/**' \
+      "${EXCLUDE_GLOBS[@]}" "${targets[@]}" 2>/dev/null | wc -l | tr -d ' ')"
+  if [ "${srcn:-0}" -gt "${RISK_FILE_CAP:-8000}" ]; then
+    printf '[scope] repo too large (%s source files > %s): the per-hit cast/alias/memory-move/exec/assert/threading lanes are O(hits) and are skipped here to stay in budget — run cpp_risk_scan.sh on a touched subdirectory for those. Showing the two cheapest high-signal lanes only.\n' \
+      "$srcn" "${RISK_FILE_CAP:-8000}"
+    run_check 'unsafe string or formatting APIs' \
+      '\b(strcpy|strcat|stpcpy|sprintf|vsprintf|gets|scanf|sscanf|fscanf|vscanf|vsscanf|strncpy|strncat)\s*\('
+    run_check 'raw allocation function calls' '\b(malloc|calloc|realloc|free)\s*\('
+    : "$status"
+    return
+  fi
 
   # Unsafe string/format APIs: require the function name as a word immediately
   # followed by `(` so we match real CALLS, not prose or identifier substrings
