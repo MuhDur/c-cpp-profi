@@ -100,6 +100,22 @@ EXCLUDE_GLOBS=(
   --glob '!**/*test_inc.h'
   --glob '!**/single_include/**'
   --glob '!**/win32/include/**'
+  # G2 (100-repo gauntlet-2 fold-back): hyphenated test/example DIR conventions and
+  # flat-root bench/fuzzer FILES that the path-segment + suffix globs above miss —
+  # they leaked test/bench/fuzz findings into output the [scope] banner claims is
+  # excluded (secp256k1 `src/bench*.c` was ~48% of its hits; libwebsockets
+  # `minimal-examples/` + `*-fuzzer` files). Kept IDENTICAL in cpp_backlog.sh so
+  # anchors line up. Deliberately narrow: only bench*/fuzzer-NAMED files and
+  # hyphenated test/example DIRS — never an implementation header or lib source.
+  --glob '!**/*-test/**'
+  --glob '!**/*-tests/**'
+  --glob '!**/*-example/**'
+  --glob '!**/*-examples/**'
+  --glob '!**/test-app/**'
+  --glob '!**/test-apps/**'
+  --glob '!**/minimal-examples/**'
+  --glob '!**/bench*.{c,cc,cpp,cxx,h,hh,hpp,hxx}'
+  --glob '!**/*fuzzer.*'
 )
 
 # The file-extension glob applied to every scan/file-list pass. Kept next to the

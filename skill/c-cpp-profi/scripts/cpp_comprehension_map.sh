@@ -886,6 +886,10 @@ BFS_DEPTH=2
 # Off by default so the probe stays read-only, fast, and compiler-free.
 EXACT="no"
 EXACT_TU_CAP=24
+# G2 (gauntlet-2 fold-back): above this source-file count the heuristic L3
+# callgraph (an awk pass over every TU) is skipped so the fast L1/L2 map still
+# finishes in budget — nuttx (~17k files) tripped a 120s timeout otherwise.
+CALLGRAPH_FILE_CAP=8000
 
 # One awk pass over the source set -> "name<TAB>file<TAB>line<TAB>callee callee ..."
 # rows: a repo-defined function, its definition anchor, and the repo-internal
@@ -1412,12 +1416,19 @@ emit_text() {
   fi
   printf '\n## L3 touched-path callgraph\n'
   printf '(heuristic: token scan, not a compiler callgraph — self-recursion is marked (recursive), but function-pointer/virtual/overloaded/macro-generated calls may be missed; use clangd callHierarchy or cscope for an exact graph)\n'
-  local cg
-  cg="$(build_map "$repo" callgraph)"
-  if [ -n "$cg" ]; then
-    printf '%s\n' "$cg" | render_rows
+  local cg srcn
+  srcn="$(rg --files --no-messages --glob '*.{c,cc,cpp,cxx,h,hh,hpp,hxx}' \
+      --glob '!**/.git/**' "${R3PLUS_GLOBS[@]}" "$repo" 2>/dev/null | wc -l | tr -d ' ')"
+  if [ "${srcn:-0}" -gt "$CALLGRAPH_FILE_CAP" ]; then
+    printf '(repo too large: %s source files > %s cap; heuristic callgraph skipped to stay within budget — root it on a touched subdirectory, or use --exact with compile_commands.json for a scoped exact graph)\n' \
+      "$srcn" "$CALLGRAPH_FILE_CAP"
   else
-    printf 'no seed entry point; provide one (main / LLVMFuzzerTestOneInput / an exported API function) to root the callgraph\n'
+    cg="$(build_map "$repo" callgraph)"
+    if [ -n "$cg" ]; then
+      printf '%s\n' "$cg" | render_rows
+    else
+      printf 'no seed entry point; provide one (main / LLVMFuzzerTestOneInput / an exported API function) to root the callgraph\n'
+    fi
   fi
   if [ "$EXACT" = yes ]; then
     emit_exact_callgraph "$repo"

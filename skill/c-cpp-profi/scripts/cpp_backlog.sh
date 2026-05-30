@@ -120,6 +120,19 @@ EXCLUDE_GLOBS=(
   --glob '!**/*test_inc.h'
   --glob '!**/single_include/**'
   --glob '!**/win32/include/**'
+  # G2 (100-repo gauntlet-2 fold-back): kept IDENTICAL to cpp_risk_scan.sh so anchors
+  # line up — hyphenated test/example DIRS + flat bench*/fuzzer-named FILES that the
+  # path-segment + suffix globs miss (secp256k1 src/bench*.c, libwebsockets
+  # minimal-examples/ + *-fuzzer). Narrow: never an implementation header/lib source.
+  --glob '!**/*-test/**'
+  --glob '!**/*-tests/**'
+  --glob '!**/*-example/**'
+  --glob '!**/*-examples/**'
+  --glob '!**/test-app/**'
+  --glob '!**/test-apps/**'
+  --glob '!**/minimal-examples/**'
+  --glob '!**/bench*.{c,cc,cpp,cxx,h,hh,hpp,hxx}'
+  --glob '!**/*fuzzer.*'
 )
 
 # Whole-file comment/string stripper (R2): emits "<cleaned>\t<path>:<line>:<orig>"
@@ -543,19 +556,32 @@ emit_test_fuzz() {
   # Repo-relative harness file list (so we never flag a harness as uncovered).
   local harness_index
   harness_index="$(printf '%s\n%s\n' "$fuzz_files" "$fuzz_refs" | awk 'NF' | LC_ALL=C sort -u)"
-  # Harness corpus: the concatenated text of every harness file. A parser entry
-  # is covered when its function name OR its source file's basename appears here
-  # (i.e. the harness #includes the file or calls the function).
-  local harness_corpus=""
+  # Harness corpus: the concatenated text of every harness file, in a bounded
+  # TEMP FILE (not a shell var). A parser entry is covered when its function name
+  # OR its source file's basename appears here (the harness #includes the file or
+  # calls the function). Built as a file so the per-entry coverage check greps a
+  # file instead of re-materializing a giant shell string per entry (that was an
+  # O(entries x corpus) blowup), and so a BINARY harness file (a checked-in seed
+  # corpus or .a) never gets cat'd into a shell var (which floods NUL warnings and
+  # bloats memory -> the s2n-tls timeout the 100-repo gauntlet found). We skip
+  # binary files (grep -I), strip stray NULs, cap per-file and total size, and cap
+  # the file count, so the corpus is bounded regardless of the repo.
+  local corpus_file=""
   if [ "$has_fuzz" = yes ]; then
-    local absf
-    while IFS= read -r absf; do
-      [ -n "$absf" ] || continue
-      harness_corpus="$harness_corpus
-$(cat "$absf" 2>/dev/null || true)"
-    done <<EOF
+    corpus_file="$(mktemp 2>/dev/null)" || corpus_file=""
+    if [ -n "$corpus_file" ]; then
+      local absf hc_n=0
+      while IFS= read -r absf; do
+        [ -n "$absf" ] || continue
+        hc_n=$((hc_n + 1)); [ "$hc_n" -gt 200 ] && break          # cap harness-file count
+        grep -Iq . "$absf" 2>/dev/null || continue                # text only; skip binary
+        LC_ALL=C tr -d '\0' < "$absf" 2>/dev/null | head -c 131072 >> "$corpus_file"
+        printf '\n' >> "$corpus_file"
+        [ "$(wc -c <"$corpus_file" 2>/dev/null || echo 0)" -gt 4194304 ] && break  # cap total 4MB
+      done <<EOF
 $(printf '%s\n%s\n' "$fuzz_paths_abs" "$refs_abs" | awk 'NF' | LC_ALL=C sort -u)
 EOF
+    fi
   fi
 
   # parser/decoder entry points: name matches *parse*/*decode*, or signature
@@ -638,9 +664,10 @@ $sig_hits"
     if printf '%s\n' "$harness_index" | grep -qxF "$fname" 2>/dev/null; then
       continue
     fi
-    if [ "$has_fuzz" = yes ] && [ -n "$harness_corpus" ]; then
+    if [ "$has_fuzz" = yes ] && [ -n "$corpus_file" ] && [ -s "$corpus_file" ]; then
       # Covered if a harness #includes this file (basename appears in corpus)...
-      if printf '%s\n' "$harness_corpus" | grep -qF "$base" 2>/dev/null; then
+      # grep the bounded corpus FILE (not a per-entry printf of a giant shell var).
+      if grep -qF "$base" "$corpus_file" 2>/dev/null; then
         continue
       fi
       # ...or a harness calls the entry-point function by name. Extract the
@@ -654,7 +681,7 @@ $sig_hits"
         | grep -oE '[A-Za-z_][A-Za-z0-9_]*[[:space:]]*\(' \
         | grep -vwE '(if|for|while|switch|return|sizeof|defined)[[:space:]]*\(' \
         | head -n1 | sed -E 's/[[:space:]]*\($//' || true)"
-      if [ -n "$func" ] && printf '%s\n' "$harness_corpus" | grep -qE "(^|[^A-Za-z0-9_])${func}([^A-Za-z0-9_]|$)" 2>/dev/null; then
+      if [ -n "$func" ] && grep -qE "(^|[^A-Za-z0-9_])${func}([^A-Za-z0-9_]|$)" "$corpus_file" 2>/dev/null; then
         continue
       fi
     fi
@@ -662,6 +689,7 @@ $sig_hits"
   done <<EOF
 $hits
 EOF
+  [ -n "$corpus_file" ] && rm -f "$corpus_file" 2>/dev/null
   return 0
 }
 
